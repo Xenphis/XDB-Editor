@@ -190,6 +190,23 @@ watch(() => props.tabs.map(t => t.value).join('|'), () => {
   display: none !important;
 }
 
+/* Overflow scroll buttons (shown when the tab strip is too narrow to fit,
+   e.g. with the inspector preview panel open). Override the global
+   underline-tab styling from forms.css so they match these pill tabs
+   instead of showing a flat surface square. */
+:deep(.p-tablist-nav-button) {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  color: var(--text-muted) !important;
+}
+
+:deep(.p-tablist-nav-button:hover) {
+  color: var(--accent) !important;
+  background: var(--surface-hover) !important;
+}
+
 :deep(.p-tabpanels) {
   padding: 1rem 0 0 0 !important;
 }
