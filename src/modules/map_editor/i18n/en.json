@@ -126,9 +126,6 @@
       "clear": "Clear"
     },
     "spawns": {
-      "toggle": "Spawns",
-      "toggleHint": "Show creature spawns as models around the camera",
-      "noMapId": "This map has no Map.dbc id, so database spawns can't be linked",
       "unknown": "Unknown creature",
       "panelTitle": "Selected spawn",
       "entry": "Template ID",

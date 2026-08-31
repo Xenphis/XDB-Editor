@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import SelectButton from 'primevue/selectbutton'
-import ToggleButton from 'primevue/togglebutton'
 import Select from 'primevue/select'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
@@ -293,9 +292,9 @@ watch(() => store.lastMapId, () => {
   clearSelectedSpawn()
 })
 
-// Leaving 3D or hiding spawns invalidates any current selection.
-watch([viewMode, () => store.showSpawns], () => {
-  if (viewMode.value !== '3d' || !store.showSpawns) clearSelectedSpawn()
+// Leaving 3D invalidates any current spawn selection.
+watch(viewMode, () => {
+  if (viewMode.value !== '3d') clearSelectedSpawn()
 })
 
 async function load() {
@@ -371,18 +370,8 @@ onMounted(async () => {
             optionValue="value"
             :allowEmpty="false"
           />
-          <ToggleButton
-            v-if="selectedMap && viewMode === '3d'"
-            v-model="store.showSpawns"
-            :disabled="!spawnsAvailable"
-            onIcon="pi pi-users"
-            offIcon="pi pi-users"
-            :onLabel="t('mapEditor.spawns.toggle')"
-            :offLabel="t('mapEditor.spawns.toggle')"
-            v-tooltip.bottom="spawnsAvailable ? t('mapEditor.spawns.toggleHint') : t('mapEditor.spawns.noMapId')"
-          />
           <Select
-            v-if="selectedMap && viewMode === '3d' && store.showSpawns && spawnsAvailable"
+            v-if="selectedMap && viewMode === '3d' && spawnsAvailable"
             v-model="store.spawnPhase"
             :options="phaseOptions"
             optionLabel="label"
@@ -444,7 +433,7 @@ onMounted(async () => {
             :map="selectedMap"
             :initialPosition="focusTarget ?? viewCenter"
             :focus="focusTarget"
-            :showSpawns="store.showSpawns"
+            :showSpawns="spawnsAvailable"
             :spawnPhase="store.spawnPhase"
             :moveArmed="moveArmed"
             class="editor-map"

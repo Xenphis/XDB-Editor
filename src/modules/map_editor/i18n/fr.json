@@ -126,9 +126,6 @@
       "clear": "Effacer"
     },
     "spawns": {
-      "toggle": "Spawns",
-      "toggleHint": "Afficher les spawns de créatures en modèles autour de la caméra",
-      "noMapId": "Cette carte n'a pas d'id Map.dbc : impossible de lier les spawns de la base",
       "unknown": "Créature inconnue",
       "panelTitle": "Spawn sélectionné",
       "entry": "ID modèle",
