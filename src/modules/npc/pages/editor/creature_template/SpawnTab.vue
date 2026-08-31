@@ -71,16 +71,18 @@ function viewOnMap(spawn: Creature) {
       <Column field="spawntimesecs" :header="t('creature_template.spawnColumns.respawn')" style="width: 8rem" />
       <Column :header="t('creature_template.spawnColumns.actions')" style="width: 8rem" headerStyle="text-align: right" bodyStyle="text-align: right">
         <template #body="{ data: spawn }">
-          <Button
-            v-tooltip.top="t('creature_template.groups.viewOnMap')"
-            text
-            rounded
-            size="small"
-            severity="secondary"
-            icon="pi pi-map-marker"
-            @click="viewOnMap(spawn)"
-          />
-          <ActionsColumn :data="spawn" @edit="emit('edit', spawn)" @delete="emit('delete', spawn)" />
+          <div class="spawn-actions">
+            <Button
+              v-tooltip.top="t('creature_template.groups.viewOnMap')"
+              text
+              rounded
+              size="small"
+              severity="secondary"
+              icon="pi pi-map-marker"
+              @click="viewOnMap(spawn)"
+            />
+            <ActionsColumn :data="spawn" @edit="emit('edit', spawn)" @delete="emit('delete', spawn)" />
+          </div>
         </template>
       </Column>
     </StyledDataTable>
@@ -99,5 +101,12 @@ function viewOnMap(spawn: Creature) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.spawn-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
 }
 </style>
