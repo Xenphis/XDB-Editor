@@ -5,7 +5,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { locale_options } from '@core/types/common'
-import { pvp_flags_options,rank_options, unit_class_options, type_options, family_options, icon_name } from '@/modules/npc/types/defines'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
@@ -21,27 +21,17 @@ const addonForm = store.addon.newEntry
 const repForm = store.onKillRep.newEntry
 const localeEntries = computed(() => store.locales.getNewEntries())
 
-const rankOptions = rank_options.map(o => ({ value: o.value, label: o.name }))
-const unitClassOptions = unit_class_options.map(o => ({ value: o.value, label: o.name }))
-const typeOptions = type_options.map(o => ({ value: o.value, label: o.name }))
-const familyOptions = family_options.map(o => ({ value: o.value, label: o.name }))
-const iconOptions = icon_name.map(o => ({ value: o.value, label: o.name }))
+const { pvpFlagsOptions, rankOptions, unitClassOptions, typeOptions, familyOptions, iconOptions } = useCreatureEnumOptions()
 
-const regenHealthOptions = [
-  { value: 0, label: 'No' },
-  { value: 1, label: 'Yes' },
-]
+const regenHealthOptions = computed(() => [
+  { value: 0, label: t('creature_enums.regen_health.0.name') },
+  { value: 1, label: t('creature_enums.regen_health.1.name') },
+])
 
-const maxStandingOptions = [
-  { label: 'Hated (0)',      value: 0 },
-  { label: 'Hostile (1)',    value: 1 },
-  { label: 'Unfriendly (2)', value: 2 },
-  { label: 'Neutral (3)',    value: 3 },
-  { label: 'Friendly (4)',   value: 4 },
-  { label: 'Honored (5)',    value: 5 },
-  { label: 'Revered (6)',    value: 6 },
-  { label: 'Exalted (7)',    value: 7 },
-]
+const maxStandingOptions = computed(() => [0, 1, 2, 3, 4, 5, 6, 7].map(value => ({
+  value,
+  label: `${t(`creature_enums.max_standing.${value}.name`)} (${value})`,
+})))
 
 const localeHasChanges = computed(() => store.locales.getSqlDiff(form.entry).length > 0)
 
@@ -109,22 +99,22 @@ onMounted(() => {
     </div>
     <div class="field-grid">
       <EditorField :label="t('creature_template.fields.type')" :modified="isFieldModified('type')">
-        <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.type" :options="typeOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.unit_class')" :modified="isFieldModified('unit_class')">
-        <Select v-model="form.unit_class" :options="unitClassOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.unit_class" :options="unitClassOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.faction')" :modified="isFieldModified('faction')">
         <InputNumber v-model="form.faction" :useGrouping="false" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.rank')" :modified="isFieldModified('rank')">
-        <Select v-model="form.rank" :options="rankOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.rank" :options="rankOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.family')" :modified="isFieldModified('family')">
-        <Select v-model="form.family" :options="familyOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.family" :options="familyOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.IconName')" :modified="isFieldModified('IconName')">
-        <Select v-model="form.IconName" :options="iconOptions" optionLabel="label" optionValue="value" fluid editable />
+        <Select v-model="form.IconName" :options="iconOptions" optionLabel="name" optionValue="value" fluid editable />
       </EditorField>
       <EditorField :label="t('creature_template.fields.gossip_menu_id')" :modified="isFieldModified('gossip_menu_id')">
         <div class="gossip-menu-field">
@@ -142,7 +132,7 @@ onMounted(() => {
         </div>
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_pvpflags')" :modified="isAddonModified('PvPFlags')">
-        <BitmaskField v-model="addonForm.PvPFlags" :options="pvp_flags_options" :label="t('creature_template.fields.addon_pvpflags')" />
+        <BitmaskField v-model="addonForm.PvPFlags" :options="pvpFlagsOptions" :label="t('creature_template.fields.addon_pvpflags')" />
       </EditorField>
     </div>
   </div>

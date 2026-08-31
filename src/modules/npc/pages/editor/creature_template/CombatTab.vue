@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
-import { difficulty_entry_options, mechanic_immune_mask_options, spell_school_immune_mask_options, sheath_state_types, dmg_school_options, spell_school_types } from '@/modules/npc/types/defines'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
@@ -23,10 +23,16 @@ const resistanceEntries = computed(() => store.resistances.getNewEntries())
 const MAX_CREATURE_SPELLS = 8
 const MAX_RESISTANCES = 6
 
-const sheathStateOptions = sheath_state_types.map(o => ({ value: o.value, label: o.name }))
-const dmgschoolOptions = dmg_school_options.map(o => ({ value: o.value, label: o.name }))
-const resistanceSchoolOptions = spell_school_types.map(o => ({ value: o.value, label: o.name }))
-const difficultyEntryOptions = difficulty_entry_options.map(o => ({ value: o.value, label: o.name }))
+const {
+  sheathStateOptions,
+  dmgSchoolOptions: dmgschoolOptions,
+  spellSchoolOptions,
+  difficultyEntryOptions,
+  mechanicImmuneMaskOptions,
+  spellSchoolImmuneMaskOptions,
+} = useCreatureEnumOptions()
+
+const resistanceSchoolOptions = computed(() => spellSchoolOptions.value.map(o => ({ value: o.value, label: o.name })))
 
 const spellHasChanges = computed(() => store.spells.getSqlDiff(form.entry).length > 0)
 const resistanceHasChanges = computed(() => store.resistances.getSqlDiff(form.entry).length > 0)
@@ -44,7 +50,7 @@ const resistanceColumns: ColumnDef[] = [
     width: '14rem',
     optionsFn: (data, allEntries) => {
       const usedSchools = new Set(allEntries.filter(e => e !== data).map(e => e.School))
-      return resistanceSchoolOptions.filter(o => !usedSchools.has(o.value))
+      return resistanceSchoolOptions.value.filter(o => !usedSchools.has(o.value))
     },
   },
   { field: 'Resistance', header: t('creature_template.fields.resistance_value'), type: 'number' },
@@ -101,10 +107,10 @@ function removeResistance(index: number) {
         <InputNumber v-model="form.RangeVariance" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_sheathstate')" :modified="isAddonModified('SheathState')">
-        <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.dmgschool')" :modified="isFieldModified('dmgschool')">
-        <Select v-model="form.dmgschool" :options="dmgschoolOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.dmgschool" :options="dmgschoolOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
     </div>
   </div>
@@ -154,10 +160,10 @@ function removeResistance(index: number) {
         <InputText v-model="addonForm.auras" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.mechanic_immune_mask')" :modified="isFieldModified('mechanic_immune_mask')">
-        <BitmaskField v-model="form.mechanic_immune_mask" :options="mechanic_immune_mask_options" :label="t('creature_template.fields.mechanic_immune_mask')" />
+        <BitmaskField v-model="form.mechanic_immune_mask" :options="mechanicImmuneMaskOptions" :label="t('creature_template.fields.mechanic_immune_mask')" />
       </EditorField>
       <EditorField :label="t('creature_template.fields.spell_school_immune_mask')" :modified="isFieldModified('spell_school_immune_mask')">
-        <BitmaskField v-model="form.spell_school_immune_mask" :options="spell_school_immune_mask_options" :label="t('creature_template.fields.spell_school_immune_mask')" />
+        <BitmaskField v-model="form.spell_school_immune_mask" :options="spellSchoolImmuneMaskOptions" :label="t('creature_template.fields.spell_school_immune_mask')" />
       </EditorField>
     </div>
   </div>
@@ -170,13 +176,13 @@ function removeResistance(index: number) {
     </div>
     <div class="field-grid">
       <EditorField :label="t('creature_template.fields.difficulty_entry_1')" :modified="isFieldModified('difficulty_entry_1')">
-        <Select v-model="form.difficulty_entry_1" :options="difficultyEntryOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.difficulty_entry_1" :options="difficultyEntryOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.difficulty_entry_2')" :modified="isFieldModified('difficulty_entry_2')">
-        <Select v-model="form.difficulty_entry_2" :options="difficultyEntryOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.difficulty_entry_2" :options="difficultyEntryOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.difficulty_entry_3')" :modified="isFieldModified('difficulty_entry_3')">
-        <Select v-model="form.difficulty_entry_3" :options="difficultyEntryOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="form.difficulty_entry_3" :options="difficultyEntryOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.KillCredit1')" :modified="isFieldModified('KillCredit1')">
         <InputNumber v-model="form.KillCredit1" :useGrouping="false" fluid />

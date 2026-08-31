@@ -15,8 +15,7 @@ import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.v
 import { useNpcModuleStore, createDefaultNpcText, createDefaultNpcTextLocale, type GossipMenuEntry, type GossipOptionEntry, type GossipOptionLocaleEntry } from '@/modules/npc/store'
 import type { NpcText } from '@/modules/npc/types/gossip/npc_text'
 import type { NpcTextLocale } from '@/modules/npc/types/gossip/npc_text_locale'
-import { creature_text_language_options } from '@/modules/npc/types/defines'
-import { locale_options } from '@/modules/npc/types/creature_template/creature_text_locale'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 
 const { t } = useI18n()
 const store = useNpcModuleStore()
@@ -28,8 +27,10 @@ const gossipOptionLocaleEntries = computed<GossipOptionLocaleEntry[]>(() => stor
 const linkedTextIds = computed(() => new Set(gossipMenuEntries.value.map(row => Number(row.TextID)).filter(id => Number.isFinite(id) && id > 0)))
 const npcTextLocaleEntries = computed<NpcTextLocale[]>(() => store.npcTextLocales.getNewEntries().filter(row => linkedTextIds.value.has(row.ID)))
 
-const localeSelectOptions = locale_options.map(o => ({ value: o.value, label: `${o.value} - ${o.name}` }))
-const languageOptions = creature_text_language_options.map(o => ({ value: o.value, label: o.name }))
+const { textLanguageOptions, textLocaleOptions } = useCreatureEnumOptions()
+
+const localeSelectOptions = computed(() => textLocaleOptions.value.map(o => ({ value: o.value, label: `${o.value} - ${o.name}` })))
+const languageOptions = computed(() => textLanguageOptions.value.map(o => ({ value: o.value, label: o.name })))
 
 const yesNoOptions = computed(() => [
   { value: 0, label: t('creature_template.gossip.no') },
@@ -44,61 +45,37 @@ const detailDialogPt = {
   mask: { style: 'background: rgba(0,0,0,0.6);' },
 }
 
-const gossipIconOptions = [
-  { value: 0, label: 'Chat' },
-  { value: 1, label: 'Vendor' },
-  { value: 2, label: 'Taxi' },
-  { value: 3, label: 'Trainer' },
-  { value: 4, label: 'Interact 1' },
-  { value: 5, label: 'Interact 2' },
-  { value: 6, label: 'Money Bag' },
-  { value: 7, label: 'Talk' },
-  { value: 8, label: 'Tabard' },
-  { value: 9, label: 'Battle' },
-  { value: 10, label: 'Dot' },
-]
+const gossipIconOptions = computed(() => (
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(value => ({
+    value,
+    label: t(`creature_enums.gossip_icon.${value}.name`),
+  }))
+))
 
-const gossipTypeOptions = [
-  { value: 0, label: 'None' },
-  { value: 1, label: 'Gossip' },
-  { value: 2, label: 'Questgiver' },
-  { value: 3, label: 'Vendor' },
-  { value: 4, label: 'Taxi' },
-  { value: 5, label: 'Trainer' },
-  { value: 6, label: 'Spirit Healer' },
-  { value: 7, label: 'Spirit Guide' },
-  { value: 8, label: 'Innkeeper' },
-  { value: 9, label: 'Banker' },
-  { value: 10, label: 'Petitioner' },
-  { value: 11, label: 'Tabard Designer' },
-  { value: 12, label: 'Battleground' },
-  { value: 13, label: 'Auctioneer' },
-  { value: 14, label: 'Stable Pet' },
-  { value: 15, label: 'Armorer' },
-  { value: 16, label: 'Unlearn Talents' },
-  { value: 17, label: 'Unlearn Pet Talents' },
-  { value: 18, label: 'Learn Dual Spec' },
-  { value: 19, label: 'Outdoor PvP' },
-  { value: 20, label: 'Dual Spec Info' },
-]
+const gossipTypeOptions = computed(() => (
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(value => ({
+    value,
+    label: t(`creature_enums.gossip_type.${value}.name`),
+  }))
+))
 
 const gossipOptionColumns = computed<ColumnDef[]>(() => [
   { field: 'OptionID', header: t('creature_template.gossip.fields.OptionID'), type: 'number', width: '7rem' },
-  { field: 'OptionIcon', header: t('creature_template.gossip.fields.OptionIcon'), type: 'select', width: '10rem', options: gossipIconOptions },
+  { field: 'OptionIcon', header: t('creature_template.gossip.fields.OptionIcon'), type: 'select', width: '10rem', options: gossipIconOptions.value },
   { field: 'OptionText', header: t('creature_template.gossip.fields.OptionText'), type: 'text' },
-  { field: 'OptionType', header: t('creature_template.gossip.fields.OptionType'), type: 'select', width: '11rem', options: gossipTypeOptions },
+  { field: 'OptionType', header: t('creature_template.gossip.fields.OptionType'), type: 'select', width: '11rem', options: gossipTypeOptions.value },
 ])
 
 const gossipOptionLocaleColumns = computed<ColumnDef[]>(() => [
   { field: 'OptionID', header: t('creature_template.gossip.fields.OptionID'), type: 'number', width: '7rem' },
-  { field: 'Locale', header: t('creature_template.gossip.fields.Locale'), type: 'select', width: '10rem', options: localeSelectOptions },
+  { field: 'Locale', header: t('creature_template.gossip.fields.Locale'), type: 'select', width: '10rem', options: localeSelectOptions.value },
   { field: 'OptionText', header: t('creature_template.gossip.fields.OptionText'), type: 'text' },
   { field: 'BoxText', header: t('creature_template.gossip.fields.BoxText'), type: 'text' },
 ])
 
 const npcTextLocaleColumns = computed<ColumnDef[]>(() => [
   { field: 'ID', header: t('creature_template.gossip.fields.ID'), type: 'number', width: '7rem' },
-  { field: 'Locale', header: t('creature_template.gossip.fields.Locale'), type: 'select', width: '10rem', options: localeSelectOptions },
+  { field: 'Locale', header: t('creature_template.gossip.fields.Locale'), type: 'select', width: '10rem', options: localeSelectOptions.value },
   { field: 'Text0_0', header: t('creature_template.gossip.fields.Text0_0'), type: 'text' },
   { field: 'Text0_1', header: t('creature_template.gossip.fields.Text0_1'), type: 'text' },
 ])

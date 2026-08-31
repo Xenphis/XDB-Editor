@@ -10,25 +10,7 @@ import EditorHeader from '@core/components/EditorHeader.vue'
 import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.vue'
 import type { FieldChange } from '@core/composables/useQueryGenerator'
 import type { Creature } from '@/modules/npc/types/creature/creature'
-import {
-  movement_type_options,
-  spawn_mask_options,
-  stand_state_types as stand_state_options,
-  anim_tier_types as anim_tier_options,
-  vis_flags_options,
-  sheath_state_types as sheath_state_options,
-  pvp_flags_options,
-  npc_flags,
-  unit_flags_options,
-  dynamicflags_options,
-  visibility_distance_options as visibility_distance_type_options,
-  ground_movement_options as ground_options,
-  swim_movement_options as swim_options,
-  flight_movement_options as flight_options,
-  rooted_options,
-  chase_movement_options as chase_options,
-  random_movement_options as random_options,
-} from '@/modules/npc/types/defines'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import type { CreatureAddon } from '@/modules/npc/types/creature/creature_addon'
 import type { CreatureMovementOverride } from '@/modules/npc/types/creature/creature_movement_override'
 import type { CreatureFormationMember } from '@/modules/npc/types/misc/creature_formations'
@@ -48,6 +30,26 @@ export interface SpawnInspectorState {
 
 const { t } = useI18n()
 const router = useRouter()
+
+const {
+  movementTypeOptions,
+  spawnMaskOptions,
+  standStateOptions,
+  animTierOptions,
+  visFlagsOptions,
+  sheathStateOptions,
+  pvpFlagsOptions,
+  npcFlags,
+  unitFlagsOptions,
+  dynamicflagsOptions,
+  visibilityDistanceOptions: visDistanceOptions,
+  groundMovementOptions: movrGroundOptions,
+  swimMovementOptions: movrSwimOptions,
+  flightMovementOptions: movrFlightOptions,
+  rootedOptions: movrRootedOptions,
+  chaseMovementOptions: movrChaseOptions,
+  randomMovementOptions: movrRandomOptions,
+} = useCreatureEnumOptions()
 
 const props = defineProps<{
   spawnGuid: number
@@ -111,11 +113,6 @@ const addonForm = reactive<CreatureAddon>({
 
 const originalAddon = ref<CreatureAddon | null>(null)
 
-const standStateOptions = stand_state_options.map(o => ({ value: o.value, label: o.name }))
-const animTierOptions = anim_tier_options.map(o => ({ value: o.value, label: o.name }))
-const sheathStateOptions = sheath_state_options.map(o => ({ value: o.value, label: o.name }))
-const visDistanceOptions = visibility_distance_type_options.map(o => ({ value: o.value, label: o.name }))
-
 const {
   diffQuery: addonDiffQuery,
   hasChanges: addonHasChanges,
@@ -147,13 +144,6 @@ const movementOverrideForm = reactive<CreatureMovementOverride>({
 
 const originalMovementOverride = ref<CreatureMovementOverride | null>(null)
 
-const movrGroundOptions = ground_options.map(o => ({ value: o.value, label: o.name }))
-const movrSwimOptions = swim_options.map(o => ({ value: o.value, label: o.name }))
-const movrFlightOptions = flight_options.map(o => ({ value: o.value, label: o.name }))
-const movrRootedOptions = rooted_options.map(o => ({ value: o.value, label: o.name }))
-const movrChaseOptions = chase_options.map(o => ({ value: o.value, label: o.name }))
-const movrRandomOptions = random_options.map(o => ({ value: o.value, label: o.name }))
-
 const {
   diffQuery: movementOverrideDiffQuery,
   hasChanges: movementOverrideHasChanges,
@@ -170,8 +160,6 @@ const movementOverrideModifiedFieldSet = computed(() => new Set(movementOverride
 function isMovementOverrideFieldModified(field: string): boolean {
   return movementOverrideModifiedFieldSet.value.has(field)
 }
-
-const movementTypeOptions = movement_type_options.map(o => ({ value: o.value, label: o.name }))
 
 const { diffQuery, fullQuery, hasChanges, changedFields } = useQueryGenerator<Creature>(
   'creature',
@@ -369,7 +357,7 @@ onMounted(async () => {
             </div>
             <div class="field-grid">
               <EditorField :label="t('creature.fields.spawnMask')" :tooltip="t('creature.tooltips.spawnMask')" :modified="isFieldModified('spawnMask')">
-                <BitmaskField v-model="form.spawnMask" :options="spawn_mask_options" :label="t('creature.fields.spawnMask')" />
+                <BitmaskField v-model="form.spawnMask" :options="spawnMaskOptions" :label="t('creature.fields.spawnMask')" />
               </EditorField>
               <EditorField :label="t('creature.fields.phaseMask')" :tooltip="t('creature.tooltips.phaseMask')" :modified="isFieldModified('phaseMask')">
                 <InputNumber v-model="form.phaseMask" :useGrouping="false" fluid />
@@ -378,7 +366,7 @@ onMounted(async () => {
                 <InputNumber v-model="form.spawntimesecs" :useGrouping="false" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_visdistance')" :modified="isAddonFieldModified('visibilityDistanceType')">
-                <Select v-model="addonForm.visibilityDistanceType" :options="visDistanceOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="addonForm.visibilityDistanceType" :options="visDistanceOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
             </div>
           </div>
@@ -410,7 +398,7 @@ onMounted(async () => {
             </div>
             <div class="field-grid">
               <EditorField :label="t('creature.fields.MovementType')" :tooltip="t('creature.tooltips.MovementType')" :modified="isFieldModified('MovementType')">
-                <Select v-model="form.MovementType" :options="movementTypeOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="form.MovementType" :options="movementTypeOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.wander_distance')" :tooltip="t('creature.tooltips.wander_distance')" :modified="isFieldModified('wander_distance')">
                 <InputNumber v-model="form.wander_distance" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
@@ -432,22 +420,22 @@ onMounted(async () => {
             </div>
             <div class="field-grid">
               <EditorField :label="t('creature.fields.movr_ground')" :modified="isMovementOverrideFieldModified('Ground')">
-                <Select v-model="movementOverrideForm.Ground" :options="movrGroundOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Ground" :options="movrGroundOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_swim')" :modified="isMovementOverrideFieldModified('Swim')">
-                <Select v-model="movementOverrideForm.Swim" :options="movrSwimOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Swim" :options="movrSwimOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_flight')" :modified="isMovementOverrideFieldModified('Flight')">
-                <Select v-model="movementOverrideForm.Flight" :options="movrFlightOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Flight" :options="movrFlightOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_rooted')" :modified="isMovementOverrideFieldModified('Rooted')">
-                <Select v-model="movementOverrideForm.Rooted" :options="movrRootedOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Rooted" :options="movrRootedOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_chase')" :modified="isMovementOverrideFieldModified('Chase')">
-                <Select v-model="movementOverrideForm.Chase" :options="movrChaseOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Chase" :options="movrChaseOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_random')" :modified="isMovementOverrideFieldModified('Random')">
-                <Select v-model="movementOverrideForm.Random" :options="movrRandomOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="movementOverrideForm.Random" :options="movrRandomOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.movr_interaction_pause')" :modified="isMovementOverrideFieldModified('InteractionPauseTimer')">
                 <InputNumber v-model="movementOverrideForm.InteractionPauseTimer" :useGrouping="false" fluid />
@@ -497,13 +485,13 @@ onMounted(async () => {
             </div>
             <div class="field-grid">
               <EditorField :label="t('creature.fields.addon_standstate')" :modified="isAddonFieldModified('StandState')">
-                <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_animtier')" :modified="isAddonFieldModified('AnimTier')">
-                <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_sheathstate')" :modified="isAddonFieldModified('SheathState')">
-                <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_emote')" :modified="isAddonFieldModified('emote')">
                 <InputNumber v-model="addonForm.emote" :useGrouping="false" fluid />
@@ -519,19 +507,19 @@ onMounted(async () => {
             </div>
             <div class="field-grid">
               <EditorField :label="t('creature.fields.npcflag')" :tooltip="t('creature.tooltips.npcflag')" :modified="isFieldModified('npcflag')">
-                <BitmaskField v-model="form.npcflag" :options="npc_flags" :label="t('creature.fields.npcflag')" />
+                <BitmaskField v-model="form.npcflag" :options="npcFlags" :label="t('creature.fields.npcflag')" />
               </EditorField>
               <EditorField :label="t('creature.fields.unit_flags')" :tooltip="t('creature.tooltips.unit_flags')" :modified="isFieldModified('unit_flags')">
-                <BitmaskField v-model="form.unit_flags" :options="unit_flags_options" :label="t('creature.fields.unit_flags')" />
+                <BitmaskField v-model="form.unit_flags" :options="unitFlagsOptions" :label="t('creature.fields.unit_flags')" />
               </EditorField>
               <EditorField :label="t('creature.fields.dynamicflags')" :tooltip="t('creature.tooltips.dynamicflags')" :modified="isFieldModified('dynamicflags')">
-                <BitmaskField v-model="form.dynamicflags" :options="dynamicflags_options" :label="t('creature.fields.dynamicflags')" />
+                <BitmaskField v-model="form.dynamicflags" :options="dynamicflagsOptions" :label="t('creature.fields.dynamicflags')" />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_visflags')" :modified="isAddonFieldModified('VisFlags')">
-                <BitmaskField v-model="addonForm.VisFlags" :options="vis_flags_options" :label="t('creature.fields.addon_visflags')" />
+                <BitmaskField v-model="addonForm.VisFlags" :options="visFlagsOptions" :label="t('creature.fields.addon_visflags')" />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_pvpflags')" :modified="isAddonFieldModified('PvPFlags')">
-                <BitmaskField v-model="addonForm.PvPFlags" :options="pvp_flags_options" :label="t('creature.fields.addon_pvpflags')" />
+                <BitmaskField v-model="addonForm.PvPFlags" :options="pvpFlagsOptions" :label="t('creature.fields.addon_pvpflags')" />
               </EditorField>
             </div>
           </div>

@@ -13,7 +13,7 @@ import Popover from 'primevue/popover'
 import Select from 'primevue/select'
 import type { CreatureTemplate } from '@/modules/npc/types/creature_template/creature_template'
 import type { Creature } from '@/modules/npc/types/creature/creature'
-import { type_options } from '@/modules/npc/types/defines'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import { getNpcs, getCreatureSpawns, saveCreatureSpawn, deleteCreatureSpawn } from '@/modules/npc/service'
 import { useNpcModuleStore } from '@/modules/npc/store'
 import CreatureEditor, { type SpawnInspectorState } from './CreatureEditor.vue'
@@ -37,14 +37,8 @@ const store = useNpcModuleStore()
 const form = store.formData
 const { isFieldModified } = useNpcFieldModifiers()
 
-const typeMap: Record<number, string> = {
-  0: 'None', 1: 'Beast', 2: 'Dragonkin', 3: 'Demon', 4: 'Elemental', 5: 'Giant',
-  6: 'Undead', 7: 'Humanoid', 8: 'Critter', 9: 'Mechanical', 10: 'Not specified',
-  11: 'Totem', 12: 'Non-combat Pet', 15: 'Gas Cloud',
-}
-
 function metaOf(npc: CreatureTemplate): string {
-  const type = typeMap[npc.type] ?? `Type ${npc.type}`
+  const type = typeFilterOptions.value.find(o => o.value === npc.type)?.name ?? `Type ${npc.type}`
   const level = npc.minlevel === npc.maxlevel ? `niv. ${npc.minlevel}` : `niv. ${npc.minlevel}–${npc.maxlevel}`
   return `#${npc.entry} · ${type} · ${level}`
 }
@@ -130,7 +124,7 @@ async function onSearch(query: string) {
 }
 
 // --- Type filter ---
-const typeFilterOptions = type_options.map(o => ({ value: o.value, name: o.name }))
+const { typeOptions: typeFilterOptions } = useCreatureEnumOptions()
 const typeFilterPopover = ref<InstanceType<typeof Popover> | null>(null)
 
 const typeFilter = computed<number | null>({

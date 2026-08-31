@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
-import { vis_flags_options, stand_state_types, anim_tier_types, visibility_distance_options } from '@/modules/npc/types/defines'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
@@ -32,9 +32,7 @@ function onModelSelect(displayId: number) {
   form[modelTargetField.value] = displayId
 }
 
-const standStateOptions = stand_state_types.map(o => ({ value: o.value, label: o.name }))
-const animTierOptions = anim_tier_types.map(o => ({ value: o.value, label: o.name }))
-const visDistOptions = visibility_distance_options.map(o => ({ value: o.value, label: o.name }))
+const { visFlagsOptions, standStateOptions, animTierOptions, visibilityDistanceOptions: visDistOptions } = useCreatureEnumOptions()
 
 const equipHasChanges = computed(() => store.equips.getSqlDiff(form.entry).length > 0)
 
@@ -101,10 +99,10 @@ function removeEquip(index: number) {
     </div>
     <div class="field-grid">
       <EditorField :label="t('creature_template.fields.addon_standstate')" :modified="isAddonModified('StandState')">
-        <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_animtier')" :modified="isAddonModified('AnimTier')">
-        <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_emote')" :modified="isAddonModified('emote')">
         <InputNumber v-model="addonForm.emote" :useGrouping="false" fluid />
@@ -120,10 +118,10 @@ function removeEquip(index: number) {
     </div>
     <div class="field-grid">
       <EditorField :label="t('creature_template.fields.addon_visflags')" :modified="isAddonModified('VisFlags')">
-        <BitmaskField v-model="addonForm.VisFlags" :options="vis_flags_options" :label="t('creature_template.fields.addon_visflags')" />
+        <BitmaskField v-model="addonForm.VisFlags" :options="visFlagsOptions" :label="t('creature_template.fields.addon_visflags')" />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_visdistance')" :modified="isAddonModified('visibilityDistanceType')">
-        <Select v-model="addonForm.visibilityDistanceType" :options="visDistOptions" optionLabel="label" optionValue="value" fluid />
+        <Select v-model="addonForm.visibilityDistanceType" :options="visDistOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
     </div>
   </div>

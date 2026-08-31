@@ -10,12 +10,7 @@ import EditableDataTable, { type ColumnDef } from '@core/components/EditableData
 import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.vue'
 import { useNpcModuleStore, type TextEntry, type TextLocaleEntry } from '@/modules/npc/store'
 import NpcTabGossip from './GossipTab.vue'
-import {
-  creature_text_type_options,
-  creature_text_language_options,
-  creature_text_range_options
-} from '@/modules/npc/types/defines'
-import { locale_options } from '@/modules/npc/types/creature_template/creature_text_locale'
+import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 
 const { t } = useI18n()
 const store = useNpcModuleStore()
@@ -25,23 +20,21 @@ const hasGossipMenu = computed(() => store.formData.gossip_menu_id > 0)
 const textEntries = computed<TextEntry[]>(() => store.texts.getNewEntries())
 const textLocaleEntries = computed<TextLocaleEntry[]>(() => store.textLocales.getNewEntries())
 
-const textTypeOptions = creature_text_type_options.map(o => ({ value: o.value, label: o.name }))
-const textLanguageOptions = creature_text_language_options.map(o => ({ value: o.value, label: o.name }))
-const textRangeOptions = creature_text_range_options.map(o => ({ value: o.value, label: o.name }))
+const { textTypeOptions, textLanguageOptions, textRangeOptions, textLocaleOptions } = useCreatureEnumOptions()
 
 const textColumns: ColumnDef[] = [
   { field: 'GroupID', header: t('creature_template.fields.text_groupid'), type: 'number', width: '5rem' },
   { field: 'ID', header: t('creature_template.fields.text_id'), type: 'number', width: '4rem' },
   { field: 'Text', header: t('creature_template.fields.text_text'), type: 'text' },
-  { field: 'Type', header: t('creature_template.fields.text_type'), type: 'select', width: '9rem', options: textTypeOptions },
+  { field: 'Type', header: t('creature_template.fields.text_type'), type: 'select', width: '9rem', options: textTypeOptions.value.map(o => ({ value: o.value, label: o.name })) },
 ]
 
-const localeSelectOptions = locale_options.map(o => ({ value: o.value, label: `${o.value} — ${o.name}` }))
+const localeSelectOptions = computed(() => textLocaleOptions.value.map(o => ({ value: o.value, label: `${o.value} — ${o.name}` })))
 
 const textLocaleColumns: ColumnDef[] = [
   { field: 'GroupID', header: t('creature_template.fields.text_groupid'), type: 'number', width: '5rem' },
   { field: 'ID', header: t('creature_template.fields.text_id'), type: 'number', width: '4rem' },
-  { field: 'Locale', header: t('creature_template.fields.text_locale_locale'), type: 'select', width: '10rem', options: localeSelectOptions },
+  { field: 'Locale', header: t('creature_template.fields.text_locale_locale'), type: 'select', width: '10rem', options: localeSelectOptions.value },
   { field: 'Text', header: t('creature_template.fields.text_locale_text'), type: 'text' },
 ]
 
@@ -179,10 +172,10 @@ const textSectionTabs = computed<SectionTabItem[]>(() => [
           <InputText v-model="detailEntry.Text" fluid />
         </EditorField>
         <EditorField :label="t('creature_template.fields.text_type')">
-          <Select v-model="detailEntry.Type" :options="textTypeOptions" optionLabel="label" optionValue="value" fluid />
+          <Select v-model="detailEntry.Type" :options="textTypeOptions" optionLabel="name" optionValue="value" fluid />
         </EditorField>
         <EditorField :label="t('creature_template.fields.text_language')">
-          <Select v-model="detailEntry.Language" :options="textLanguageOptions" optionLabel="label" optionValue="value" fluid />
+          <Select v-model="detailEntry.Language" :options="textLanguageOptions" optionLabel="name" optionValue="value" fluid />
         </EditorField>
         <EditorField :label="t('creature_template.fields.text_probability')">
           <InputNumber v-model="detailEntry.Probability" :useGrouping="false" fluid />
@@ -200,7 +193,7 @@ const textSectionTabs = computed<SectionTabItem[]>(() => [
           <InputNumber v-model="detailEntry.BroadcastTextId" :useGrouping="false" fluid />
         </EditorField>
         <EditorField :label="t('creature_template.fields.text_range')">
-          <Select v-model="detailEntry.TextRange" :options="textRangeOptions" optionLabel="label" optionValue="value" fluid />
+          <Select v-model="detailEntry.TextRange" :options="textRangeOptions" optionLabel="name" optionValue="value" fluid />
         </EditorField>
         <EditorField :label="t('creature_template.fields.text_comment')" fullWidth>
           <InputText v-model="detailEntry.comment" fluid />
