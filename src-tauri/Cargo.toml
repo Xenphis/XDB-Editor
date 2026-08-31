@@ -1,0 +1,53 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.4", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.0", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-mcp-bridge = "0.11"
+sqlx = { version = "0.8", features = ["runtime-tokio", "mysql"] }
+tokio = { version = "1", features = ["full"] }
+# Used to proxy the Wowhead model-viewer CDN from the Rust side, bypassing the
+# webview's CORS restriction on cross-origin data requests (see model_proxy.rs).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Map-editor minimap pipeline: reads the 3.3.5 client MPQs, decodes the hashed
+# minimap BLPs and serves them as a PNG tile pyramid (see minimap.rs).
+wow-mpq = "0.7"
+wow-blp = "0.7"
+# Parses ADT terrain to extract the MH2O liquid chunk for the 3D water layer.
+wow-adt = "0.7"
+image = { version = "0.25", default-features = false, features = ["png"] }
+wow-wmo = "0.7"
+wow-wdt = "0.7"
+
+# The map editor's asset pipeline (MPQ decompression, BLP decode, ADT/WMO
+# parsing) is decode-bound, and an unoptimized dev build runs it an order of
+# magnitude slower — enough to make the 3D view stutter in `tauri dev` for
+# reasons that don't exist in a release build. Third-party crates never change
+# here, so building them optimized costs nothing on incremental rebuilds; the
+# workspace crate itself stays low so compile times and debug info stay usable.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

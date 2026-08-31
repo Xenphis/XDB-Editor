@@ -1,0 +1,139 @@
+{
+  "login": {
+    "title": "XDB-Editor",
+    "subtitle": "Connectez-vous à votre base de données serveur",
+    "host": "Hôte de la base de données",
+    "hostPlaceholder": "127.0.0.1",
+    "port": "Port",
+    "database": "Base de données",
+    "databasePlaceholder": "world",
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "root",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "••••••••",
+    "connect": "Se connecter à la base",
+    "connecting": "Connexion en cours...",
+    "connectionError": "Erreur de connexion à la base de données",
+    "info": "Assurez-vous que votre base de données est accessible et que les identifiants sont corrects",
+    "footer": "TrinityCore Database Editor v1.0",
+    "advancedSettings": "Paramètres avancés"
+  },
+  "workspace": {
+    "searchPlaceholder": "Nom, ID, type…",
+    "add": "Créer une nouvelle entrée",
+    "noResults": "Aucun résultat",
+    "selectEntity": "Sélectionnez une entrée dans la liste",
+    "inspector": "Aperçu"
+  },
+  "navbar": {
+    "appTitle": "ISC Editor",
+    "session": "Session",
+    "sessionCount": "aucune requête | {n} requête | {n} requêtes",
+    "connected": "Connecté",
+    "host": "Hôte :",
+    "database": "BDD :",
+    "user": "Utilisateur :",
+    "disconnect": "Déconnexion",
+    "settings": "Paramètres",
+    "modules": {
+      "npc": "PNJs",
+      "object": "Objets",
+      "quests": "Quêtes",
+      "world-editor": "Éditeur du monde",
+      "instances": "Instances",
+      "loot-items": "Butin",
+      "spells": "Sorts",
+      "misc": "Divers"
+    }
+  },
+  "modules": {
+    "gameobject": {
+      "title": "Objets de jeu",
+      "description": "Modifier les objets du monde, conteneurs et éléments interactifs"
+    },
+    "item": {
+      "title": "Base d'objets",
+      "description": "Configurer les objets, armes, armures et consommables"
+    },
+    "quests": {
+      "title": "Éditeur de quêtes",
+      "description": "Concevoir les chaînes de quêtes, objectifs et récompenses"
+    },
+    "spells": {
+      "title": "Sorts",
+      "description": "Configurer les sorts, effets et chaînes de sorts"
+    },
+    "server": {
+      "title": "Divers",
+      "description": "Paramètres divers et configuration du serveur"
+    },
+    "settings": {
+      "title": "Paramètres de l'application",
+      "description": "Configurer les préférences de l'éditeur et les options de connexion"
+    },
+    "placeholder": "Le contenu du module sera implémenté ici"
+  },
+  "sqlPanel": {
+    "title": "Requête SQL",
+    "diffQuery": "Diff Query",
+    "fullQuery": "Full Query",
+    "changedFields": "Champs modifiés",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "execute": "Exécuter",
+    "noChanges": "Aucune modification",
+    "noData": "Aucune donnée",
+    "changes": "modification(s)"
+  },
+  "sqlSession": {
+    "title": "Session SQL",
+    "description": "Modifications nettes depuis le début de la session, exécutions incluses",
+    "copyAll": "Tout copier",
+    "entries": "entrée(s) modifiée(s)",
+    "fullScript": "Script complet",
+    "fullScriptDesc": "Patch net de la session : de l'état d'origine à l'état actuel de chaque entrée modifiée",
+    "emptyTitle": "Aucune modification cette session",
+    "emptyDescription": "Les requêtes SQL apparaîtront ici lorsque vous modifierez des entrées",
+    "statusCreated": "créé",
+    "statusModified": "modifié",
+    "statusDeleted": "supprimé",
+    "showSql": "Voir le SQL",
+    "hideSql": "Masquer le SQL",
+    "openEntity": "Ouvrir dans l'éditeur"
+  },
+  "bitmaskField": {
+    "currentValue": "Valeur actuelle :",
+    "done": "Valider"
+  },
+  "common": {
+    "search": "Rechercher...",
+    "filter": "Filtrer",
+    "noEntries": "Aucune entrée",
+    "save": "Sauvegarder",
+    "cancel": "Annuler"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "general": "Général",
+    "language": "Langue",
+    "languageDesc": "Langue de l'interface",
+    "theme": "Thème",
+    "themeDesc": "Apparence de l'interface",
+    "themeDark": "Sombre",
+    "themeLight": "Clair",
+    "gameClientSection": "Client du jeu",
+    "clientPath": "Dossier du client WoW",
+    "clientPathDesc": "Dossier du client 3.3.5, utilisé pour l'affichage des cartes et l'aperçu des modèles",
+    "debugSection": "Debug",
+    "sqlDebug": "Mode Debug SQL",
+    "sqlDebugDesc": "Journaliser toutes les requêtes SQL exécutées par le backend en temps réel"
+  },
+  "sqlDebug": {
+    "title": "Journal Debug SQL",
+    "entries": "requêtes",
+    "empty": "Aucune requête enregistrée. Effectuez des actions pour voir les logs ici.",
+    "clear": "Effacer",
+    "copy": "Copier tous les logs",
+    "openViewer": "Ouvrir le journal SQL"
+  }
+}

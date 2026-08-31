@@ -1,0 +1,81 @@
+
+/* Locale/Spell/Equip Panel shared styles */
+.locale-panel-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+
+.locale-entry {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--surface-panel);
+  transition: border-color 0.2s;
+}
+
+.locale-entry-modified {
+  border-color: var(--accent-focus);
+  background: var(--accent-soft);
+}
+
+.locale-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.locale-tag {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--accent);
+  background: var(--accent-ring-soft);
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+}
+
+.locale-entry-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.locale-entry-fields .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.locale-entry-fields .field label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.locale-add-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.locale-add-row .p-select {
+  flex: 1;
+}
+
+/* .locale-panel-modified .p-panel-header and disabled inputs: see src/styles/forms.css */
+
+/* Inline field in panels (non-EditorField) */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}

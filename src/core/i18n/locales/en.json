@@ -1,0 +1,139 @@
+{
+  "login": {
+    "title": "XDB-Editor",
+    "subtitle": "Connect to your game server database",
+    "host": "Database Host",
+    "hostPlaceholder": "127.0.0.1",
+    "port": "Port",
+    "database": "Database",
+    "databasePlaceholder": "world",
+    "username": "Username",
+    "usernamePlaceholder": "root",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "connect": "Connect to Database",
+    "connecting": "Connecting...",
+    "connectionError": "Failed to connect to database",
+    "info": "Make sure your database is accessible and credentials are correct",
+    "footer": "TrinityCore Database Editor v1.0",
+    "advancedSettings": "Advanced Settings"
+  },
+  "workspace": {
+    "searchPlaceholder": "Name, ID, type…",
+    "add": "Create a new entry",
+    "noResults": "No results",
+    "selectEntity": "Select an entry from the list",
+    "inspector": "Preview"
+  },
+  "navbar": {
+    "appTitle": "ISC Editor",
+    "session": "Session",
+    "sessionCount": "no queries | {n} query | {n} queries",
+    "connected": "Connected",
+    "host": "Host:",
+    "database": "DB:",
+    "user": "User:",
+    "disconnect": "Disconnect",
+    "settings": "Settings",
+    "modules": {
+      "npc": "NPCs",
+      "object": "Object",
+      "quests": "Quests",
+      "world-editor": "World Editor",
+      "instances": "Instances",
+      "loot-items": "Loot",
+      "spells": "Spells",
+      "misc": "Misc"
+    }
+  },
+  "modules": {
+    "gameobject": {
+      "title": "Game Objects",
+      "description": "Edit world objects, containers, and interactive elements"
+    },
+    "item": {
+      "title": "Items Database",
+      "description": "Configure items, weapons, armor, and consumables"
+    },
+    "quests": {
+      "title": "Quests Editor",
+      "description": "Design quest chains, objectives, and rewards"
+    },
+    "spells": {
+      "title": "Spells",
+      "description": "Configure spells, effects and spell chains"
+    },
+    "server": {
+      "title": "Misc",
+      "description": "Miscellaneous settings and server configuration"
+    },
+    "settings": {
+      "title": "Application Settings",
+      "description": "Configure editor preferences and connection options"
+    },
+    "placeholder": "Module content will be implemented here"
+  },
+  "sqlPanel": {
+    "title": "SQL Query",
+    "diffQuery": "Diff Query",
+    "fullQuery": "Full Query",
+    "changedFields": "Changed Fields",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "execute": "Execute",
+    "noChanges": "No changes",
+    "noData": "No data",
+    "changes": "change(s)"
+  },
+  "sqlSession": {
+    "title": "SQL Session",
+    "description": "Net changes since the session started, including already-executed ones",
+    "copyAll": "Copy all",
+    "entries": "modified entry(ies)",
+    "fullScript": "Full Script",
+    "fullScriptDesc": "Net session patch: original state to current state of every modified entry",
+    "emptyTitle": "No changes this session",
+    "emptyDescription": "SQL queries will appear here when you modify entries",
+    "statusCreated": "created",
+    "statusModified": "modified",
+    "statusDeleted": "deleted",
+    "showSql": "Show SQL",
+    "hideSql": "Hide SQL",
+    "openEntity": "Open in editor"
+  },
+  "bitmaskField": {
+    "currentValue": "Current value:",
+    "done": "Done"
+  },
+  "common": {
+    "search": "Search...",
+    "filter": "Filter",
+    "noEntries": "No entries",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "language": "Language",
+    "languageDesc": "Interface language",
+    "theme": "Theme",
+    "themeDesc": "Interface color scheme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "gameClientSection": "Game client",
+    "clientPath": "WoW client folder",
+    "clientPathDesc": "3.3.5 client folder, used to render maps and model previews",
+    "debugSection": "Debug",
+    "sqlDebug": "SQL Debug Mode",
+    "sqlDebugDesc": "Log all SQL queries executed by the backend in real-time"
+  },
+  "sqlDebug": {
+    "title": "SQL Debug Log",
+    "entries": "queries",
+    "empty": "No queries logged yet. Execute some actions to see logs here.",
+    "clear": "Clear",
+    "copy": "Copy all logs",
+    "openViewer": "Open SQL Debug Log"
+  }
+}

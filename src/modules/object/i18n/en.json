@@ -1,0 +1,8 @@
+{
+  "object": {
+    "tables": {
+      "items": "Items",
+      "gameObjects": "Game Objects"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+/* Design tokens — single source of truth for both themes.
+   Use these variables instead of hardcoding colors/sizes in component styles.
+
+   Light theme lives on :root (crème + vermilion), dark overrides on .dark
+   (slate + cyan) — the same class PrimeVue's darkModeSelector matches on
+   <html>, so one class flip switches app tokens AND PrimeVue tokens,
+   including overlays teleported to <body>. */
+:root {
+  /* ── LIGHT — crème + vermillon ─────────────────────────────── */
+
+  /* Surfaces */
+  --surface-page: linear-gradient(135deg, #faf8f4 0%, #f2ede3 50%, #faf8f4 100%);
+  --surface-base: #faf8f4;
+  --surface-1: rgba(255, 255, 255, 0.65);
+  --surface-input: #ffffff;
+  --surface-input-soft: rgba(255, 255, 255, 0.7);
+  --surface-disabled: #f1ece2;
+  --surface-hover: rgba(190, 175, 148, 0.16);
+  --surface-strong: rgba(72, 60, 42, 0.12);
+  --surface-elevated: #fffdf8;
+  --surface-panel: rgba(255, 255, 255, 0.45);
+  --surface-code: #fdfbf7;
+  /* Translucent veil over disabled cards — must stay semi-transparent so the
+     card content shows through dimmed (never fully opaque). */
+  --surface-veil: rgba(242, 237, 227, 0.55);
+
+  /* Borders */
+  --border-default: rgba(72, 60, 42, 0.14);
+  --border-input: rgba(72, 60, 42, 0.22);
+  --border-input-soft: rgba(72, 60, 42, 0.18);
+
+  /* Accent (vermilion) */
+  --accent: #b93a1f;
+  --accent-strong: #9a3019;
+  --accent-contrast: #ffffff;
+  --accent-focus: rgba(185, 58, 31, 0.5);
+  --accent-ring: rgba(185, 58, 31, 0.15);
+  --accent-ring-soft: rgba(185, 58, 31, 0.1);
+  --accent-soft: rgba(185, 58, 31, 0.06);
+  --accent-gradient: linear-gradient(135deg, #d24a2b, #9a3019);
+
+  /* Text */
+  --text: #2b2218;
+  --text-soft: #4c4133;
+  --text-muted: #83765f;
+  --text-placeholder: #b5a88e;
+
+  /* Status */
+  --success: #15803d;
+  --danger: #b91c1c;
+  --warn: #b45309;
+
+  /* Item quality (item_template.Quality 0-7).
+     Darkened rebuilds of the canonical WoW colours: those are meant for a
+     black game background and wash out on the cream surface — plain white
+     "Common" scores 1.06:1 against it, i.e. invisible. Every value below
+     clears 4.5:1 on --surface-base while keeping its hue recognisable. */
+  --quality-0: #6b6b6b; /* Poor */
+  --quality-1: #2b2218; /* Common */
+  --quality-2: #157f3c; /* Uncommon */
+  --quality-3: #0059b0; /* Rare */
+  --quality-4: #7b2fbe; /* Epic */
+  --quality-5: #b35300; /* Legendary */
+  --quality-6: #8a6d1f; /* Artifact */
+  --quality-7: #8a6d1f; /* Heirloom */
+
+  /* SQL syntax highlighting */
+  --sql-keyword: #b93a1f;
+  --sql-string: #15803d;
+  --sql-number: #b45309;
+  --sql-field: #7e22ce;
+
+  /* Sizing / density (scheme-independent) */
+  --input-height: 2rem;
+  --input-height-sm: 1.65rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --font-field: 0.8125rem;
+  --font-label: 0.6875rem;
+  --nav-height: 3.25rem;
+
+  /* Navbar — terracotta bar that stands out against the crème page. */
+  --nav-bg: linear-gradient(135deg, #b93a1f, #7c2917);
+  --nav-text: #fdf3ef;
+  --nav-text-muted: rgba(253, 243, 239, 0.72);
+  --nav-hover: rgba(255, 255, 255, 0.12);
+  --nav-active-bg: rgba(255, 255, 255, 0.16);
+  --nav-active-text: #ffffff;
+  --nav-active-border: #ffffff;
+  --nav-btn-border: rgba(255, 255, 255, 0.28);
+  --nav-separator: rgba(255, 255, 255, 0.22);
+  --nav-logo-bg: rgba(255, 255, 255, 0.18);
+  --nav-logo-color: #ffffff;
+  --nav-border: rgba(60, 20, 10, 0.25);
+  --nav-shadow: 0 2px 10px rgba(80, 30, 15, 0.28);
+}
+
+.dark {
+  /* ── DARK — slate + cyan (identité historique) ─────────────── */
+
+  /* Surfaces */
+  --surface-page: linear-gradient(135deg, #0f172a 0%, #172554 50%, #0f172a 100%);
+  --surface-base: #0f172a;
+  --surface-1: rgba(15, 23, 42, 0.6);
+  --surface-input: rgba(15, 23, 42, 0.8);
+  --surface-input-soft: rgba(15, 23, 42, 0.6);
+  --surface-disabled: rgba(15, 23, 42, 0.7);
+  --surface-hover: rgba(30, 41, 59, 0.3);
+  --surface-strong: rgba(51, 65, 85, 0.8);
+  /* Slightly elevated panel — uses a different base hue so it stays visible
+     even on the far-right edge of the body gradient where --surface-1 blends in. */
+  --surface-elevated: rgba(30, 41, 59, 0.5);
+  --surface-panel: rgba(15, 23, 42, 0.3);
+  --surface-code: rgba(10, 15, 30, 0.8);
+  --surface-veil: rgba(10, 15, 30, 0.55);
+
+  /* Borders */
+  --border-default: rgba(51, 65, 85, 0.4);
+  --border-input: rgba(51, 65, 85, 0.6);
+  --border-input-soft: rgba(51, 65, 85, 0.5);
+
+  /* Accent (cyan) */
+  --accent: #22d3ee;
+  --accent-strong: #06b6d4;
+  --accent-contrast: #052e36;
+  --accent-focus: rgba(6, 182, 212, 0.5);
+  --accent-ring: rgba(6, 182, 212, 0.15);
+  --accent-ring-soft: rgba(6, 182, 212, 0.1);
+  --accent-soft: rgba(6, 182, 212, 0.05);
+  --accent-gradient: linear-gradient(135deg, #2563eb, #06b6d4);
+
+  /* Text */
+  --text: #e2e8f0;
+  --text-soft: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-placeholder: #475569;
+
+  /* Status */
+  --success: #4ade80;
+  --danger: #f87171;
+  --warn: #fb923c;
+
+  /* Item quality — canonical WoW colours, which is what the dark slate
+     surface was made for (all clear 3.6:1 or better against it). */
+  --quality-0: #9d9d9d; /* Poor */
+  --quality-1: #ffffff; /* Common */
+  --quality-2: #1eff00; /* Uncommon */
+  --quality-3: #0070dd; /* Rare */
+  --quality-4: #a335ee; /* Epic */
+  --quality-5: #ff8000; /* Legendary */
+  --quality-6: #e6cc80; /* Artifact */
+  --quality-7: #e6cc80; /* Heirloom */
+
+  /* SQL syntax highlighting */
+  --sql-keyword: #22d3ee;
+  --sql-string: #4ade80;
+  --sql-number: #fb923c;
+  --sql-field: #c084fc;
+
+  /* Navbar — keep the current translucent slate look (already contrasts well
+     against the dark page). */
+  --nav-bg: var(--surface-1);
+  --nav-text: var(--text);
+  --nav-text-muted: var(--text-muted);
+  --nav-hover: var(--surface-hover);
+  --nav-active-bg: var(--accent-soft);
+  --nav-active-text: var(--accent);
+  --nav-active-border: var(--accent);
+  --nav-btn-border: var(--border-default);
+  --nav-separator: var(--border-default);
+  --nav-logo-bg: var(--accent-gradient);
+  --nav-logo-color: #ffffff;
+  --nav-border: var(--border-default);
+  --nav-shadow: none;
+}

@@ -1,0 +1,50 @@
+{
+  "creature_classlevelstats": {
+    "title": "Spec Class Template",
+    "description": "Define class and specialization templates for creatures",
+    "searchPlaceholder": "Filter by level (number) or class name…",
+    "classes": {
+      "1": "Warrior",
+      "2": "Paladin",
+      "4": "Rogue",
+      "8": "Mage"
+    },
+    "fields": {
+      "level": "Level",
+      "class": "Class",
+      "basehp0": "Base HP (Vanilla)",
+      "basehp1": "Base HP (TBC)",
+      "basehp2": "Base HP (WotLK)",
+      "basemana": "Base Mana",
+      "basearmor": "Base Armor",
+      "attackpower": "Attack Power",
+      "rangedattackpower": "Ranged Attack Power",
+      "damage_base": "Base Damage (Vanilla)",
+      "damage_exp1": "Base Damage (TBC)",
+      "damage_exp2": "Base Damage (WotLK)",
+      "comment": "Comment"
+    },
+    "tooltips": {
+      "basehp0": "Base HP when creature_template.exp = 0 (Vanilla). Multiplied by HealthModifier.",
+      "basehp1": "Base HP when creature_template.exp = 1 (TBC). Multiplied by HealthModifier.",
+      "basehp2": "Base HP when creature_template.exp = 2 (WotLK). Multiplied by HealthModifier.",
+      "attackpower": "Adds to melee base damage: (attackpower / 14) × (BaseAttackTime / 1000)",
+      "rangedattackpower": "Adds to ranged base damage: (rangedattackpower / 14) × (RangeAttackTime / 1000)",
+      "damage_base": "Base damage when exp = 0 (Vanilla). Multiplied by DamageModifier.",
+      "damage_exp1": "Base damage when exp = 1 (TBC). Multiplied by DamageModifier.",
+      "damage_exp2": "Base damage when exp = 2 (WotLK). Multiplied by DamageModifier."
+    },
+    "groups": {
+      "health": "Health",
+      "healthDesc": "Base HP per expansion tier (multiplied by creature_template.HealthModifier)",
+      "resources": "Resources",
+      "resourcesDesc": "Base mana and armor values",
+      "attack": "Attack Power",
+      "attackDesc": "Melee and ranged attack power bonus added to base damage",
+      "damage": "Base Damage",
+      "damageDesc": "Base damage per expansion tier (multiplied by creature_template.DamageModifier)",
+      "misc": "Miscellaneous",
+      "miscDesc": "Optional comment for this entry"
+    }
+  }
+}

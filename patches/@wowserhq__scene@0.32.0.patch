@@ -1,0 +1,34 @@
+diff --git a/dist/esm/map/MapManager.js b/dist/esm/map/MapManager.js
+index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce7334847897e 100644
+--- a/dist/esm/map/MapManager.js
++++ b/dist/esm/map/MapManager.js
+@@ -82,6 +82,9 @@ class MapManager extends EventTarget {
+     get root() {
+         return this.#root;
+     }
++    get mapLight() {
++        return this.#mapLight;
++    }
+     load(mapName, mapId) {
+         this.#mapName = mapName;
+         this.#mapDir = `world/maps/${mapName}`;
+diff --git a/dist/types/map/MapManager.d.ts b/dist/types/map/MapManager.d.ts
+index 639faf1cb74696335f0d0b93a4938c69726a9a92..0267cb0bfbebb88ada3ce4076fc64abe03e4b116 100644
+--- a/dist/types/map/MapManager.d.ts
++++ b/dist/types/map/MapManager.d.ts
+@@ -3,6 +3,7 @@ import TextureManager from '../texture/TextureManager.js';
+ import { AssetHost } from '../asset.js';
+ import DbManager from '../db/DbManager.js';
+ import SoundManager from '../sound/SoundManager.js';
++import MapLight from './light/MapLight.js';
+ type MapManagerOptions = {
+     host: AssetHost;
+     textureManager?: TextureManager;
+@@ -17,6 +18,7 @@ declare class MapManager extends EventTarget {
+     get cameraFar(): number;
+     get mapMame(): string;
+     get root(): THREE.Group<THREE.Object3DEventMap>;
++    get mapLight(): MapLight;
+     load(mapName: string, mapId?: number): this;
+     setTarget(x: number, y: number): void;
+     update(deltaTime: number, camera: THREE.Camera): void;

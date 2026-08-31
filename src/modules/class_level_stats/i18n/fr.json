@@ -1,0 +1,50 @@
+{
+  "creature_classlevelstats": {
+    "title": "Spec Class Template",
+    "description": "Définir les templates de classe et spécialisation pour les créatures",
+    "searchPlaceholder": "Filtrer par niveau (chiffre) ou nom de classe…",
+    "classes": {
+      "1": "Guerrier",
+      "2": "Paladin",
+      "4": "Voleur",
+      "8": "Mage"
+    },
+    "fields": {
+      "level": "Niveau",
+      "class": "Classe",
+      "basehp0": "PV de base (Vanilla)",
+      "basehp1": "PV de base (TBC)",
+      "basehp2": "PV de base (WotLK)",
+      "basemana": "Mana de base",
+      "basearmor": "Armure de base",
+      "attackpower": "Puissance d'attaque",
+      "rangedattackpower": "Puissance d'attaque à distance",
+      "damage_base": "Dégâts de base (Vanilla)",
+      "damage_exp1": "Dégâts de base (TBC)",
+      "damage_exp2": "Dégâts de base (WotLK)",
+      "comment": "Commentaire"
+    },
+    "tooltips": {
+      "basehp0": "PV de base si creature_template.exp = 0 (Vanilla). Multiplié par HealthModifier.",
+      "basehp1": "PV de base si creature_template.exp = 1 (TBC). Multiplié par HealthModifier.",
+      "basehp2": "PV de base si creature_template.exp = 2 (WotLK). Multiplié par HealthModifier.",
+      "attackpower": "Ajoute aux dégâts corps-à-corps : (attackpower / 14) × (BaseAttackTime / 1000)",
+      "rangedattackpower": "Ajoute aux dégâts à distance : (rangedattackpower / 14) × (RangeAttackTime / 1000)",
+      "damage_base": "Dégâts de base si exp = 0 (Vanilla). Multiplié par DamageModifier.",
+      "damage_exp1": "Dégâts de base si exp = 1 (TBC). Multiplié par DamageModifier.",
+      "damage_exp2": "Dégâts de base si exp = 2 (WotLK). Multiplié par DamageModifier."
+    },
+    "groups": {
+      "health": "Points de vie",
+      "healthDesc": "PV de base par palier d'extension (multiplié par creature_template.HealthModifier)",
+      "resources": "Ressources",
+      "resourcesDesc": "Valeurs de mana et d'armure de base",
+      "attack": "Puissance d'attaque",
+      "attackDesc": "Bonus de puissance d'attaque corps-à-corps et à distance ajouté aux dégâts de base",
+      "damage": "Dégâts de base",
+      "damageDesc": "Dégâts de base par palier d'extension (multiplié par creature_template.DamageModifier)",
+      "misc": "Divers",
+      "miscDesc": "Commentaire optionnel pour cette entrée"
+    }
+  }
+}

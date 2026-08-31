@@ -1,0 +1,17 @@
+{
+  "exploration_basexp": {
+    "title": "Exploration XP",
+    "description": "Base experience granted when discovering an area, indexed by level",
+    "searchPlaceholder": "Search by level...",
+    "addNew": "New entry",
+    "editorTitle": "Exploration XP",
+    "fields": {
+      "level": "Level",
+      "basexp": "Base XP"
+    },
+    "groups": {
+      "main": "Experience",
+      "mainDesc": "Player level and the base experience granted on discovery"
+    }
+  }
+}

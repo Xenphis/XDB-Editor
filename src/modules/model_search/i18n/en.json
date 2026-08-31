@@ -1,0 +1,19 @@
+{
+  "modelSearch": {
+    "title": "Model Search",
+    "description": "Find a creature or gameobject model by tag. Tags are maintained in the creature_model_tags / gameobject_model_tags tables. Select a result to preview it; click to copy its display id.",
+    "hubDescription": "Find NPC & GameObject models by tag",
+    "searchPlaceholder": "Search by tag…",
+    "searchTooltip": "Search a model by tag",
+    "kindCreature": "Creatures",
+    "kindGameObject": "Game Objects",
+    "displayId": "Display ID:",
+    "noName": "(unnamed)",
+    "useThis": "Use this model",
+    "copied": "Copied display id {id} to the clipboard",
+    "noResults": "No model matches this tag",
+    "emptyHint": "Type a tag to search for a model",
+    "dialogTitleCreature": "Search a creature model",
+    "dialogTitleGameObject": "Search a gameobject model"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "lootAndItem": {
+    "title": "Butin",
+    "description": "Tables de butin et compétences qui les alimentent",
+    "searchPlaceholder": "Rechercher par id ou par nom…",
+    "rowCount": "aucune ligne | 1 ligne | {n} lignes",
+    "discard": "Annuler",
+    "execute": "Exécuter",
+    "yes": "Oui",
+    "no": "Non",
+    "entryMeaning": "L'Entry désigne",
+    "groups": {
+      "rows": "Lignes de butin"
+    },
+    "columns": {
+      "entry": "Entry",
+      "rows": "Lignes",
+      "item": "Objet",
+      "itemName": "Nom",
+      "reference": "Référence",
+      "chance": "Chance %",
+      "groupId": "Groupe",
+      "minCount": "Min",
+      "maxCount": "Max",
+      "lootMode": "Mode",
+      "questRequired": "Quête requise",
+      "comment": "Commentaire"
+    },
+    "entryKind": {
+      "fishing": "une zone (AreaTable)",
+      "disenchant": "un DisenchantID d'objet",
+      "milling": "l'herbe broyée",
+      "pickpocketing": "le pickpocketloot d'une créature",
+      "prospecting": "le minerai prospecté",
+      "skinning": "le skinloot d'une créature"
+    },
+    "entryHint": {
+      "fishing": "Entrez l'id de zone (AreaTable) dont vous voulez définir le butin de pêche.",
+      "disenchant": "Entrez le DisenchantID (colonne item_template.DisenchantID) à alimenter.",
+      "milling": "Entrez l'id de l'objet-herbe à broyer (item_template.entry).",
+      "pickpocketing": "Entrez l'id de butin de pickpocket (creature_template.pickpocketloot).",
+      "prospecting": "Entrez l'id de l'objet-minerai à prospecter (item_template.entry).",
+      "skinning": "Entrez l'id de butin de dépeçage (creature_template.skinloot)."
+    },
+    "newEntry": {
+      "title": "Nouvelle entrée de butin",
+      "confirm": "Ouvrir",
+      "cancel": "Annuler"
+    },
+    "submodules": {
+      "fishing": {
+        "title": "Pêche",
+        "description": "Tables de butin obtenues par la compétence de pêche"
+      },
+      "disenchant": {
+        "title": "Désenchantement",
+        "description": "Tables de butin obtenues en désenchantant des objets magiques"
+      },
+      "milling": {
+        "title": "Broyage",
+        "description": "Tables de butin obtenues par le broyage d'herbes"
+      },
+      "pickpocketing": {
+        "title": "Pickpocket",
+        "description": "Tables de butin obtenues en volant à la tire des monstres"
+      },
+      "prospecting": {
+        "title": "Prospection",
+        "description": "Tables de butin obtenues en prospectant des minerais"
+      },
+      "skinning": {
+        "title": "Dépeçage",
+        "description": "Tables de butin obtenues en dépeçant des créatures"
+      }
+    }
+  }
+}

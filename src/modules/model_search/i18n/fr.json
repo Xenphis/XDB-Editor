@@ -1,0 +1,19 @@
+{
+  "modelSearch": {
+    "title": "Recherche de modèles",
+    "description": "Trouvez un modèle de créature ou de gameobject par tag. Les tags sont maintenus dans les tables creature_model_tags / gameobject_model_tags. Sélectionnez un résultat pour l'aperçu ; cliquez pour copier son display id.",
+    "hubDescription": "Trouvez des modèles de PNJ et d'objets par tag",
+    "searchPlaceholder": "Rechercher par tag…",
+    "searchTooltip": "Rechercher un modèle par tag",
+    "kindCreature": "Créatures",
+    "kindGameObject": "Objets",
+    "displayId": "Display ID :",
+    "noName": "(sans nom)",
+    "useThis": "Utiliser ce modèle",
+    "copied": "Display id {id} copié dans le presse-papier",
+    "noResults": "Aucun modèle ne correspond à ce tag",
+    "emptyHint": "Saisissez un tag pour rechercher un modèle",
+    "dialogTitleCreature": "Rechercher un modèle de créature",
+    "dialogTitleGameObject": "Rechercher un modèle de gameobject"
+  }
+}

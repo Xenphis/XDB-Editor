@@ -1,0 +1,38 @@
+export interface GameObjectTemplate {
+  entry: number;
+  type: number;
+  displayId: number;
+  name: string;
+  IconName: string;
+  castBarCaption: string;
+  unk1: string;
+  size: number;
+  Data0: number;
+  Data1: number;
+  Data2: number;
+  Data3: number;
+  Data4: number;
+  Data5: number;
+  Data6: number;
+  Data7: number;
+  Data8: number;
+  Data9: number;
+  Data10: number;
+  Data11: number;
+  Data12: number;
+  Data13: number;
+  Data14: number;
+  Data15: number;
+  Data16: number;
+  Data17: number;
+  Data18: number;
+  Data19: number;
+  Data20: number;
+  Data21: number;
+  Data22: number;
+  Data23: number;
+  AIName: string;
+  ScriptName: string;
+  StringId: string | null;
+  VerifiedBuild: number | null;
+}

@@ -1,0 +1,23 @@
+/* field-group, field-grid, disabled inputs, textarea: see src/styles/forms.css (global base) */
+
+.field-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}

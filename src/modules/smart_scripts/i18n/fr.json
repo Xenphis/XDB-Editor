@@ -1,0 +1,56 @@
+{
+  "smartScripts": {
+    "title": "SmartAI",
+    "searchPlaceholder": "Rechercher par nom ou entry…",
+    "editorTitle": "Script SmartAI",
+    "execute": "Exécuter",
+    "discard": "Annuler",
+    "addEvent": "Ajouter un événement",
+    "addLinked": "Ajouter une action liée",
+    "removeEvent": "Supprimer l'événement",
+    "removeLinked": "Retirer l'action liée",
+    "linkedAction": "puis (link)",
+    "noEvents": "Aucun événement — ajoutez-en un pour scripter cette entité.",
+    "noParams": "Ce type n'utilise aucun paramètre.",
+    "unused": "INUTILISÉ",
+    "on": "sur",
+    "once": "1 fois",
+    "actionlist": "actionlist",
+    "hookWarning": "Le propriétaire n'est pas encore branché sur SmartAI (AIName / script d'areatrigger). La correction sera incluse à l'exécution.",
+    "parts": {
+      "event": "Type d'événement",
+      "action": "Type d'action",
+      "target": "Type de cible"
+    },
+    "sections": {
+      "event": "Événement",
+      "action": "Action",
+      "target": "Cible"
+    },
+    "common": {
+      "phases": "Phases",
+      "phasesTooltip": "L'événement ne se déclenche que dans les phases sélectionnées. Aucune = toujours.",
+      "chance": "Chance",
+      "flags": "Flags d'événement",
+      "comment": "Commentaire",
+      "commentTooltip": "Laissé vide, un commentaire au format TrinityCore est généré à l'exécution.",
+      "commentPlaceholder": "Généré automatiquement si vide"
+    },
+    "facts": {
+      "source": "Source",
+      "events": "Événements",
+      "actionlists": "Actionlists"
+    },
+    "create": {
+      "title": "Ouvrir un script SmartAI",
+      "sourceType": "Type de source",
+      "entry": "Entry (négatif = GUID d'un spawn)",
+      "entryPlaceholder": "Entry créature/GO ou -guid",
+      "notFound": "Aucune entité trouvée avec cet entry.",
+      "cancel": "Annuler",
+      "open": "Ouvrir"
+    },
+    "executeScript": "Exécuter le script",
+    "hubDescription": "Parcourir tous les scripts SmartAI ; éditer les areatriggers et timed actionlists"
+  }
+}

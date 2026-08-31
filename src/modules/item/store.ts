@@ -1,0 +1,253 @@
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import type { ItemTemplate } from './item_template';
+import { createEntityEditorStore } from '@core/stores/createEntityEditorStore';
+import * as itemService from './service';
+
+// ─── Default factory ────────────────────────────────────────────────
+
+function createDefaultItem(): ItemTemplate {
+  return {
+    entry: 0,
+    class: 0,
+    subclass: 0,
+    SoundOverrideSubclass: -1,
+    name: '',
+    displayid: 0,
+    Quality: 0,
+    Flags: 0,
+    FlagsExtra: 0,
+    BuyCount: 1,
+    BuyPrice: 0,
+    SellPrice: 0,
+    InventoryType: 0,
+    AllowableClass: -1,
+    AllowableRace: -1,
+    ItemLevel: 0,
+    RequiredLevel: 0,
+    RequiredSkill: 0,
+    RequiredSkillRank: 0,
+    requiredspell: 0,
+    requiredhonorrank: 0,
+    RequiredCityRank: 0,
+    RequiredReputationFaction: 0,
+    RequiredReputationRank: 0,
+    maxcount: 0,
+    stackable: 1,
+    ContainerSlots: 0,
+    StatsCount: 0,
+    stat_type1: 0,
+    stat_value1: 0,
+    stat_type2: 0,
+    stat_value2: 0,
+    stat_type3: 0,
+    stat_value3: 0,
+    stat_type4: 0,
+    stat_value4: 0,
+    stat_type5: 0,
+    stat_value5: 0,
+    stat_type6: 0,
+    stat_value6: 0,
+    stat_type7: 0,
+    stat_value7: 0,
+    stat_type8: 0,
+    stat_value8: 0,
+    stat_type9: 0,
+    stat_value9: 0,
+    stat_type10: 0,
+    stat_value10: 0,
+    ScalingStatDistribution: 0,
+    ScalingStatValue: 0,
+    dmg_min1: 0,
+    dmg_max1: 0,
+    dmg_type1: 0,
+    dmg_min2: 0,
+    dmg_max2: 0,
+    dmg_type2: 0,
+    armor: 0,
+    holy_res: 0,
+    fire_res: 0,
+    nature_res: 0,
+    frost_res: 0,
+    shadow_res: 0,
+    arcane_res: 0,
+    delay: 1000,
+    ammo_type: 0,
+    RangedModRange: 0,
+    spellid_1: 0,
+    spelltrigger_1: 0,
+    spellcharges_1: 0,
+    spellppmRate_1: 0,
+    spellcooldown_1: -1,
+    spellcategory_1: 0,
+    spellcategorycooldown_1: -1,
+    spellid_2: 0,
+    spelltrigger_2: 0,
+    spellcharges_2: 0,
+    spellppmRate_2: 0,
+    spellcooldown_2: -1,
+    spellcategory_2: 0,
+    spellcategorycooldown_2: -1,
+    spellid_3: 0,
+    spelltrigger_3: 0,
+    spellcharges_3: 0,
+    spellppmRate_3: 0,
+    spellcooldown_3: -1,
+    spellcategory_3: 0,
+    spellcategorycooldown_3: -1,
+    spellid_4: 0,
+    spelltrigger_4: 0,
+    spellcharges_4: 0,
+    spellppmRate_4: 0,
+    spellcooldown_4: -1,
+    spellcategory_4: 0,
+    spellcategorycooldown_4: -1,
+    spellid_5: 0,
+    spelltrigger_5: 0,
+    spellcharges_5: 0,
+    spellppmRate_5: 0,
+    spellcooldown_5: -1,
+    spellcategory_5: 0,
+    spellcategorycooldown_5: -1,
+    bonding: 0,
+    description: '',
+    PageText: 0,
+    LanguageID: 0,
+    PageMaterial: 0,
+    startquest: 0,
+    lockid: 0,
+    Material: -1,
+    sheath: 0,
+    RandomProperty: 0,
+    RandomSuffix: 0,
+    block: 0,
+    itemset: 0,
+    MaxDurability: 0,
+    area: 0,
+    Map: 0,
+    BagFamily: 0,
+    TotemCategory: 0,
+    socketColor_1: 0,
+    socketContent_1: 0,
+    socketColor_2: 0,
+    socketContent_2: 0,
+    socketColor_3: 0,
+    socketContent_3: 0,
+    socketBonus: 0,
+    GemProperties: 0,
+    RequiredDisenchantSkill: -1,
+    ArmorDamageModifier: 0,
+    Duration: 0,
+    ItemLimitCategory: 0,
+    HolidayId: 0,
+    ScriptName: '',
+    DisenchantID: 0,
+    FoodType: 0,
+    minMoneyLoot: 0,
+    maxMoneyLoot: 0,
+    flagsCustom: 0,
+    VerifiedBuild: null,
+  };
+}
+
+// ─── Store ──────────────────────────────────────────────────────────
+
+export const useItemModuleStore = defineStore('itemModule', () => {
+  // --- List state ---
+  const items = ref<ItemTemplate[]>([]);
+  const loading = ref(false);
+  const currentSearch = ref('');
+  const listLoaded = ref(false);
+
+  const editor = createEntityEditorStore<ItemTemplate>({
+    tableName: 'item_template',
+    primaryKey: 'entry',
+    createDefault: createDefaultItem,
+    load: itemService.getItem,
+    delete: itemService.deleteItem,
+  });
+
+  // ─── Actions ────────────────────────────────────────────────────
+
+  async function fetchItems(search?: string, limit?: number, offset?: number) {
+    loading.value = true;
+    try {
+      const result = await itemService.getItems(search, limit, offset);
+      items.value = result.data;
+      currentSearch.value = search || '';
+      listLoaded.value = true;
+      return result;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function openEditor(entry: number | 'new') {
+    await editor.openEditor(entry === 'new' ? null : entry);
+  }
+
+  function discardCache(entry: number) {
+    editor.dirtyCache.value.delete(entry);
+  }
+
+  function clearAllCaches() {
+    editor.dirtyCache.value.clear();
+  }
+
+  async function saveItem() {
+    try {
+      await editor.saveCurrent();
+      if (listLoaded.value) {
+        await fetchItems(currentSearch.value);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to save item:', error);
+      throw error;
+    }
+  }
+
+  async function deleteItem(entry: number) {
+    try {
+      await editor.deleteCurrent(entry);
+      if (listLoaded.value) {
+        await fetchItems(currentSearch.value);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      throw error;
+    }
+  }
+
+  const combinedFullQuery = computed(() => {
+    if (!editor.editingId.value && !editor.formData.entry) {
+      return '';
+    }
+
+    return editor.combinedFullQuery.value;
+  });
+
+  return {
+    // State
+    items,
+    loading,
+    currentSearch,
+    listLoaded,
+    ...editor,
+    editingEntry: editor.editingId,
+
+    // Actions
+    fetchItems,
+    openEditor,
+    discardCache,
+    clearAllCaches,
+    saveItem,
+    deleteItem,
+
+    // SQL Generation
+    combinedFullQuery,
+  };
+});

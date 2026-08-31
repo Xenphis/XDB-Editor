@@ -1,0 +1,201 @@
+/* Shared base styling for PrimeVue form/tab/panel components.
+
+   Colors for inputs/selects/textareas come from the PrimeVue preset's
+   per-scheme `formField` tokens (src/main.ts) — do NOT re-add color
+   overrides here; only density/sizing and the few layout primitives the
+   token system cannot express live in this file. */
+
+/* ------------------------------------------------------------------ *
+ * Form layout primitives (shared card + grid used by every editor)
+ * ------------------------------------------------------------------ */
+.field-group {
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+
+.field-group-modified {
+  border-color: var(--accent-focus);
+}
+
+.field-group-header {
+  margin-bottom: 0.75rem;
+}
+
+.field-group-header h4 {
+  font-size: var(--font-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 0.15rem 0;
+}
+
+.field-group-header p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Density: compact inputs (colors come from the preset)
+ * ------------------------------------------------------------------ */
+.p-inputtext,
+.p-inputnumber-input {
+  height: var(--input-height);
+  font-size: var(--font-field);
+}
+
+.p-textarea {
+  font-size: var(--font-field);
+  resize: vertical;
+}
+
+.p-select {
+  height: var(--input-height);
+}
+
+.p-select .p-select-label {
+  font-size: var(--font-field);
+  padding: 0 0.75rem;
+  line-height: calc(var(--input-height) - 2px);
+}
+
+/* Icon-only button paired with an input (e.g. "search a model" next to a
+   displayId/modelid field) — sized to match the input height. */
+.model-search-btn {
+  width: var(--input-height);
+  height: var(--input-height);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Tabs (editor look — underlined). SectionTabs overrides this with a
+ * pill variant via higher-specificity scoped selectors.
+ * ------------------------------------------------------------------ */
+.p-tabs,
+.p-tablist,
+.p-tablist-content,
+.p-tablist-tab-list,
+.p-tabpanels,
+.p-tabpanel {
+  background: transparent !important;
+}
+
+.p-tablist {
+  border-bottom: 1px solid var(--border-input-soft);
+}
+
+.p-tablist-tab-list {
+  border: none !important;
+}
+
+.p-tab {
+  font-size: 0.85rem;
+  color: var(--text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.p-tab:hover {
+  color: var(--text) !important;
+  background: var(--surface-hover) !important;
+  border-radius: var(--radius) var(--radius) 0 0 !important;
+}
+
+.p-tab-active,
+.p-tab[data-p-active="true"],
+.p-tab[aria-selected="true"] {
+  color: var(--accent) !important;
+  background: var(--surface-1) !important;
+  border-bottom: 2px solid var(--accent) !important;
+  border-radius: var(--radius) var(--radius) 0 0 !important;
+}
+
+.p-tablist-active-bar {
+  background: var(--accent) !important;
+}
+
+/* Tab overflow navigation buttons (appear when tabs don't fit) */
+.p-tablist-prev-button,
+.p-tablist-next-button {
+  background: var(--surface-1) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border-input-soft) !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+}
+
+.p-tablist-prev-button:hover,
+.p-tablist-next-button:hover {
+  color: var(--accent) !important;
+  background: var(--surface-hover) !important;
+}
+
+.p-tabpanels {
+  padding: 1rem 0 0 0 !important;
+}
+
+.p-tabpanel {
+  padding: 0 !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * Panels
+ * ------------------------------------------------------------------ */
+.p-panel {
+  background: transparent !important;
+  border: none !important;
+  border-radius: var(--radius-lg) !important;
+  margin-bottom: 1rem;
+}
+
+.p-panel * {
+  border-color: var(--border-default) !important;
+}
+
+.p-panel-header {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  color: var(--text) !important;
+}
+
+.p-panel-content-container {
+  border: none !important;
+  background: transparent !important;
+}
+
+.p-panel-content {
+  background: var(--surface-panel) !important;
+  border: 1px solid var(--border-default) !important;
+  border-top: none !important;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+  color: var(--text) !important;
+}
+
+.p-panel-title {
+  color: var(--text) !important;
+}
+
+.p-panel-toggle-button {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+}
+
+.locale-panel-modified .p-panel-header {
+  border-color: var(--accent-focus) !important;
+  background: var(--accent-soft) !important;
+}

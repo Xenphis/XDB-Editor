@@ -1,0 +1,25 @@
+{
+  "modelViewer": {
+    "states": {
+      "loading": "Chargement du modèle…",
+      "empty": "Aucun modèle assigné",
+      "error": "Modèle indisponible",
+      "errorHint": "Ce display ID est absent de vos fichiers du jeu et de la base de données en ligne.",
+      "noClient": "Aucun fichier du jeu configuré",
+      "noClientHint": "Définissez le dossier du client WoW dans les Paramètres, ou autorisez le repli en ligne."
+    },
+    "source": {
+      "local": "Fichiers du jeu",
+      "online": "En ligne"
+    },
+    "settings": {
+      "title": "Aperçu des modèles",
+      "sourceLabel": "Source de l'aperçu",
+      "sourceOnline": "En ligne",
+      "sourceLocal": "Fichiers du jeu",
+      "sourceDesc": "« Fichiers du jeu » effectue le rendu depuis le dossier du client WoW défini ci-dessus : fonctionne hors ligne et affiche vos display IDs custom. « En ligne » utilise à la place la base de modèles Wowhead (Internet requis).",
+      "fallbackLabel": "Se rabattre sur la base de données en ligne",
+      "fallbackDesc": "Utilisé lorsqu'aucun dossier client n'est défini, ou lorsqu'un display ID est absent de vos fichiers du jeu."
+    }
+  }
+}

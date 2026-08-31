@@ -1,0 +1,4 @@
+allowBuilds:
+  esbuild: false
+patchedDependencies:
+  '@wowserhq/scene@0.32.0': patches/@wowserhq__scene@0.32.0.patch

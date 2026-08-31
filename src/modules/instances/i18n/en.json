@@ -1,0 +1,132 @@
+{
+  "instancesHub": {
+    "title": "Instances",
+    "description": "Dungeons and raids: templates, boss encounters, spawn groups and access requirements",
+    "submodules": {
+      "instances": {
+        "title": "Instances",
+        "description": "Dungeons, raids, reset settings and difficulty modes"
+      },
+      "accessRequirement": {
+        "title": "Access Requirements",
+        "description": "Instance access prerequisites: levels, quests, items and reputations"
+      }
+    }
+  },
+  "access_requirement": {
+    "title": "Access Requirements",
+    "description": "Instance access prerequisites: levels, quests, items and reputations",
+    "searchPlaceholder": "Search by mapId or comment...",
+    "addNew": "New requirement",
+    "editorTitle": "Access Requirement",
+    "newEntry": "New requirement",
+    "fields": {
+      "mapId": "Map ID",
+      "difficulty": "Difficulty",
+      "level_min": "Minimum level",
+      "level_max": "Maximum level",
+      "item_level": "Minimum item level",
+      "item": "Required item 1",
+      "item2": "Required item 2",
+      "quest_done_A": "Alliance quest",
+      "quest_done_H": "Horde quest",
+      "completed_achievement": "Required achievement",
+      "quest_failed_text": "Access failure text",
+      "comment": "Comment"
+    },
+    "groups": {
+      "identification": "Identification",
+      "identificationDesc": "Map and difficulty identifying this access requirement",
+      "levels": "Levels",
+      "levelsDesc": "Minimum and maximum levels to access the instance",
+      "items": "Required Items",
+      "itemsDesc": "Items required to enter the instance",
+      "quests": "Quests & Achievements",
+      "questsDesc": "Quests and achievements required to access the instance"
+    },
+    "difficulty": {
+      "0": "Normal",
+      "1": "Heroic",
+      "2": "10-player",
+      "3": "25-player",
+      "4": "10-player Heroic",
+      "5": "25-player Heroic"
+    }
+  },
+  "instance": {
+    "title": "Instances",
+    "description": "Dungeons & raids: template, boss encounters and conditional spawn groups per map",
+    "searchPlaceholder": "Search by map or script...",
+    "addNew": "New instance",
+    "editorTitle": "Instance",
+    "tabs": {
+      "template": "Template",
+      "spawnGroups": "Spawn Groups",
+      "encounters": "Encounters"
+    },
+    "groups": {
+      "spawnGroups": "Spawn Groups",
+      "spawnGroupsDesc": "Spawn groups toggled on/off depending on boss states in this instance",
+      "encounters": "Boss Encounters",
+      "encountersDesc": "Dungeon Encounter entries driving boss kill credit and LFG progress"
+    },
+    "addSpawnGroup": "Add spawn group",
+    "addEncounter": "Add encounter",
+    "encountersHint": "Encounters are linked to this instance through their boss (creditEntry → creature spawned on this map). Adding a row links it once its boss spawns here."
+  },
+  "instance_template": {
+    "title": "Instance Templates",
+    "description": "Per-map instance configuration: parent map, script and mount permission",
+    "searchPlaceholder": "Search by map or script...",
+    "addNew": "New template",
+    "editorTitle": "Instance Template",
+    "fields": {
+      "map": "Map",
+      "parent": "Parent map",
+      "script": "Script name",
+      "allowMount": "Allow mount"
+    },
+    "groups": {
+      "main": "Configuration",
+      "mainDesc": "Map identifier, parent map, instance script and mount permission"
+    }
+  },
+  "instance_encounters": {
+    "title": "Boss Encounters",
+    "description": "Dungeon Encounter entries driving boss kill credit and LFG progress",
+    "searchPlaceholder": "Search by entry or comment...",
+    "addNew": "New encounter",
+    "editorTitle": "Instance Encounter",
+    "fields": {
+      "entry": "Encounter entry",
+      "creditType": "Credit type",
+      "creditEntry": "Credit entry",
+      "lastEncounterDungeon": "Last encounter dungeon",
+      "comment": "Comment"
+    },
+    "groups": {
+      "main": "Encounter",
+      "mainDesc": "DungeonEncounter id, kill-credit source and LFG dungeon"
+    }
+  },
+  "instance_spawn_groups": {
+    "title": "Spawn Groups",
+    "description": "Spawn groups toggled on/off depending on boss states in an instance",
+    "searchPlaceholder": "Search by instance map or spawn group...",
+    "addNew": "New spawn group",
+    "editorTitle": "Instance Spawn Group",
+    "fields": {
+      "instanceMapId": "Instance map",
+      "bossStateId": "Boss state id",
+      "bossStates": "Boss states",
+      "spawnGroupId": "Spawn group",
+      "flags": "Flags"
+    },
+    "groups": {
+      "identification": "Identification",
+      "identificationDesc": "Instance map, boss state and spawn group this rule binds together",
+      "settings": "Settings",
+      "settingsDesc": "Behaviour flags controlling the spawn group toggling"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "modelViewer": {
+    "states": {
+      "loading": "Loading model…",
+      "empty": "No model assigned",
+      "error": "Model not available",
+      "errorHint": "This display ID is missing from your client files and from the online database.",
+      "noClient": "No game files configured",
+      "noClientHint": "Set your WoW client folder in Settings, or allow the online fallback."
+    },
+    "source": {
+      "local": "Game files",
+      "online": "Online"
+    },
+    "settings": {
+      "title": "Model preview",
+      "sourceLabel": "Preview source",
+      "sourceOnline": "Online",
+      "sourceLocal": "Game files",
+      "sourceDesc": "\"Game files\" renders models from the WoW client folder set above — it works offline and shows your custom display IDs. \"Online\" uses the Wowhead model database instead (internet required).",
+      "fallbackLabel": "Fall back to the online database",
+      "fallbackDesc": "Used when no client folder is set, or when a display ID is missing from your client files."
+    }
+  }
+}

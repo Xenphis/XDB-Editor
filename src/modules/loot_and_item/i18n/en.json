@@ -1,0 +1,77 @@
+{
+  "lootAndItem": {
+    "title": "Loot",
+    "description": "Loot tables and the professions that feed them",
+    "searchPlaceholder": "Search by id or name…",
+    "rowCount": "no rows | 1 row | {n} rows",
+    "discard": "Discard",
+    "execute": "Execute",
+    "yes": "Yes",
+    "no": "No",
+    "entryMeaning": "Entry refers to",
+    "groups": {
+      "rows": "Loot rows"
+    },
+    "columns": {
+      "entry": "Entry",
+      "rows": "Rows",
+      "item": "Item",
+      "itemName": "Name",
+      "reference": "Reference",
+      "chance": "Chance %",
+      "groupId": "Group",
+      "minCount": "Min",
+      "maxCount": "Max",
+      "lootMode": "Mode",
+      "questRequired": "Quest required",
+      "comment": "Comment"
+    },
+    "entryKind": {
+      "fishing": "a zone (AreaTable)",
+      "disenchant": "an item's DisenchantID",
+      "milling": "the milled herb",
+      "pickpocketing": "a creature's pickpocketloot",
+      "prospecting": "the prospected ore",
+      "skinning": "a creature's skinloot"
+    },
+    "entryHint": {
+      "fishing": "Enter the zone id (AreaTable) whose fishing loot you want to define.",
+      "disenchant": "Enter the DisenchantID (item_template.DisenchantID column) to fill.",
+      "milling": "Enter the herb item id to mill (item_template.entry).",
+      "pickpocketing": "Enter the pickpocket loot id (creature_template.pickpocketloot).",
+      "prospecting": "Enter the ore item id to prospect (item_template.entry).",
+      "skinning": "Enter the skinning loot id (creature_template.skinloot)."
+    },
+    "newEntry": {
+      "title": "New loot entry",
+      "confirm": "Open",
+      "cancel": "Cancel"
+    },
+    "submodules": {
+      "fishing": {
+        "title": "Fishing",
+        "description": "Loot tables obtained through the fishing skill"
+      },
+      "disenchant": {
+        "title": "Disenchanting",
+        "description": "Loot tables obtained by disenchanting magic items"
+      },
+      "milling": {
+        "title": "Milling",
+        "description": "Loot tables obtained by milling herbs"
+      },
+      "pickpocketing": {
+        "title": "Pickpocketing",
+        "description": "Loot tables obtained by pickpocketing monsters"
+      },
+      "prospecting": {
+        "title": "Prospecting",
+        "description": "Loot tables obtained by prospecting ores"
+      },
+      "skinning": {
+        "title": "Skinning",
+        "description": "Loot tables obtained by skinning creatures"
+      }
+    }
+  }
+}

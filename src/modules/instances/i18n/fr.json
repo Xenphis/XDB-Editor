@@ -1,0 +1,132 @@
+{
+  "instancesHub": {
+    "title": "Instances",
+    "description": "Donjons et raids : templates, rencontres de boss, groupes de spawn et conditions d'accès",
+    "submodules": {
+      "instances": {
+        "title": "Instances",
+        "description": "Donjons, raids, paramètres de réinitialisation et modes de difficulté"
+      },
+      "accessRequirement": {
+        "title": "Conditions d'accès",
+        "description": "Prérequis d'accès aux instances : niveaux, quêtes, items et réputations"
+      }
+    }
+  },
+  "access_requirement": {
+    "title": "Conditions d'accès",
+    "description": "Prérequis d'accès aux instances : niveaux, quêtes, items et réputations",
+    "searchPlaceholder": "Rechercher par mapId ou commentaire...",
+    "addNew": "Nouvelle condition",
+    "editorTitle": "Condition d'accès",
+    "newEntry": "Nouvelle condition",
+    "fields": {
+      "mapId": "Map ID",
+      "difficulty": "Difficulté",
+      "level_min": "Niveau minimum",
+      "level_max": "Niveau maximum",
+      "item_level": "Niveau d'objet minimum",
+      "item": "Item requis 1",
+      "item2": "Item requis 2",
+      "quest_done_A": "Quête Alliance",
+      "quest_done_H": "Quête Horde",
+      "completed_achievement": "Succès requis",
+      "quest_failed_text": "Texte d'échec d'accès",
+      "comment": "Commentaire"
+    },
+    "groups": {
+      "identification": "Identification",
+      "identificationDesc": "Map et difficulté identifiant cette condition d'accès",
+      "levels": "Niveaux",
+      "levelsDesc": "Niveaux minimum et maximum pour accéder à l'instance",
+      "items": "Items requis",
+      "itemsDesc": "Items requis pour entrer dans l'instance",
+      "quests": "Quêtes et succès",
+      "questsDesc": "Quêtes et succès nécessaires pour accéder à l'instance"
+    },
+    "difficulty": {
+      "0": "Normal",
+      "1": "Héroïque",
+      "2": "10 joueurs",
+      "3": "25 joueurs",
+      "4": "10 héroïque",
+      "5": "25 héroïque"
+    }
+  },
+  "instance": {
+    "title": "Instances",
+    "description": "Donjons et raids : template, rencontres de boss et groupes de spawn conditionnels par carte",
+    "searchPlaceholder": "Rechercher par carte ou script...",
+    "addNew": "Nouvelle instance",
+    "editorTitle": "Instance",
+    "tabs": {
+      "template": "Template",
+      "spawnGroups": "Groupes de spawn",
+      "encounters": "Rencontres"
+    },
+    "groups": {
+      "spawnGroups": "Groupes de spawn",
+      "spawnGroupsDesc": "Groupes de spawn activés/désactivés selon l'état des boss de cette instance",
+      "encounters": "Rencontres de boss",
+      "encountersDesc": "Entrées DungeonEncounter pilotant le crédit de kill et la progression LFG"
+    },
+    "addSpawnGroup": "Ajouter un groupe de spawn",
+    "addEncounter": "Ajouter une rencontre",
+    "encountersHint": "Les rencontres sont reliées à cette instance via leur boss (creditEntry → créature spawnée sur cette carte). Une ligne ajoutée sera reliée dès que son boss y est spawné."
+  },
+  "instance_template": {
+    "title": "Templates d'instance",
+    "description": "Configuration d'instance par carte : carte parente, script et autorisation de monture",
+    "searchPlaceholder": "Rechercher par carte ou script...",
+    "addNew": "Nouveau template",
+    "editorTitle": "Template d'instance",
+    "fields": {
+      "map": "Carte",
+      "parent": "Carte parente",
+      "script": "Nom du script",
+      "allowMount": "Monture autorisée"
+    },
+    "groups": {
+      "main": "Configuration",
+      "mainDesc": "Identifiant de carte, carte parente, script d'instance et autorisation de monture"
+    }
+  },
+  "instance_encounters": {
+    "title": "Rencontres de boss",
+    "description": "Entrées DungeonEncounter pilotant le crédit de kill et la progression LFG",
+    "searchPlaceholder": "Rechercher par entry ou commentaire...",
+    "addNew": "Nouvelle rencontre",
+    "editorTitle": "Rencontre d'instance",
+    "fields": {
+      "entry": "Entry de rencontre",
+      "creditType": "Type de crédit",
+      "creditEntry": "Entry de crédit",
+      "lastEncounterDungeon": "Donjon dernière rencontre",
+      "comment": "Commentaire"
+    },
+    "groups": {
+      "main": "Rencontre",
+      "mainDesc": "Id DungeonEncounter, source du crédit de kill et donjon LFG"
+    }
+  },
+  "instance_spawn_groups": {
+    "title": "Groupes de spawn",
+    "description": "Groupes de spawn activés/désactivés selon l'état des boss d'une instance",
+    "searchPlaceholder": "Rechercher par carte d'instance ou groupe de spawn...",
+    "addNew": "Nouveau groupe de spawn",
+    "editorTitle": "Groupe de spawn d'instance",
+    "fields": {
+      "instanceMapId": "Carte d'instance",
+      "bossStateId": "Id état boss",
+      "bossStates": "États boss",
+      "spawnGroupId": "Groupe de spawn",
+      "flags": "Flags"
+    },
+    "groups": {
+      "identification": "Identification",
+      "identificationDesc": "Carte d'instance, état de boss et groupe de spawn liés par cette règle",
+      "settings": "Paramètres",
+      "settingsDesc": "Flags de comportement contrôlant l'activation du groupe de spawn"
+    }
+  }
+}

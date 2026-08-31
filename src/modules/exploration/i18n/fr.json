@@ -1,0 +1,17 @@
+{
+  "exploration_basexp": {
+    "title": "XP d'exploration",
+    "description": "Expérience de base attribuée à la découverte d'une zone, indexée par niveau",
+    "searchPlaceholder": "Rechercher par niveau...",
+    "addNew": "Nouvelle entrée",
+    "editorTitle": "XP d'exploration",
+    "fields": {
+      "level": "Niveau",
+      "basexp": "XP de base"
+    },
+    "groups": {
+      "main": "Expérience",
+      "mainDesc": "Niveau du joueur et expérience de base attribuée à la découverte"
+    }
+  }
+}

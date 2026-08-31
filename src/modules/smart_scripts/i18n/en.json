@@ -1,0 +1,56 @@
+{
+  "smartScripts": {
+    "title": "SmartAI",
+    "searchPlaceholder": "Search by name or entry…",
+    "editorTitle": "SmartAI script",
+    "execute": "Execute",
+    "discard": "Discard",
+    "addEvent": "Add event",
+    "addLinked": "Add linked action",
+    "removeEvent": "Delete event",
+    "removeLinked": "Remove linked action",
+    "linkedAction": "then (link)",
+    "noEvents": "No events yet — add one to start scripting this entity.",
+    "noParams": "This type uses no parameters.",
+    "unused": "UNUSED",
+    "on": "on",
+    "once": "once",
+    "actionlist": "actionlist",
+    "hookWarning": "The owner is not hooked to SmartAI yet (AIName / areatrigger script). The fix statement will be included when you execute.",
+    "parts": {
+      "event": "Event type",
+      "action": "Action type",
+      "target": "Target type"
+    },
+    "sections": {
+      "event": "Event",
+      "action": "Action",
+      "target": "Target"
+    },
+    "common": {
+      "phases": "Phases",
+      "phasesTooltip": "Event only fires in the selected phases. None selected = always.",
+      "chance": "Chance",
+      "flags": "Event flags",
+      "comment": "Comment",
+      "commentTooltip": "Left empty, a TrinityCore-style comment is generated on execute.",
+      "commentPlaceholder": "Auto-generated if empty"
+    },
+    "facts": {
+      "source": "Source",
+      "events": "Events",
+      "actionlists": "Actionlists"
+    },
+    "create": {
+      "title": "Open a SmartAI script",
+      "sourceType": "Source type",
+      "entry": "Entry (negative = per-spawn GUID)",
+      "entryPlaceholder": "Creature/GO entry or -guid",
+      "notFound": "No entity found with this entry.",
+      "cancel": "Cancel",
+      "open": "Open"
+    },
+    "executeScript": "Execute script",
+    "hubDescription": "Browse every SmartAI script; edit areatrigger and timed actionlist scripts"
+  }
+}
