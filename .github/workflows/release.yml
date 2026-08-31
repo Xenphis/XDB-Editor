@@ -1,0 +1,91 @@
+name: 'release'
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin --bundles dmg'
+            bundle_dir: 'universal-apple-darwin/release/bundle/dmg'
+            ext: 'dmg'
+            asset_os: 'macos'
+          - platform: 'ubuntu-22.04'
+            args: '--bundles appimage'
+            bundle_dir: 'release/bundle/appimage'
+            ext: 'AppImage'
+            asset_os: 'linux'
+          - platform: 'windows-latest'
+            args: '--bundles nsis'
+            bundle_dir: 'release/bundle/nsis'
+            ext: 'exe'
+            asset_os: 'windows'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm tauri build ${{ matrix.args }}
+
+      - name: rename artifact
+        id: artifact
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          src=$(find "src-tauri/target/${{ matrix.bundle_dir }}" -maxdepth 1 -name "*.${{ matrix.ext }}" | head -n1)
+          dest="src-tauri/target/${{ matrix.bundle_dir }}/xdb-editor-${version}-${{ matrix.asset_os }}.${{ matrix.ext }}"
+          mv "$src" "$dest"
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
+      - name: upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'XDB-Editor ${{ github.ref_name }}'
+          body: 'See the assets below to download and install this version.'
+          draft: true
+          prerelease: false
+          files: ${{ steps.artifact.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
