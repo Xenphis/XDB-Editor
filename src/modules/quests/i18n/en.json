@@ -208,5 +208,37 @@
     "add": "Add",
     "empty": "No entries",
     "entryPlaceholder": "Entry ID"
+  },
+  "quest_enums": {
+    "quest_flags_options": {
+      "1": { "name": "STAY_ALIVE", "comment": "Fail if player dies" },
+      "2": { "name": "PARTY_ACCEPT", "comment": "Party confirmation" },
+      "4": { "name": "EXPLORATION", "comment": "Exploration/areatrigger" },
+      "8": { "name": "SHARABLE", "comment": "Can be shared" },
+      "16": { "name": "HAS_CONDITION", "comment": "Has condition" },
+      "32": { "name": "HIDE_REWARD_POI", "comment": "Hide reward POI" },
+      "64": { "name": "RAID", "comment": "Can be completed in raid" },
+      "128": { "name": "TBC", "comment": "TBC expansion only" },
+      "256": { "name": "NO_MONEY_FROM_XP", "comment": "No money from XP" },
+      "512": { "name": "HIDDEN_REWARDS", "comment": "Hidden rewards until ready" },
+      "1024": { "name": "TRACKING", "comment": "Auto rewarded, never in log" },
+      "2048": { "name": "DEPRECATE_REPUTATION", "comment": "Deprecate reputation" },
+      "4096": { "name": "DAILY", "comment": "Daily repeatable" },
+      "8192": { "name": "FLAGS_PVP", "comment": "Forces PvP flag" },
+      "16384": { "name": "UNAVAILABLE", "comment": "Not generically available" },
+      "32768": { "name": "WEEKLY", "comment": "Weekly repeatable" },
+      "65536": { "name": "AUTOCOMPLETE", "comment": "Auto complete" },
+      "131072": { "name": "DISPLAY_ITEM_IN_TRACKER", "comment": "Display item in tracker" },
+      "262144": { "name": "OBJ_TEXT", "comment": "Use objective text as complete text" },
+      "524288": { "name": "AUTO_ACCEPT", "comment": "Auto accept" }
+    },
+    "quest_special_flags_options": {
+      "1": { "name": "REPEATABLE", "comment": "Quest can be repeated" },
+      "2": { "name": "EXPLORATION_OR_EVENT", "comment": "Exploration or event required" },
+      "4": { "name": "AUTO_ACCEPT", "comment": "Auto-accepted quest" },
+      "8": { "name": "DF_QUEST", "comment": "Dungeon Finder quest" },
+      "16": { "name": "MONTHLY", "comment": "Monthly reset quest" },
+      "32": { "name": "CAST", "comment": "Requires spell cast for killcredit" }
+    }
   }
 }

@@ -17,30 +17,7 @@ import EditorField from '@core/components/EditorField.vue';
 import BitmaskField from '@core/components/BitmaskField.vue';
 import type { ItemTemplate } from '@/modules/item/item_template';
 import { useItemModuleStore } from '@/modules/item/store';
-
-import {
-  item_class_options,
-  item_subclass_options,
-  item_quality_options,
-  inventory_type_options,
-  honor_rank_options,
-  reputation_rank_options,
-  stat_type_options,
-  damage_type_options,
-  spell_trigger_options,
-  bonding_options,
-  language_options,
-  material_options,
-  sheath_options,
-  socket_color_options,
-  bag_family_options,
-  totem_category_options,
-  food_type_options,
-  ITEM_FLAGS,
-  ITEM_FLAGS_EXTRA,
-  ALLOWABLE_CLASS,
-  ALLOWABLE_RACE,
-} from '@/modules/item/types/defines';
+import { useItemEnumOptions } from '@/modules/item/composables/useItemEnumOptions';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -62,7 +39,7 @@ const form = store.formData;
 
 // --- List ---
 function metaOf(item: ItemTemplate): string {
-  const quality = qualityOptions.find(q => q.value === item.Quality)?.label ?? `Q${item.Quality}`;
+  const quality = itemQualityOptions.value.find(q => q.value === item.Quality)?.name ?? `Q${item.Quality}`;
   return `#${item.entry} · ${quality} · ilvl ${item.ItemLevel}`;
 }
 
@@ -96,24 +73,29 @@ onMounted(() => {
   }
 });
 
-// Convert options to PrimeVue format
-const classOptions = item_class_options.map((o) => ({ value: o.value, label: o.name }));
-const subclassOptions = item_subclass_options.map((o) => ({ value: o.value, label: o.name }));
-const qualityOptions = item_quality_options.map((o) => ({ value: o.value, label: o.name }));
-const inventoryTypeOptions = inventory_type_options.map((o) => ({ value: o.value, label: o.name }));
-const honorRankOptions = honor_rank_options.map((o) => ({ value: o.value, label: o.name }));
-const reputationRankOptions = reputation_rank_options.map((o) => ({ value: o.value, label: o.name }));
-const statTypeOptions = stat_type_options.map((o) => ({ value: o.value, label: o.name }));
-const damageTypeOptions = damage_type_options.map((o) => ({ value: o.value, label: o.name }));
-const spellTriggerOptions = spell_trigger_options.map((o) => ({ value: o.value, label: o.name }));
-const bondingOptions = bonding_options.map((o) => ({ value: o.value, label: o.name }));
-const languageOptions = language_options.map((o) => ({ value: o.value, label: o.name }));
-const materialOptions = material_options.map((o) => ({ value: o.value, label: o.name }));
-const sheathOptions = sheath_options.map((o) => ({ value: o.value, label: o.name }));
-const socketColorOptions = socket_color_options.map((o) => ({ value: o.value, label: o.name }));
-// bagFamilyOptions is already BitmaskOption[] from defines.ts - use directly
-const totemCategoryOptions = totem_category_options.map((o) => ({ value: o.value, label: o.name }));
-const foodTypeOptions = food_type_options.map((o) => ({ value: o.value, label: o.name }));
+const {
+  itemClassOptions: classOptions,
+  itemSubclassOptions: subclassOptions,
+  itemQualityOptions,
+  inventoryTypeOptions,
+  honorRankOptions,
+  reputationRankOptions,
+  statTypeOptions,
+  damageTypeOptions,
+  spellTriggerOptions,
+  bondingOptions,
+  languageOptions,
+  materialOptions,
+  sheathOptions,
+  socketColorOptions,
+  bagFamilyOptions,
+  totemCategoryOptions,
+  foodTypeOptions,
+  itemFlags,
+  itemFlagsExtra,
+  allowableClassOptions,
+  allowableRaceOptions,
+} = useItemEnumOptions();
 
 const modifiedFieldSet = computed(() => new Set(store.combinedChangedFields.map(c => c.field)));
 
@@ -218,11 +200,11 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.class')" :modified="isFieldModified('class')">
-                    <Select v-model="form.class" :options="classOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.class" :options="classOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.subclass')" :modified="isFieldModified('subclass')">
-                    <Select v-model="form.subclass" :options="subclassOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.subclass" :options="subclassOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.SoundOverrideSubclass')" :modified="isFieldModified('SoundOverrideSubclass')">
@@ -243,11 +225,11 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.Quality')" :modified="isFieldModified('Quality')">
-                    <Select v-model="form.Quality" :options="qualityOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.Quality" :options="itemQualityOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.InventoryType')" :modified="isFieldModified('InventoryType')">
-                    <Select v-model="form.InventoryType" :options="inventoryTypeOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.InventoryType" :options="inventoryTypeOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.ItemLevel')" :modified="isFieldModified('ItemLevel')">
@@ -297,7 +279,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.bonding')" :modified="isFieldModified('bonding')">
-                    <Select v-model="form.bonding" :options="bondingOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.bonding" :options="bondingOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
                 </div>
               </div>
@@ -340,7 +322,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.requiredhonorrank')" :modified="isFieldModified('requiredhonorrank')">
-                    <Select v-model="form.requiredhonorrank" :options="honorRankOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.requiredhonorrank" :options="honorRankOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
                 </div>
               </div>
@@ -357,7 +339,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.RequiredReputationRank')" :modified="isFieldModified('RequiredReputationRank')">
-                    <Select v-model="form.RequiredReputationRank" :options="reputationRankOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.RequiredReputationRank" :options="reputationRankOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
                 </div>
               </div>
@@ -370,11 +352,11 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                 </div>
                 <div class="field-grid">
                   <EditorField :label="t('itemEditor.fields.AllowableClass')" :modified="isFieldModified('AllowableClass')">
-                    <BitmaskField v-model="form.AllowableClass" :options="ALLOWABLE_CLASS" label="Allowable Class" allow-negative-one />
+                    <BitmaskField v-model="form.AllowableClass" :options="allowableClassOptions" :label="t('itemEditor.fields.AllowableClass')" allow-negative-one />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.AllowableRace')" :modified="isFieldModified('AllowableRace')">
-                    <BitmaskField v-model="form.AllowableRace" :options="ALLOWABLE_RACE" label="Allowable Race" allow-negative-one />
+                    <BitmaskField v-model="form.AllowableRace" :options="allowableRaceOptions" :label="t('itemEditor.fields.AllowableRace')" allow-negative-one />
                   </EditorField>
                 </div>
               </div>
@@ -412,7 +394,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
 
                   <template v-for="i in 10" :key="`stat-${i}`">
                     <EditorField :label="`${t('itemEditor.fields.stat_type')} ${i}`" :modified="isFieldModified(`stat_type${i}`)">
-                      <Select v-model="(form as any)[`stat_type${i}`]" :options="statTypeOptions" optionLabel="label" optionValue="value" fluid />
+                      <Select v-model="(form as any)[`stat_type${i}`]" :options="statTypeOptions" optionLabel="name" optionValue="value" fluid />
                     </EditorField>
 
                     <EditorField :label="`${t('itemEditor.fields.stat_value')} ${i}`" :modified="isFieldModified(`stat_value${i}`)">
@@ -446,7 +428,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.dmg_type1')" :modified="isFieldModified('dmg_type1')">
-                    <Select v-model="form.dmg_type1" :options="damageTypeOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.dmg_type1" :options="damageTypeOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.dmg_min2')" :modified="isFieldModified('dmg_min2')">
@@ -458,7 +440,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.dmg_type2')" :modified="isFieldModified('dmg_type2')">
-                    <Select v-model="form.dmg_type2" :options="damageTypeOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.dmg_type2" :options="damageTypeOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.armor')" :modified="isFieldModified('armor')">
@@ -530,7 +512,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                     </EditorField>
 
                     <EditorField :label="t('itemEditor.fields.spelltrigger')" :modified="isFieldModified(`spelltrigger_${i}`)">
-                      <Select v-model="(form as any)[`spelltrigger_${i}`]" :options="spellTriggerOptions" optionLabel="label" optionValue="value" fluid />
+                      <Select v-model="(form as any)[`spelltrigger_${i}`]" :options="spellTriggerOptions" optionLabel="name" optionValue="value" fluid />
                     </EditorField>
 
                     <EditorField :label="t('itemEditor.fields.spellcharges')" :modified="isFieldModified(`spellcharges_${i}`)">
@@ -565,7 +547,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                 <div class="field-grid">
                   <template v-for="i in 3" :key="`socket-${i}`">
                     <EditorField :label="`${t('itemEditor.fields.socketColor')} ${i}`" :modified="isFieldModified(`socketColor_${i}`)">
-                      <Select v-model="(form as any)[`socketColor_${i}`]" :options="socketColorOptions" optionLabel="label" optionValue="value" fluid />
+                      <Select v-model="(form as any)[`socketColor_${i}`]" :options="socketColorOptions" optionLabel="name" optionValue="value" fluid />
                     </EditorField>
 
                     <EditorField :label="`${t('itemEditor.fields.socketContent')} ${i}`" :modified="isFieldModified(`socketContent_${i}`)">
@@ -594,11 +576,11 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                 </div>
                 <div class="field-grid">
                   <EditorField :label="t('itemEditor.fields.Flags')" :modified="isFieldModified('Flags')">
-                    <BitmaskField v-model="form.Flags" :options="ITEM_FLAGS" label="Flags" />
+                    <BitmaskField v-model="form.Flags" :options="itemFlags" :label="t('itemEditor.fields.Flags')" />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.FlagsExtra')" :modified="isFieldModified('FlagsExtra')">
-                    <BitmaskField v-model="form.FlagsExtra" :options="ITEM_FLAGS_EXTRA" label="Extra Flags" />
+                    <BitmaskField v-model="form.FlagsExtra" :options="itemFlagsExtra" :label="t('itemEditor.fields.FlagsExtra')" />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.flagsCustom')" :modified="isFieldModified('flagsCustom')">
@@ -615,19 +597,19 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                 </div>
                 <div class="field-grid">
                   <EditorField :label="t('itemEditor.fields.Material')" :modified="isFieldModified('Material')">
-                    <Select v-model="form.Material" :options="materialOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.Material" :options="materialOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.sheath')" :modified="isFieldModified('sheath')">
-                    <Select v-model="form.sheath" :options="sheathOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.sheath" :options="sheathOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.BagFamily')" :modified="isFieldModified('BagFamily')">
-                    <BitmaskField v-model="form.BagFamily" :options="bag_family_options" label="Bag Family" />
+                    <BitmaskField v-model="form.BagFamily" :options="bagFamilyOptions" :label="t('itemEditor.fields.BagFamily')" />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.TotemCategory')" :modified="isFieldModified('TotemCategory')">
-                    <Select v-model="form.TotemCategory" :options="totemCategoryOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.TotemCategory" :options="totemCategoryOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.PageText')" :modified="isFieldModified('PageText')">
@@ -635,7 +617,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.LanguageID')" :modified="isFieldModified('LanguageID')">
-                    <Select v-model="form.LanguageID" :options="languageOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.LanguageID" :options="languageOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.PageMaterial')" :modified="isFieldModified('PageMaterial')">
@@ -691,7 +673,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.FoodType')" :modified="isFieldModified('FoodType')">
-                    <Select v-model="form.FoodType" :options="foodTypeOptions" optionLabel="label" optionValue="value" fluid />
+                    <Select v-model="form.FoodType" :options="foodTypeOptions" optionLabel="name" optionValue="value" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.minMoneyLoot')" :modified="isFieldModified('minMoneyLoot')">
@@ -737,7 +719,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
           <dl class="item-facts">
             <div class="item-facts-row">
               <dt>{{ t('item.columns.Quality') }}</dt>
-              <dd>{{ qualityOptions.find(q => q.value === form.Quality)?.label ?? form.Quality }}</dd>
+              <dd>{{ itemQualityOptions.find(q => q.value === form.Quality)?.name ?? form.Quality }}</dd>
             </div>
             <div class="item-facts-row">
               <dt>{{ t('item.columns.ItemLevel') }}</dt>
@@ -745,7 +727,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
             </div>
             <div class="item-facts-row">
               <dt>{{ t('item.columns.class') }}</dt>
-              <dd>{{ classOptions.find(c => c.value === form.class)?.label ?? form.class }}</dd>
+              <dd>{{ classOptions.find(c => c.value === form.class)?.name ?? form.class }}</dd>
             </div>
           </dl>
         </template>

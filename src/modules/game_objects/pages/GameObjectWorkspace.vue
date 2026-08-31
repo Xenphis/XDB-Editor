@@ -8,7 +8,7 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import Popover from 'primevue/popover'
-import { game_object_type_options } from '@/modules/game_objects/types/defines'
+import { useGameObjectEnumOptions } from '@/modules/game_objects/composables/useGameObjectEnumOptions'
 import type { GameObjectTemplate } from '@/modules/game_objects/types/gameobject_template/gameobject_template'
 import type { GameObject } from '@/modules/game_objects/types/gameobject/gameobject'
 import { getGameObjects, getGameObjectSpawns, saveGameObjectSpawn, deleteGameObjectSpawn } from '@/modules/game_objects/service'
@@ -36,7 +36,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useGameObjectModuleStore()
 
-const listTypeMap = new Map(game_object_type_options.map(o => [o.value, o.name]))
+const { gameObjectTypeOptions: typeOptions } = useGameObjectEnumOptions()
 
 /** undefined = no selection, null = create mode, number = edit. */
 const entryParam = computed<number | null | undefined>(() => {
@@ -58,7 +58,7 @@ function onModelSelect(displayId: number) {
 
 // --- List ---
 function metaOf(go: GameObjectTemplate): string {
-  const type = listTypeMap.get(go.type) ?? `Type ${go.type}`
+  const type = typeOptions.value.find(o => o.value === go.type)?.name ?? `Type ${go.type}`
   return `#${go.entry} · ${type} · display ${go.displayId}`
 }
 
@@ -121,8 +121,6 @@ onMounted(() => {
     loadGameObjects()
   }
 })
-
-const typeOptions = game_object_type_options.map(o => ({ value: o.value, label: o.name }))
 
 // --- Field modification helpers ---
 const modifiedFieldSet = computed(() => new Set(store.changedFields.map(c => c.field)))
@@ -361,7 +359,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
             <Select
               v-model="typeFilter"
               :options="typeOptions"
-              optionLabel="label"
+              optionLabel="name"
               optionValue="value"
               :placeholder="t('gameobject.filterByType')"
               showClear
@@ -440,7 +438,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
             </div>
             <div class="field-grid">
               <EditorField :label="t('gameobjectEditor.fields.type')" :tooltip="t('gameobjectEditor.tooltips.type')" :modified="isFieldModified('type')">
-                <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" fluid />
+                <Select v-model="form.type" :options="typeOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('gameobjectEditor.fields.size')" :tooltip="t('gameobjectEditor.tooltips.size')" :modified="isFieldModified('size')">
                 <InputNumber v-model="form.size" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />

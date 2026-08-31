@@ -52,5 +52,135 @@
     },
     "executeScript": "Exécuter le script",
     "hubDescription": "Parcourir tous les scripts SmartAI ; éditer les areatriggers et timed actionlists"
+  },
+  "sai_enums": {
+    "sai_cast_flags": {
+      "1": { "name": "INTERRUPT_PREVIOUS", "comment": "Interrompt tout sort en cours de lancement" },
+      "2": { "name": "TRIGGERED", "comment": "Coût en mana nul, temps d'incantation nul" },
+      "32": { "name": "AURA_NOT_PRESENT", "comment": "Lance uniquement si la cible n'a pas déjà l'aura" },
+      "64": { "name": "COMBAT_MOVE", "comment": "Empêche le mouvement de combat si le sort est lancé avec succès" }
+    },
+    "sai_spell_school_mask": {
+      "1": { "name": "Physique" },
+      "2": { "name": "Sacré" },
+      "4": { "name": "Feu" },
+      "8": { "name": "Nature" },
+      "16": { "name": "Givre" },
+      "32": { "name": "Ombre" },
+      "64": { "name": "Arcane" }
+    },
+    "sai_react_state_options": {
+      "0": { "name": "Passif" },
+      "1": { "name": "Défensif" },
+      "2": { "name": "Agressif" }
+    },
+    "sai_summon_type_options": {
+      "1": { "name": "TIMED_OR_DEAD_DESPAWN", "comment": "Disparaît après le délai ou à la mort de l'invocation" },
+      "2": { "name": "TIMED_OR_CORPSE_DESPAWN", "comment": "Disparaît après le délai ou à la disparition du cadavre" },
+      "3": { "name": "TIMED_DESPAWN", "comment": "Disparaît après le délai" },
+      "4": { "name": "TIMED_DESPAWN_OUT_OF_COMBAT", "comment": "Disparaît après le délai une fois hors combat" },
+      "5": { "name": "CORPSE_DESPAWN", "comment": "Disparaît instantanément à la mort" },
+      "6": { "name": "CORPSE_TIMED_DESPAWN", "comment": "Disparaît après le délai une fois mort" },
+      "7": { "name": "DEAD_DESPAWN", "comment": "Disparaît à la disparition du cadavre" },
+      "8": { "name": "MANUAL_DESPAWN", "comment": "Disparaît uniquement sur appel explicite de UnSummon()" }
+    },
+    "sai_sheath_options": {
+      "0": { "name": "Désarmé" },
+      "1": { "name": "Corps à corps" },
+      "2": { "name": "Distance" }
+    },
+    "sai_go_state_options": {
+      "0": { "name": "ACTIVE", "comment": "Ouvert / activé" },
+      "1": { "name": "READY", "comment": "Fermé / par défaut" },
+      "2": { "name": "ACTIVE_ALTERNATIVE" }
+    },
+    "sai_loot_state_options": {
+      "0": { "name": "NOT_READY" },
+      "1": { "name": "READY" },
+      "2": { "name": "ACTIVATED" },
+      "3": { "name": "JUST_DEACTIVATED" }
+    },
+    "sai_power_type_options": {
+      "0": { "name": "Mana" },
+      "1": { "name": "Rage" },
+      "2": { "name": "Concentration" },
+      "3": { "name": "Énergie" },
+      "4": { "name": "Bonheur" },
+      "5": { "name": "Rune" },
+      "6": { "name": "Puissance runique" }
+    },
+    "sai_los_hostility_options": {
+      "0": { "name": "Hostile", "comment": "Seules les unités hostiles déclenchent l'événement" },
+      "1": { "name": "Non hostile", "comment": "Seules les unités non hostiles déclenchent l'événement" },
+      "2": { "name": "N'importe", "comment": "N'importe quelle unité déclenche l'événement" }
+    },
+    "sai_respawn_condition_options": {
+      "0": { "name": "NONE", "comment": "Toujours" },
+      "1": { "name": "MAP", "comment": "Uniquement sur la carte donnée" },
+      "2": { "name": "AREA", "comment": "Uniquement dans la zone donnée" }
+    },
+    "sai_movement_type_options": {
+      "0": { "name": "IDLE_MOTION_TYPE", "comment": "0 = tout type de mouvement" },
+      "1": { "name": "RANDOM_MOTION_TYPE" },
+      "2": { "name": "WAYPOINT_MOTION_TYPE" },
+      "5": { "name": "CHASE_MOTION_TYPE" },
+      "6": { "name": "HOME_MOTION_TYPE" },
+      "7": { "name": "FLIGHT_MOTION_TYPE" },
+      "8": { "name": "POINT_MOTION_TYPE", "comment": "Utilisé par MOVE_TO_POS / points scriptés" },
+      "9": { "name": "FLEEING_MOTION_TYPE" },
+      "10": { "name": "DISTRACT_MOTION_TYPE" },
+      "11": { "name": "ASSISTANCE_MOTION_TYPE" },
+      "13": { "name": "TIMED_FLEEING_MOTION_TYPE" },
+      "14": { "name": "FOLLOW_MOTION_TYPE" },
+      "16": { "name": "EFFECT_MOTION_TYPE" }
+    },
+    "sai_timer_update_options": {
+      "0": { "name": "OOC", "comment": "Le minuteur ne tourne que hors combat" },
+      "1": { "name": "IC", "comment": "Le minuteur ne tourne qu'en combat" },
+      "2": { "name": "ALWAYS", "comment": "Le minuteur tourne toujours" }
+    },
+    "sai_movement_slot_options": {
+      "0": { "name": "Par défaut" },
+      "1": { "name": "Actif" },
+      "2": { "name": "Contrôlé" }
+    },
+    "sai_spawn_type_options": {
+      "0": { "name": "Créature" },
+      "1": { "name": "Objet de jeu" }
+    },
+    "sai_inst_data_type_options": {
+      "0": { "name": "SetData" },
+      "1": { "name": "SetBossState" }
+    },
+    "sai_event_flags": {
+      "1": { "name": "NOT_REPEATABLE", "comment": "L'événement ne peut pas se répéter" },
+      "2": { "name": "DIFFICULTY_0", "comment": "Inutilisé sur 3.3.5" },
+      "4": { "name": "DIFFICULTY_1", "comment": "Inutilisé sur 3.3.5" },
+      "8": { "name": "DIFFICULTY_2", "comment": "Inutilisé sur 3.3.5" },
+      "16": { "name": "DIFFICULTY_3", "comment": "Inutilisé sur 3.3.5" },
+      "128": { "name": "DEBUG_ONLY", "comment": "L'événement ne se produit qu'en build debug" },
+      "256": { "name": "DONT_RESET", "comment": "L'événement ne sera pas réinitialisé dans SmartScript::OnReset()" },
+      "512": { "name": "WHILE_CHARMED", "comment": "L'événement se produit même si le propriétaire IA est charmé" }
+    },
+    "sai_credit_type_options": {
+      "0": { "name": "Meurtre de monstre" },
+      "1": { "name": "Événement" }
+    },
+    "sai_field_type_options": {
+      "0": { "name": "État de posture" },
+      "1": { "name": "Talents de familier" },
+      "2": { "name": "Flags de visibilité" },
+      "3": { "name": "Niveau d'animation" }
+    },
+    "sai_team_options": {
+      "0": { "name": "N'importe laquelle" },
+      "469": { "name": "Alliance" },
+      "67": { "name": "Horde" }
+    },
+    "create_source": {
+      "0": { "name": "Créature" },
+      "1": { "name": "Objet de jeu" },
+      "2": { "name": "Déclencheur de zone" }
+    }
   }
 }

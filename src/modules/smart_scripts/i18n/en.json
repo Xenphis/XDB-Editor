@@ -52,5 +52,135 @@
     },
     "executeScript": "Execute script",
     "hubDescription": "Browse every SmartAI script; edit areatrigger and timed actionlist scripts"
+  },
+  "sai_enums": {
+    "sai_cast_flags": {
+      "1": { "name": "INTERRUPT_PREVIOUS", "comment": "Interrupt any spell casting" },
+      "2": { "name": "TRIGGERED", "comment": "Zero mana cost, no cast time" },
+      "32": { "name": "AURA_NOT_PRESENT", "comment": "Only cast if the target does not already have the aura" },
+      "64": { "name": "COMBAT_MOVE", "comment": "Prevents combat movement if cast successful" }
+    },
+    "sai_spell_school_mask": {
+      "1": { "name": "Physical" },
+      "2": { "name": "Holy" },
+      "4": { "name": "Fire" },
+      "8": { "name": "Nature" },
+      "16": { "name": "Frost" },
+      "32": { "name": "Shadow" },
+      "64": { "name": "Arcane" }
+    },
+    "sai_react_state_options": {
+      "0": { "name": "Passive" },
+      "1": { "name": "Defensive" },
+      "2": { "name": "Aggressive" }
+    },
+    "sai_summon_type_options": {
+      "1": { "name": "TIMED_OR_DEAD_DESPAWN", "comment": "Despawns after timer or when the summon dies" },
+      "2": { "name": "TIMED_OR_CORPSE_DESPAWN", "comment": "Despawns after timer or when the corpse disappears" },
+      "3": { "name": "TIMED_DESPAWN", "comment": "Despawns after timer" },
+      "4": { "name": "TIMED_DESPAWN_OUT_OF_COMBAT", "comment": "Despawns after timer once out of combat" },
+      "5": { "name": "CORPSE_DESPAWN", "comment": "Despawns instantly on death" },
+      "6": { "name": "CORPSE_TIMED_DESPAWN", "comment": "Despawns after timer once dead" },
+      "7": { "name": "DEAD_DESPAWN", "comment": "Despawns when the corpse disappears" },
+      "8": { "name": "MANUAL_DESPAWN", "comment": "Despawns only on explicit UnSummon()" }
+    },
+    "sai_sheath_options": {
+      "0": { "name": "Unarmed" },
+      "1": { "name": "Melee" },
+      "2": { "name": "Ranged" }
+    },
+    "sai_go_state_options": {
+      "0": { "name": "ACTIVE", "comment": "Open / activated" },
+      "1": { "name": "READY", "comment": "Closed / default" },
+      "2": { "name": "ACTIVE_ALTERNATIVE" }
+    },
+    "sai_loot_state_options": {
+      "0": { "name": "NOT_READY" },
+      "1": { "name": "READY" },
+      "2": { "name": "ACTIVATED" },
+      "3": { "name": "JUST_DEACTIVATED" }
+    },
+    "sai_power_type_options": {
+      "0": { "name": "Mana" },
+      "1": { "name": "Rage" },
+      "2": { "name": "Focus" },
+      "3": { "name": "Energy" },
+      "4": { "name": "Happiness" },
+      "5": { "name": "Rune" },
+      "6": { "name": "Runic power" }
+    },
+    "sai_los_hostility_options": {
+      "0": { "name": "Hostile", "comment": "Only hostile units trigger the event" },
+      "1": { "name": "Not hostile", "comment": "Only non-hostile units trigger the event" },
+      "2": { "name": "Any", "comment": "Any unit triggers the event" }
+    },
+    "sai_respawn_condition_options": {
+      "0": { "name": "NONE", "comment": "Always" },
+      "1": { "name": "MAP", "comment": "Only on the given map" },
+      "2": { "name": "AREA", "comment": "Only in the given zone" }
+    },
+    "sai_movement_type_options": {
+      "0": { "name": "IDLE_MOTION_TYPE", "comment": "0 = any movement type" },
+      "1": { "name": "RANDOM_MOTION_TYPE" },
+      "2": { "name": "WAYPOINT_MOTION_TYPE" },
+      "5": { "name": "CHASE_MOTION_TYPE" },
+      "6": { "name": "HOME_MOTION_TYPE" },
+      "7": { "name": "FLIGHT_MOTION_TYPE" },
+      "8": { "name": "POINT_MOTION_TYPE", "comment": "Used by MOVE_TO_POS / scripted points" },
+      "9": { "name": "FLEEING_MOTION_TYPE" },
+      "10": { "name": "DISTRACT_MOTION_TYPE" },
+      "11": { "name": "ASSISTANCE_MOTION_TYPE" },
+      "13": { "name": "TIMED_FLEEING_MOTION_TYPE" },
+      "14": { "name": "FOLLOW_MOTION_TYPE" },
+      "16": { "name": "EFFECT_MOTION_TYPE" }
+    },
+    "sai_timer_update_options": {
+      "0": { "name": "OOC", "comment": "Timer runs out of combat only" },
+      "1": { "name": "IC", "comment": "Timer runs in combat only" },
+      "2": { "name": "ALWAYS", "comment": "Timer always runs" }
+    },
+    "sai_movement_slot_options": {
+      "0": { "name": "Default" },
+      "1": { "name": "Active" },
+      "2": { "name": "Controlled" }
+    },
+    "sai_spawn_type_options": {
+      "0": { "name": "Creature" },
+      "1": { "name": "GameObject" }
+    },
+    "sai_inst_data_type_options": {
+      "0": { "name": "SetData" },
+      "1": { "name": "SetBossState" }
+    },
+    "sai_event_flags": {
+      "1": { "name": "NOT_REPEATABLE", "comment": "Event can not repeat" },
+      "2": { "name": "DIFFICULTY_0", "comment": "UNUSED on 3.3.5" },
+      "4": { "name": "DIFFICULTY_1", "comment": "UNUSED on 3.3.5" },
+      "8": { "name": "DIFFICULTY_2", "comment": "UNUSED on 3.3.5" },
+      "16": { "name": "DIFFICULTY_3", "comment": "UNUSED on 3.3.5" },
+      "128": { "name": "DEBUG_ONLY", "comment": "Event only occurs in debug build" },
+      "256": { "name": "DONT_RESET", "comment": "Event will not reset in SmartScript::OnReset()" },
+      "512": { "name": "WHILE_CHARMED", "comment": "Event occurs even if AI owner is charmed" }
+    },
+    "sai_credit_type_options": {
+      "0": { "name": "Monster kill" },
+      "1": { "name": "Event" }
+    },
+    "sai_field_type_options": {
+      "0": { "name": "Stand state" },
+      "1": { "name": "Pet talents" },
+      "2": { "name": "Vis flags" },
+      "3": { "name": "Anim tier" }
+    },
+    "sai_team_options": {
+      "0": { "name": "Any" },
+      "469": { "name": "Alliance" },
+      "67": { "name": "Horde" }
+    },
+    "create_source": {
+      "0": { "name": "Creature" },
+      "1": { "name": "GameObject" },
+      "2": { "name": "Areatrigger" }
+    }
   }
 }

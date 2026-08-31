@@ -5,7 +5,7 @@ import InputNumber from 'primevue/inputnumber'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import { useQuestModuleStore } from '@/modules/quests/store'
-import { quest_special_flags_options } from '@/modules/quests/types/quest_template_addon'
+import { useQuestEnumOptions } from '@/modules/quests/composables/useQuestEnumOptions'
 
 const { t } = useI18n()
 const store = useQuestModuleStore()
@@ -13,6 +13,7 @@ const form = store.formData
 const addonForm = store.addon.newEntry
 const origAddon = computed(() => store.addon.getOriginalEntry())
 const orig = computed(() => store.originalValue)
+const { questSpecialFlagsOptions } = useQuestEnumOptions()
 
 function isModified(field: keyof typeof form): boolean {
   if (!orig.value) return false
@@ -138,7 +139,7 @@ function isAddonModified(field: keyof typeof addonForm): boolean {
         <EditorField :label="t('quest_template.fields.SpecialFlags')" :modified="isAddonModified('SpecialFlags')" :fullWidth="true">
           <BitmaskField
             v-model="addonForm.SpecialFlags"
-            :options="quest_special_flags_options"
+            :options="questSpecialFlagsOptions"
             :label="t('quest_template.fields.SpecialFlags')"
           />
         </EditorField>

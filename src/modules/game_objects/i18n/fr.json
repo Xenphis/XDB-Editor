@@ -175,5 +175,69 @@
     "add": "Ajouter",
     "empty": "Aucune quête",
     "questPlaceholder": "Quest ID"
+  },
+  "gameobject_enums": {
+    "spawn_mask_options": {
+      "1": { "name": "10 joueurs Normal", "comment": "Difficulté normale à 10 joueurs" },
+      "2": { "name": "25 joueurs Normal", "comment": "Difficulté normale à 25 joueurs" },
+      "4": { "name": "10 joueurs Héroïque", "comment": "Difficulté héroïque à 10 joueurs" },
+      "8": { "name": "25 joueurs Héroïque", "comment": "Difficulté héroïque à 25 joueurs" },
+      "15": { "name": "Toutes les difficultés", "comment": "Apparaît dans toutes les difficultés" }
+    },
+    "go_flag_options": {
+      "1": { "name": "En cours d'utilisation", "comment": "Désactive l'interaction pendant l'animation" },
+      "2": { "name": "Verrouillé", "comment": "Nécessite une clé, un sort ou un événement pour s'ouvrir" },
+      "4": { "name": "Interaction conditionnelle", "comment": "Non ciblable, nécessite GO_DYNFLAG_LO_ACTIVATE pour activer l'interaction" },
+      "8": { "name": "Transport", "comment": "Peut transporter (bateau, ascenseur, véhicule)" },
+      "16": { "name": "Non sélectionnable", "comment": "Non sélectionnable, même en mode MJ" },
+      "32": { "name": "Pas de despawn", "comment": "Ne disparaît jamais (portes, objets à état on/off)" },
+      "64": { "name": "Obstacle IA", "comment": "Enregistre l'objet dans l'AIObstacleMgr" },
+      "128": { "name": "Geler l'animation" },
+      "512": { "name": "Endommagé", "comment": "L'objet a subi des dégâts de siège" },
+      "1024": { "name": "Détruit", "comment": "L'objet a été détruit" }
+    },
+    "invisibility_type_options": {
+      "0": { "name": "Général", "comment": "Invisibilité générale" },
+      "3": { "name": "Piège", "comment": "Invisibilité de piège" },
+      "6": { "name": "Ivresse", "comment": "Invisibilité d'ivresse" }
+    },
+    "game_object_type_options": {
+      "0": { "name": "Porte" },
+      "1": { "name": "Bouton" },
+      "2": { "name": "Donneur de quête" },
+      "3": { "name": "Coffre" },
+      "4": { "name": "Lieur" },
+      "5": { "name": "Générique" },
+      "6": { "name": "Piège" },
+      "7": { "name": "Chaise" },
+      "8": { "name": "Foyer de sort" },
+      "9": { "name": "Texte" },
+      "10": { "name": "Goober" },
+      "11": { "name": "Transport" },
+      "12": { "name": "Dégâts de zone" },
+      "13": { "name": "Caméra" },
+      "14": { "name": "Objet de carte" },
+      "15": { "name": "Transport MO" },
+      "16": { "name": "Arbitre de duel" },
+      "17": { "name": "Point de pêche" },
+      "18": { "name": "Rituel d'invocation" },
+      "19": { "name": "Boîte aux lettres" },
+      "20": { "name": "Ne pas utiliser" },
+      "21": { "name": "Poste de garde" },
+      "22": { "name": "Lanceur de sort" },
+      "23": { "name": "Pierre de ralliement" },
+      "24": { "name": "Support de drapeau" },
+      "25": { "name": "Trou de pêche" },
+      "26": { "name": "Dépôt de drapeau" },
+      "27": { "name": "Mini-jeu" },
+      "28": { "name": "Ne pas utiliser 2" },
+      "29": { "name": "Zone de contrôle" },
+      "30": { "name": "Générateur d'aura" },
+      "31": { "name": "Difficulté de donjon" },
+      "32": { "name": "Chaise de coiffeur" },
+      "33": { "name": "Bâtiment destructible" },
+      "34": { "name": "Banque de guilde" },
+      "35": { "name": "Trappe" }
+    }
   }
 }

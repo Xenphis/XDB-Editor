@@ -121,3 +121,21 @@ export const sai_bool_options: SelectOption[] = [
   { value: 0, name: 'No' },
   { value: 1, name: 'Yes' },
 ]
+
+export const sai_credit_type_options: SelectOption[] = [
+  { value: 0, name: 'Monster kill' },
+  { value: 1, name: 'Event' },
+]
+
+export const sai_field_type_options: SelectOption[] = [
+  { value: 0, name: 'Stand state' },
+  { value: 1, name: 'Pet talents' },
+  { value: 2, name: 'Vis flags' },
+  { value: 3, name: 'Anim tier' },
+]
+
+export const sai_team_options: SelectOption[] = [
+  { value: 0, name: 'Any' },
+  { value: 469, name: 'Alliance' },
+  { value: 67, name: 'Horde' },
+]

@@ -33,6 +33,14 @@ export interface SaiParamDef {
   options?: SelectOption[]
   flags?: BitmaskOption[]
   tooltip?: string
+  /**
+   * i18n key prefix for translating `options`/`flags` labels at render time
+   * (e.g. 'sai_enums.sai_cast_flags', or 'creature_enums.npc_flags' for the
+   * cross-module npc flag param) — see ParamField.vue. `options`/`flags`
+   * stay the untranslated source of truth for value/hex since they're built
+   * once at module load, outside any component's reactive i18n context.
+   */
+  i18nNamespace?: string
 }
 
 export interface SaiTypeDef extends SaiRawTypeDef {

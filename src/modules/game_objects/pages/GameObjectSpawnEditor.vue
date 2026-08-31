@@ -8,7 +8,7 @@ import BitmaskField from '@core/components/BitmaskField.vue'
 import EditorHeader from '@core/components/EditorHeader.vue'
 import type { FieldChange } from '@core/composables/useQueryGenerator'
 import type { GameObject } from '@/modules/game_objects/types/gameobject/gameobject'
-import { spawn_mask_options, invisibility_type_options, go_flag_options } from '@/modules/game_objects/types/defines'
+import { useGameObjectEnumOptions } from '@/modules/game_objects/composables/useGameObjectEnumOptions'
 import { getGameObjectSpawns, getGameObjectSpawnAddon, getGameObjectOverrides } from '@/modules/game_objects/service'
 import { useGameObjectModuleStore, type SpawnAddonForm, type SpawnOverridesForm } from '@/modules/game_objects/store'
 import { useQueryGenerator } from '@core/composables/useQueryGenerator'
@@ -38,6 +38,8 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const store = useGameObjectModuleStore()
+
+const { spawnMaskOptions, goFlagOptions, invisibilityTypeOptions } = useGameObjectEnumOptions()
 
 const stateOptions = [
   { value: 0, label: t('gameobjectSpawnEditor.stateOptions.open') },
@@ -236,7 +238,7 @@ onMounted(async () => {
       </div>
       <div class="field-grid">
         <EditorField :label="t('gameobjectSpawnEditor.fields.spawnMask')" :modified="isFieldModified('spawnMask')">
-          <BitmaskField v-model="form.spawnMask" :options="spawn_mask_options" :label="t('gameobjectSpawnEditor.fields.spawnMask')" />
+          <BitmaskField v-model="form.spawnMask" :options="spawnMaskOptions" :label="t('gameobjectSpawnEditor.fields.spawnMask')" />
         </EditorField>
         <EditorField :label="t('gameobjectSpawnEditor.fields.phaseMask')" :tooltip="t('gameobjectSpawnEditor.tooltips.phaseMask')" :modified="isFieldModified('phaseMask')">
           <InputNumber v-model="form.phaseMask" :useGrouping="false" fluid />
@@ -318,7 +320,7 @@ onMounted(async () => {
           <InputNumber v-model="overridesForm.faction" :useGrouping="false" fluid />
         </EditorField>
         <EditorField :label="t('gameobjectSpawnEditor.fields.overrides_flags')" :tooltip="t('gameobjectSpawnEditor.tooltips.overrides_flags')" :modified="isOverridesModified('flags')">
-          <BitmaskField v-model="overridesForm.flags" :options="go_flag_options" :label="t('gameobjectSpawnEditor.fields.overrides_flags')" />
+          <BitmaskField v-model="overridesForm.flags" :options="goFlagOptions" :label="t('gameobjectSpawnEditor.fields.overrides_flags')" />
         </EditorField>
       </div>
     </div>
@@ -343,7 +345,7 @@ onMounted(async () => {
           <InputNumber v-model="addonForm.parent_rotation3" :minFractionDigits="1" :maxFractionDigits="6" :useGrouping="false" fluid />
         </EditorField>
         <EditorField :label="t('gameobjectSpawnEditor.fields.invisibilityType')" :tooltip="t('gameobjectSpawnEditor.tooltips.invisibilityType')" :modified="isAddonModified('invisibilityType')">
-          <Select v-model="addonForm.invisibilityType" :options="invisibility_type_options.map(o => ({ value: o.value, label: o.name }))" optionLabel="label" optionValue="value" fluid />
+          <Select v-model="addonForm.invisibilityType" :options="invisibilityTypeOptions" optionLabel="name" optionValue="value" fluid />
         </EditorField>
         <EditorField :label="t('gameobjectSpawnEditor.fields.invisibilityValue')" :tooltip="t('gameobjectSpawnEditor.tooltips.invisibilityValue')" :modified="isAddonModified('invisibilityValue')">
           <InputNumber v-model="addonForm.invisibilityValue" :useGrouping="false" fluid />

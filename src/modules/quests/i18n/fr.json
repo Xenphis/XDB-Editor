@@ -208,5 +208,37 @@
     "add": "Ajouter",
     "empty": "Aucune entrée",
     "entryPlaceholder": "Entry ID"
+  },
+  "quest_enums": {
+    "quest_flags_options": {
+      "1": { "name": "STAY_ALIVE", "comment": "Échoue si le joueur meurt" },
+      "2": { "name": "PARTY_ACCEPT", "comment": "Confirmation de groupe" },
+      "4": { "name": "EXPLORATION", "comment": "Exploration/déclencheur de zone" },
+      "8": { "name": "SHARABLE", "comment": "Peut être partagée" },
+      "16": { "name": "HAS_CONDITION", "comment": "Possède une condition" },
+      "32": { "name": "HIDE_REWARD_POI", "comment": "Masque le POI de récompense" },
+      "64": { "name": "RAID", "comment": "Peut être complétée en raid" },
+      "128": { "name": "TBC", "comment": "Extension TBC uniquement" },
+      "256": { "name": "NO_MONEY_FROM_XP", "comment": "Pas d'argent compensatoire d'XP" },
+      "512": { "name": "HIDDEN_REWARDS", "comment": "Récompenses cachées tant que non prête" },
+      "1024": { "name": "TRACKING", "comment": "Attribuée automatiquement, jamais dans le journal" },
+      "2048": { "name": "DEPRECATE_REPUTATION", "comment": "Réputation obsolète" },
+      "4096": { "name": "DAILY", "comment": "Répétable quotidiennement" },
+      "8192": { "name": "FLAGS_PVP", "comment": "Force le flag PvP" },
+      "16384": { "name": "UNAVAILABLE", "comment": "Non disponible génériquement" },
+      "32768": { "name": "WEEKLY", "comment": "Répétable chaque semaine" },
+      "65536": { "name": "AUTOCOMPLETE", "comment": "Complétion automatique" },
+      "131072": { "name": "DISPLAY_ITEM_IN_TRACKER", "comment": "Affiche l'objet dans le suivi de quêtes" },
+      "262144": { "name": "OBJ_TEXT", "comment": "Utilise le texte d'objectif comme texte de complétion" },
+      "524288": { "name": "AUTO_ACCEPT", "comment": "Acceptation automatique" }
+    },
+    "quest_special_flags_options": {
+      "1": { "name": "REPEATABLE", "comment": "La quête peut être répétée" },
+      "2": { "name": "EXPLORATION_OR_EVENT", "comment": "Exploration ou événement requis" },
+      "4": { "name": "AUTO_ACCEPT", "comment": "Quête acceptée automatiquement" },
+      "8": { "name": "DF_QUEST", "comment": "Quête de l'Outil de recherche de donjon" },
+      "16": { "name": "MONTHLY", "comment": "Quête à réinitialisation mensuelle" },
+      "32": { "name": "CAST", "comment": "Nécessite de lancer un sort pour le crédit de kill" }
+    }
   }
 }

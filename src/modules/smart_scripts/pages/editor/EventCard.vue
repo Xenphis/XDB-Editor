@@ -30,6 +30,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+const eventFlagsOptions = computed(() => sai_event_flags.map(o => ({
+  ...o,
+  name: t(`sai_enums.sai_event_flags.${o.value}.name`),
+  comment: o.comment ? t(`sai_enums.sai_event_flags.${o.value}.comment`) : o.comment,
+})))
+
 const head = computed(() => props.chain[0]!)
 
 const phaseBadge = computed(() => {
@@ -99,7 +105,7 @@ function togglePhase(phase: number): void {
             <InputNumber v-model="head.event_chance" :min="0" :max="100" suffix=" %" :useGrouping="false" fluid />
           </EditorField>
           <EditorField :label="t('smartScripts.common.flags')">
-            <BitmaskField v-model="head.event_flags" :options="sai_event_flags" :label="t('smartScripts.common.flags')" />
+            <BitmaskField v-model="head.event_flags" :options="eventFlagsOptions" :label="t('smartScripts.common.flags')" />
           </EditorField>
         </div>
       </div>

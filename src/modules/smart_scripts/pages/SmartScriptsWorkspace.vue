@@ -81,11 +81,11 @@ const createEntry = ref<number | null>(null)
 const createError = ref('')
 const createChecking = ref(false)
 
-const createSourceOptions = [
-  { value: 0, name: 'Creature' },
-  { value: 1, name: 'GameObject' },
-  { value: 2, name: 'Areatrigger' },
-]
+const createSourceOptions = computed(() => [
+  { value: 0, name: t('sai_enums.create_source.0.name') },
+  { value: 1, name: t('sai_enums.create_source.1.name') },
+  { value: 2, name: t('sai_enums.create_source.2.name') },
+])
 
 function onAdd() {
   createError.value = ''

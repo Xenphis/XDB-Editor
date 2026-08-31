@@ -9,12 +9,13 @@ import Button from 'primevue/button'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import { useQuestModuleStore } from '@/modules/quests/store'
-import { quest_flags_options } from '@/modules/quests/types/quest_template'
+import { useQuestEnumOptions } from '@/modules/quests/composables/useQuestEnumOptions'
 
 const { t } = useI18n()
 const store = useQuestModuleStore()
 const form = store.formData
 const orig = computed(() => store.originalValue)
+const { questFlagsOptions } = useQuestEnumOptions()
 
 const detailsForm = store.details.newEntry
 const origDetails = computed(() => store.details.getOriginalEntry())
@@ -137,7 +138,7 @@ function addEnder() {
         <EditorField :label="t('quest_template.fields.Flags')" :modified="isModified('Flags')" :fullWidth="true">
           <BitmaskField
             v-model="form.Flags"
-            :options="quest_flags_options"
+            :options="questFlagsOptions"
             :label="t('quest_template.fields.Flags')"
           />
         </EditorField>

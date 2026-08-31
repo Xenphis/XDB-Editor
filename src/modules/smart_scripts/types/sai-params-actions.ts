@@ -2,6 +2,8 @@ import { npc_flags } from '@/modules/npc/types/defines'
 import type { SaiParamDef } from './sai'
 import {
   sai_cast_flags,
+  sai_credit_type_options,
+  sai_field_type_options,
   sai_go_state_options,
   sai_inst_data_type_options,
   sai_loot_state_options,
@@ -22,11 +24,11 @@ import {
 const key = (n: 1 | 2 | 3 | 4 | 5 | 6): SaiParamDef['key'] => `action_param${n}` as SaiParamDef['key']
 
 const npcFlagParam: SaiParamDef[] = [
-  { key: 'action_param1', label: 'NPC flags', kind: 'flags', flags: npc_flags },
+  { key: 'action_param1', label: 'NPC flags', kind: 'flags', flags: npc_flags, i18nNamespace: 'creature_enums.npc_flags' },
 ]
 
 const powerParams = (valueLabel: string): SaiParamDef[] => [
-  { key: 'action_param1', label: 'Power type', kind: 'enum', options: sai_power_type_options },
+  { key: 'action_param1', label: 'Power type', kind: 'enum', options: sai_power_type_options, i18nNamespace: 'sai_enums.sai_power_type_options' },
   { key: 'action_param2', label: valueLabel },
 ]
 
@@ -59,7 +61,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param2', label: 'Direct add', kind: 'bool', tooltip: 'Add the quest directly instead of offering it' },
   ],
   8: [ // SET_REACT_STATE
-    { key: 'action_param1', label: 'React state', kind: 'enum', options: sai_react_state_options },
+    { key: 'action_param1', label: 'React state', kind: 'enum', options: sai_react_state_options, i18nNamespace: 'sai_enums.sai_react_state_options' },
   ],
   9: [], // ACTIVATE_GOBJECT
   10: [1, 2, 3, 4, 5, 6].map(n => (
@@ -67,12 +69,12 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   )), // RANDOM_EMOTE
   11: [ // CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
-    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags },
+    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
     { key: 'action_param3', label: 'Triggered flags', tooltip: 'TriggerCastFlags mask, only if cast flags has TRIGGERED' },
   ],
   12: [ // SUMMON_CREATURE
     { key: 'action_param1', label: 'Creature entry', ref: 'creature' },
-    { key: 'action_param2', label: 'Summon type', kind: 'enum', options: sai_summon_type_options },
+    { key: 'action_param2', label: 'Summon type', kind: 'enum', options: sai_summon_type_options, i18nNamespace: 'sai_enums.sai_summon_type_options' },
     { key: 'action_param3', label: 'Duration', kind: 'ms' },
     { key: 'action_param4', label: 'Attack invoker', kind: 'bool' },
     { key: 'action_param5', label: 'Summon flags', tooltip: 'SmartActionSummonCreatureFlags mask' },
@@ -124,10 +126,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
       key: 'action_param5',
       label: 'Credit type',
       kind: 'enum',
-      options: [
-        { value: 0, name: 'Monster kill' },
-        { value: 1, name: 'Event' },
-      ],
+      options: sai_credit_type_options,
+      i18nNamespace: 'sai_enums.sai_credit_type_options',
     },
   ],
   30: [1, 2, 3, 4, 5, 6].map(n => (
@@ -144,7 +144,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   34: [ // SET_INST_DATA
     { key: 'action_param1', label: 'Field' },
     { key: 'action_param2', label: 'Data' },
-    { key: 'action_param3', label: 'Type', kind: 'enum', options: sai_inst_data_type_options },
+    { key: 'action_param3', label: 'Type', kind: 'enum', options: sai_inst_data_type_options, i18nNamespace: 'sai_enums.sai_inst_data_type_options' },
   ],
   35: [ // SET_INST_DATA64
     { key: 'action_param1', label: 'Field', tooltip: 'Data is the SAI target’s GUID' },
@@ -159,7 +159,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param2', label: 'With emote', kind: 'bool' },
   ],
   40: [ // SET_SHEATH
-    { key: 'action_param1', label: 'Sheath state', kind: 'enum', options: sai_sheath_options },
+    { key: 'action_param1', label: 'Sheath state', kind: 'enum', options: sai_sheath_options, i18nNamespace: 'sai_enums.sai_sheath_options' },
   ],
   41: [ // FORCE_DESPAWN
     { key: 'action_param1', label: 'Despawn timer', kind: 'ms' },
@@ -278,7 +278,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   80: [ // CALL_TIMED_ACTIONLIST
     { key: 'action_param1', label: 'Actionlist ID', ref: 'actionlist', tooltip: 'Overwrites an already running actionlist' },
     { key: 'action_param2', label: 'Stop after combat', kind: 'bool' },
-    { key: 'action_param3', label: 'Timer update type', kind: 'enum', options: sai_timer_update_options },
+    { key: 'action_param3', label: 'Timer update type', kind: 'enum', options: sai_timer_update_options, i18nNamespace: 'sai_enums.sai_timer_update_options' },
   ],
   81: npcFlagParam, // SET_NPC_FLAG
   82: npcFlagParam, // ADD_NPC_FLAG
@@ -288,11 +288,11 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   ],
   85: [ // SELF_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
-    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags },
+    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
   ],
   86: [ // CROSS_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
-    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags },
+    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
     { key: 'action_param3', label: 'Caster target type', tooltip: 'SMART_TARGET_* id; casters cast the spell on the SAI target' },
     { key: 'action_param4', label: 'Caster target param 1' },
     { key: 'action_param5', label: 'Caster target param 2' },
@@ -314,12 +314,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
       key: 'action_param2',
       label: 'Field type',
       kind: 'enum',
-      options: [
-        { value: 0, name: 'Stand state' },
-        { value: 1, name: 'Pet talents' },
-        { value: 2, name: 'Vis flags' },
-        { value: 3, name: 'Anim tier' },
-      ],
+      options: sai_field_type_options,
+      i18nNamespace: 'sai_enums.sai_field_type_options',
     },
   ],
   91: [ // REMOVE_UNIT_FIELD_BYTES_1
@@ -328,12 +324,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
       key: 'action_param2',
       label: 'Field type',
       kind: 'enum',
-      options: [
-        { value: 0, name: 'Stand state' },
-        { value: 1, name: 'Pet talents' },
-        { value: 2, name: 'Vis flags' },
-        { value: 3, name: 'Anim tier' },
-      ],
+      options: sai_field_type_options,
+      i18nNamespace: 'sai_enums.sai_field_type_options',
     },
   ],
   92: [ // INTERRUPT_SPELL
@@ -350,7 +342,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param2', label: 'NPC text ID' },
   ],
   99: [ // GO_SET_LOOT_STATE
-    { key: 'action_param1', label: 'Loot state', kind: 'enum', options: sai_loot_state_options },
+    { key: 'action_param1', label: 'Loot state', kind: 'enum', options: sai_loot_state_options, i18nNamespace: 'sai_enums.sai_loot_state_options' },
   ],
   100: [ // SEND_TARGET_TO_TARGET
     { key: 'action_param1', label: 'Variable ID', tooltip: 'Stored target list ID to send' },
@@ -394,7 +386,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Disable evade', kind: 'bool' },
   ],
   118: [ // GO_SET_GO_STATE
-    { key: 'action_param1', label: 'GO state', kind: 'enum', options: sai_go_state_options },
+    { key: 'action_param1', label: 'GO state', kind: 'enum', options: sai_go_state_options, i18nNamespace: 'sai_enums.sai_go_state_options' },
   ],
   123: [ // ADD_THREAT
     { key: 'action_param1', label: 'Threat to add', kind: 'int' },
@@ -408,7 +400,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param2', label: 'Event ID max' },
   ],
   127: [ // PAUSE_MOVEMENT
-    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options },
+    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options, i18nNamespace: 'sai_enums.sai_movement_slot_options' },
     { key: 'action_param2', label: 'Pause time', kind: 'ms' },
     { key: 'action_param3', label: 'Force', kind: 'bool' },
   ],
@@ -425,18 +417,18 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param4', label: 'Spawn flags' },
   ],
   133: [ // RESPAWN_BY_SPAWNID
-    { key: 'action_param1', label: 'Spawn type', kind: 'enum', options: sai_spawn_type_options },
+    { key: 'action_param1', label: 'Spawn type', kind: 'enum', options: sai_spawn_type_options, i18nNamespace: 'sai_enums.sai_spawn_type_options' },
     { key: 'action_param2', label: 'Spawn ID' },
   ],
   134: [ // INVOKER_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
-    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags },
+    { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
   ],
   135: [ // PLAY_CINEMATIC
     { key: 'action_param1', label: 'Cinematic entry', ref: 'cinematic' },
   ],
   136: [ // SET_MOVEMENT_SPEED
-    { key: 'action_param1', label: 'Movement type', kind: 'enum', options: sai_movement_type_options },
+    { key: 'action_param1', label: 'Movement type', kind: 'enum', options: sai_movement_type_options, i18nNamespace: 'sai_enums.sai_movement_type_options' },
     { key: 'action_param2', label: 'Speed (integer part)' },
     { key: 'action_param3', label: 'Speed (fraction part)' },
   ],
@@ -472,7 +464,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Variable ID' },
   ],
   158: [ // RESUME_MOVEMENT
-    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options },
+    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options, i18nNamespace: 'sai_enums.sai_movement_slot_options' },
     { key: 'action_param2', label: 'Resume time', kind: 'ms' },
   ],
 }

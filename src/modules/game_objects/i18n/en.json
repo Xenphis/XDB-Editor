@@ -175,5 +175,69 @@
     "add": "Add",
     "empty": "No quests",
     "questPlaceholder": "Quest ID"
+  },
+  "gameobject_enums": {
+    "spawn_mask_options": {
+      "1": { "name": "10 Player Normal", "comment": "10 player normal difficulty" },
+      "2": { "name": "25 Player Normal", "comment": "25 player normal difficulty" },
+      "4": { "name": "10 Player Heroic", "comment": "10 player heroic difficulty" },
+      "8": { "name": "25 Player Heroic", "comment": "25 player heroic difficulty" },
+      "15": { "name": "All difficulties", "comment": "Spawn in all difficulties" }
+    },
+    "go_flag_options": {
+      "1": { "name": "In use", "comment": "Disables interaction while being animated" },
+      "2": { "name": "Locked", "comment": "Requires a key, spell, or event to open" },
+      "4": { "name": "Interact cond", "comment": "Untargetable, requires GO_DYNFLAG_LO_ACTIVATE to enable interaction" },
+      "8": { "name": "Transport", "comment": "Can transport (boat, elevator, car)" },
+      "16": { "name": "Not selectable", "comment": "Not selectable, even in GM-mode" },
+      "32": { "name": "No despawn", "comment": "Never despawns (doors, on/off state objects)" },
+      "64": { "name": "AI obstacle", "comment": "Registers object in AIObstacleMgr" },
+      "128": { "name": "Freeze animation" },
+      "512": { "name": "Damaged", "comment": "Gameobject has been siege damaged" },
+      "1024": { "name": "Destroyed", "comment": "Gameobject has been destroyed" }
+    },
+    "invisibility_type_options": {
+      "0": { "name": "General", "comment": "General invisibility" },
+      "3": { "name": "Trap", "comment": "Trap invisibility" },
+      "6": { "name": "Drunk", "comment": "Drunk invisibility" }
+    },
+    "game_object_type_options": {
+      "0": { "name": "Door" },
+      "1": { "name": "Button" },
+      "2": { "name": "Quest giver" },
+      "3": { "name": "Chest" },
+      "4": { "name": "Binder" },
+      "5": { "name": "Generic" },
+      "6": { "name": "Trap" },
+      "7": { "name": "Chair" },
+      "8": { "name": "Spell focus" },
+      "9": { "name": "Text" },
+      "10": { "name": "Goober" },
+      "11": { "name": "Transport" },
+      "12": { "name": "Area damage" },
+      "13": { "name": "Camera" },
+      "14": { "name": "Map object" },
+      "15": { "name": "MO transport" },
+      "16": { "name": "Duel arbiter" },
+      "17": { "name": "Fishing node" },
+      "18": { "name": "Summoning ritual" },
+      "19": { "name": "Mailbox" },
+      "20": { "name": "Do not use" },
+      "21": { "name": "Guard post" },
+      "22": { "name": "Spell caster" },
+      "23": { "name": "Meeting stone" },
+      "24": { "name": "Flag stand" },
+      "25": { "name": "Fishing hole" },
+      "26": { "name": "Flag drop" },
+      "27": { "name": "Mini game" },
+      "28": { "name": "Do not use 2" },
+      "29": { "name": "Control zone" },
+      "30": { "name": "Aura generator" },
+      "31": { "name": "Dungeon difficulty" },
+      "32": { "name": "Barber chair" },
+      "33": { "name": "Destructible building" },
+      "34": { "name": "Guild bank" },
+      "35": { "name": "Trap door" }
+    }
   }
 }

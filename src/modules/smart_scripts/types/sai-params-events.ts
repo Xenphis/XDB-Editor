@@ -5,6 +5,7 @@ import {
   sai_movement_type_options,
   sai_respawn_condition_options,
   sai_spell_school_mask,
+  sai_team_options,
 } from './sai-defines'
 
 // Curated event_param1..4 definitions per event type, faithful to the comments
@@ -60,7 +61,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   7: [], // EVADE
   8: [ // SPELLHIT
     { key: 'event_param1', label: 'Spell ID', ref: 'spell', tooltip: '0 = any spell' },
-    { key: 'event_param2', label: 'School mask', kind: 'flags', flags: sai_spell_school_mask, tooltip: '0 = any school' },
+    { key: 'event_param2', label: 'School mask', kind: 'flags', flags: sai_spell_school_mask, i18nNamespace: 'sai_enums.sai_spell_school_mask', tooltip: '0 = any school' },
     ...cooldown(3),
   ],
   9: [ // RANGE
@@ -69,12 +70,12 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     ...repeat(3),
   ],
   10: [ // OOC_LOS
-    { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options },
+    { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options, i18nNamespace: 'sai_enums.sai_los_hostility_options' },
     { key: 'event_param2', label: 'Max range' },
     ...cooldown(3),
   ],
   11: [ // RESPAWN
-    { key: 'event_param1', label: 'Condition', kind: 'enum', options: sai_respawn_condition_options },
+    { key: 'event_param1', label: 'Condition', kind: 'enum', options: sai_respawn_condition_options, i18nNamespace: 'sai_enums.sai_respawn_condition_options' },
     { key: 'event_param2', label: 'Map ID', ref: 'map' },
     { key: 'event_param3', label: 'Zone ID', ref: 'zone' },
   ],
@@ -120,7 +121,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   ],
   25: [], // RESET
   26: [ // IC_LOS
-    { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options },
+    { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options, i18nNamespace: 'sai_enums.sai_los_hostility_options' },
     { key: 'event_param2', label: 'Max range' },
     ...cooldown(3),
   ],
@@ -131,7 +132,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   ],
   31: [ // SPELLHIT_TARGET
     { key: 'event_param1', label: 'Spell ID', ref: 'spell', tooltip: '0 = any spell' },
-    { key: 'event_param2', label: 'School mask', kind: 'flags', flags: sai_spell_school_mask, tooltip: '0 = any school' },
+    { key: 'event_param2', label: 'School mask', kind: 'flags', flags: sai_spell_school_mask, i18nNamespace: 'sai_enums.sai_spell_school_mask', tooltip: '0 = any school' },
     ...cooldown(3),
   ],
   32: [ // DAMAGED
@@ -145,7 +146,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     ...cooldown(3),
   ],
   34: [ // MOVEMENTINFORM
-    { key: 'event_param1', label: 'Movement type', kind: 'enum', options: sai_movement_type_options, tooltip: '0 = any movement type' },
+    { key: 'event_param1', label: 'Movement type', kind: 'enum', options: sai_movement_type_options, i18nNamespace: 'sai_enums.sai_movement_type_options', tooltip: '0 = any movement type' },
     { key: 'event_param2', label: 'Point ID' },
   ],
   35: [ // SUMMON_DESPAWNED
@@ -173,11 +174,8 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
       key: 'event_param1',
       label: 'Team',
       kind: 'enum',
-      options: [
-        { value: 0, name: 'Any' },
-        { value: 469, name: 'Alliance' },
-        { value: 67, name: 'Horde' },
-      ],
+      options: sai_team_options,
+      i18nNamespace: 'sai_enums.sai_team_options',
     },
     ...cooldown(2),
   ],
@@ -224,7 +222,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Game event entry', ref: 'game_event' },
   ],
   70: [ // GO_LOOT_STATE_CHANGED
-    { key: 'event_param1', label: 'Loot state', kind: 'enum', options: sai_loot_state_options },
+    { key: 'event_param1', label: 'Loot state', kind: 'enum', options: sai_loot_state_options, i18nNamespace: 'sai_enums.sai_loot_state_options' },
   ],
   71: [ // GO_EVENT_INFORM
     { key: 'event_param1', label: 'Event ID' },
