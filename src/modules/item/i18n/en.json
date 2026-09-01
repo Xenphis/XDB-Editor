@@ -87,7 +87,6 @@
       "maxcount": "Max Count",
       "stackable": "Stackable",
       "ContainerSlots": "Container Slots",
-      "StatsCount": "Stats Count",
       "stat_type": "Stat Type",
       "stat_value": "Stat Value",
       "ScalingStatDistribution": "Scaling Stat Distribution",

@@ -24,7 +24,6 @@ use commands::creature_text_locale::{get_creature_text_locales, save_creature_te
 use commands::gameobject_template::{get_gameobjects, get_gameobject, save_gameobject, delete_gameobject};
 use commands::gameobject_template_addon::{get_gameobject_addon, save_gameobject_addon};
 use commands::gameobject_addon::{get_gameobject_spawn_addon, save_gameobject_spawn_addon};
-use commands::gameobject_overrides::{get_gameobject_overrides, save_gameobject_overrides};
 use commands::gameobject_spawn::{get_gameobject_spawns, save_gameobject_spawn, delete_gameobject_spawn};
 use commands::gameobject_loot::{get_gameobject_loot, save_gameobject_loot};
 use commands::creature_model_tags::search_creature_model_tags;
@@ -163,8 +162,6 @@ pub fn run() {
       save_gameobject_addon,
       get_gameobject_spawn_addon,
       save_gameobject_spawn_addon,
-      get_gameobject_overrides,
-      save_gameobject_overrides,
       get_gameobject_spawns,
       save_gameobject_spawn,
       delete_gameobject_spawn,

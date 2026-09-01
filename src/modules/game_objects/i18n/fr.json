@@ -72,7 +72,6 @@
       "size": "Taille",
       "AIName": "Nom AI",
       "ScriptName": "Nom du script",
-      "StringId": "String ID",
       "VerifiedBuild": "Verified Build",
       "addon_faction": "Faction (addon)",
       "addon_flags": "Flags (addon)",
@@ -106,8 +105,6 @@
     "discard": "Annuler",
     "tooltips": {
       "phaseMask": "Bitmask des phases dans lesquelles l'objet est visible. Phase 1 = 1, Phase 2 = 2, Phase 1+2 = 3, etc.",
-      "overrides_faction": "Remplace gameobject_template_addon.faction pour ce spawn uniquement.",
-      "overrides_flags": "Remplace gameobject_template_addon.flags pour ce spawn uniquement.",
       "invisibilityType": "Type d'invisibilité : 0 = GENERAL, 3 = TRAP, 6 = DRUNK",
       "invisibilityValue": "Plus la valeur est élevée, plus l'objet est difficile à détecter."
     },
@@ -122,8 +119,6 @@
       "rotationDesc": "Quaternion de rotation de l'objet",
       "state": "État",
       "stateDesc": "Progression d'animation et état de l'objet",
-      "overrides": "Overrides",
-      "overridesDesc": "Remplace la faction et les flags du template addon pour ce spawn (table gameobject_overrides)",
       "spawnAddon": "Addon du spawn",
       "spawnAddonDesc": "Paramètres additionnels par spawn (table gameobject_addon)",
       "script": "Script",
@@ -148,8 +143,6 @@
       "spawntimesecs": "Temps de spawn (sec)",
       "animprogress": "Progression anim.",
       "state": "État",
-      "overrides_faction": "Faction (override)",
-      "overrides_flags": "Flags (override)",
       "parent_rotation0": "Rotation parente 0 (X)",
       "parent_rotation1": "Rotation parente 1 (Y)",
       "parent_rotation2": "Rotation parente 2 (Z)",
@@ -157,8 +150,8 @@
       "invisibilityType": "Type d'invisibilité",
       "invisibilityValue": "Valeur d'invisibilité",
       "ScriptName": "Nom du script",
-      "StringId": "String ID",
-      "VerifiedBuild": "Verified Build"
+      "VerifiedBuild": "Verified Build",
+      "Comment": "Commentaire"
     },
     "stateOptions": {
       "open": "Ouvert (0)",

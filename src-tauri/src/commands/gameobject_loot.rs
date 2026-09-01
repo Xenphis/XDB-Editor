@@ -14,7 +14,7 @@ pub struct GameObjectLootTemplate {
     #[sqlx(rename = "Item")]
     pub Item: u32,
     #[sqlx(rename = "Reference")]
-    pub Reference: u32,
+    pub Reference: i32,
     #[sqlx(rename = "Chance")]
     pub Chance: f32,
     #[sqlx(rename = "QuestRequired")]

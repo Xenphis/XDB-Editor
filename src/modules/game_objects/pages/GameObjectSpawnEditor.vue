@@ -3,14 +3,15 @@ import { ref, reactive, onMounted, computed, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditorHeader from '@core/components/EditorHeader.vue'
 import type { FieldChange } from '@core/composables/useQueryGenerator'
 import type { GameObject } from '@/modules/game_objects/types/gameobject/gameobject'
 import { useGameObjectEnumOptions } from '@/modules/game_objects/composables/useGameObjectEnumOptions'
-import { getGameObjectSpawns, getGameObjectSpawnAddon, getGameObjectOverrides } from '@/modules/game_objects/service'
-import { useGameObjectModuleStore, type SpawnAddonForm, type SpawnOverridesForm } from '@/modules/game_objects/store'
+import { getGameObjectSpawns, getGameObjectSpawnAddon } from '@/modules/game_objects/service'
+import { useGameObjectModuleStore, type SpawnAddonForm } from '@/modules/game_objects/store'
 import { useQueryGenerator } from '@core/composables/useQueryGenerator'
 import EditorField from '@core/components/EditorField.vue'
 
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const store = useGameObjectModuleStore()
 
-const { spawnMaskOptions, goFlagOptions, invisibilityTypeOptions } = useGameObjectEnumOptions()
+const { spawnMaskOptions, invisibilityTypeOptions } = useGameObjectEnumOptions()
 
 const stateOptions = [
   { value: 0, label: t('gameobjectSpawnEditor.stateOptions.open') },
@@ -66,8 +67,8 @@ const form = reactive<GameObject>({
   animprogress: 0,
   state: 1,
   ScriptName: '',
-  StringId: null,
   VerifiedBuild: 0,
+  Comment: null,
 })
 
 const originalValue = ref<GameObject | null>(null)
@@ -78,22 +79,6 @@ const { diffQuery, fullQuery, hasChanges, changedFields } = useQueryGenerator<Ga
   originalValue,
   form,
 )
-
-// --- Spawn Overrides ---
-const overridesForm = store.spawnOverrides.newEntry
-const overridesOriginalValue = ref<SpawnOverridesForm | null>(null)
-
-const { diffQuery: overridesDiffQuery, hasChanges: overridesHasChanges, changedFields: overridesChangedFields } = useQueryGenerator<SpawnOverridesForm>(
-  'gameobject_overrides',
-  'spawnId',
-  overridesOriginalValue,
-  overridesForm,
-)
-
-const overridesModifiedFieldSet = computed(() => new Set(overridesChangedFields.value.map(c => c.field)))
-function isOverridesModified(field: string): boolean {
-  return overridesModifiedFieldSet.value.has(field)
-}
 
 // --- Spawn Addon ---
 const addonForm = store.spawnAddon.newEntry
@@ -115,11 +100,10 @@ const combinedDiffQuery = computed(() => {
   const parts: string[] = []
   if (diffQuery.value) parts.push(diffQuery.value)
   if (addonDiffQuery.value) parts.push(addonDiffQuery.value)
-  if (overridesDiffQuery.value) parts.push(overridesDiffQuery.value)
   return parts.join('\n')
 })
 
-const combinedHasChanges = computed(() => hasChanges.value || addonHasChanges.value || overridesHasChanges.value)
+const combinedHasChanges = computed(() => hasChanges.value || addonHasChanges.value)
 
 const modifiedFieldSet = computed(() => new Set(changedFields.value.map(c => c.field)))
 
@@ -130,7 +114,6 @@ function isFieldModified(field: string): boolean {
 const combinedChangedFields = computed(() => [
   ...changedFields.value,
   ...addonChangedFields.value,
-  ...overridesChangedFields.value,
 ])
 
 // Mirror the spawn's SQL/diff into the workspace inspector (right rail).
@@ -145,7 +128,6 @@ watchEffect(() => {
 function onDiscard() {
   if (originalValue.value) Object.assign(form, originalValue.value)
   if (addonOriginalValue.value) Object.assign(store.spawnAddon.newEntry, addonOriginalValue.value)
-  if (overridesOriginalValue.value) Object.assign(store.spawnOverrides.newEntry, overridesOriginalValue.value)
 }
 
 function onSave() {
@@ -155,23 +137,14 @@ function onSave() {
 onMounted(async () => {
   loading.value = true
   try {
-    const [spawns, addonData, overridesData] = await Promise.all([
+    const [spawns, addonData] = await Promise.all([
       getGameObjectSpawns(props.goEntry),
       getGameObjectSpawnAddon(props.spawnGuid).catch(() => null),
-      getGameObjectOverrides(props.spawnGuid).catch(() => null),
     ])
     const spawn = spawns.find(s => s.guid === props.spawnGuid)
     if (spawn) {
       Object.assign(form, spawn)
       originalValue.value = { ...spawn }
-    }
-    if (overridesData) {
-      const { spawnId: _s, ...overridesFields } = overridesData
-      store.spawnOverrides.load(overridesFields as SpawnOverridesForm)
-      overridesOriginalValue.value = { ...overridesFields } as SpawnOverridesForm
-    } else {
-      store.spawnOverrides.commit()
-      overridesOriginalValue.value = { ...store.spawnOverrides.newEntry }
     }
     if (addonData) {
       const { guid: _g, ...addonFields } = addonData
@@ -309,22 +282,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Overrides -->
-    <div class="field-group">
-      <div class="field-group-header">
-        <h4>{{ t('gameobjectSpawnEditor.groups.overrides') }}</h4>
-        <p>{{ t('gameobjectSpawnEditor.groups.overridesDesc') }}</p>
-      </div>
-      <div class="field-grid">
-        <EditorField :label="t('gameobjectSpawnEditor.fields.overrides_faction')" :tooltip="t('gameobjectSpawnEditor.tooltips.overrides_faction')" :modified="isOverridesModified('faction')">
-          <InputNumber v-model="overridesForm.faction" :useGrouping="false" fluid />
-        </EditorField>
-        <EditorField :label="t('gameobjectSpawnEditor.fields.overrides_flags')" :tooltip="t('gameobjectSpawnEditor.tooltips.overrides_flags')" :modified="isOverridesModified('flags')">
-          <BitmaskField v-model="overridesForm.flags" :options="goFlagOptions" :label="t('gameobjectSpawnEditor.fields.overrides_flags')" />
-        </EditorField>
-      </div>
-    </div>
-
     <!-- Spawn Addon -->
     <div class="field-group">
       <div class="field-group-header">
@@ -363,11 +320,11 @@ onMounted(async () => {
         <EditorField :label="t('gameobjectSpawnEditor.fields.ScriptName')" :modified="isFieldModified('ScriptName')">
           <InputText v-model="form.ScriptName" fluid />
         </EditorField>
-        <EditorField :label="t('gameobjectSpawnEditor.fields.StringId')" :modified="isFieldModified('StringId')">
-          <InputText v-model="(form.StringId as string)" fluid />
-        </EditorField>
         <EditorField :label="t('gameobjectSpawnEditor.fields.VerifiedBuild')" :modified="isFieldModified('VerifiedBuild')">
           <InputNumber v-model="form.VerifiedBuild" :useGrouping="false" fluid />
+        </EditorField>
+        <EditorField :label="t('gameobjectSpawnEditor.fields.Comment')" :modified="isFieldModified('Comment')" :fullWidth="true">
+          <Textarea v-model="(form.Comment as string)" rows="2" fluid />
         </EditorField>
       </div>
     </div>

@@ -21,11 +21,6 @@ export interface AddonForm {
   artkit3: number
 }
 
-export interface SpawnOverridesForm {
-  faction: number
-  flags: number
-}
-
 export interface SpawnAddonForm {
   parent_rotation0: number
   parent_rotation1: number
@@ -64,10 +59,6 @@ export function createDefaultAddonForm(): AddonForm {
   return { faction: 0, flags: 0, mingold: 0, maxgold: 0, artkit0: 0, artkit1: 0, artkit2: 0, artkit3: 0 }
 }
 
-export function createDefaultSpawnOverridesForm(): SpawnOverridesForm {
-  return { faction: 0, flags: 0 }
-}
-
 export function createDefaultSpawnAddonForm(): SpawnAddonForm {
   return { parent_rotation0: 0, parent_rotation1: 0, parent_rotation2: 0, parent_rotation3: 0, invisibilityType: 0, invisibilityValue: 0 }
 }
@@ -79,7 +70,7 @@ function createDefaultForm(): GameObjectTemplate {
     Data0: 0, Data1: 0, Data2: 0, Data3: 0, Data4: 0, Data5: 0, Data6: 0, Data7: 0,
     Data8: 0, Data9: 0, Data10: 0, Data11: 0, Data12: 0, Data13: 0, Data14: 0, Data15: 0,
     Data16: 0, Data17: 0, Data18: 0, Data19: 0, Data20: 0, Data21: 0, Data22: 0, Data23: 0,
-    AIName: '', ScriptName: '', StringId: null, VerifiedBuild: null,
+    AIName: '', ScriptName: '', VerifiedBuild: null,
   }
 }
 
@@ -165,12 +156,6 @@ export const useGameObjectModuleStore = defineStore('gameObjectModule', () => {
     tableName: 'gameobject_template_addon',
     primaryKey: 'entry',
     createDefault: createDefaultAddonForm,
-  })
-
-  const spawnOverrides = new ReactiveSubTable<SpawnOverridesForm>({
-    tableName: 'gameobject_overrides',
-    primaryKey: 'spawnId',
-    createDefault: createDefaultSpawnOverridesForm,
   })
 
   const spawnAddon = new ReactiveSubTable<SpawnAddonForm>({
@@ -293,7 +278,7 @@ export const useGameObjectModuleStore = defineStore('gameObjectModule', () => {
 
   return {
     gameObjects, loading, currentSearch, currentTypeFilter, listLoaded,
-    addon, loot, spawnAddon, spawnOverrides, questStarters, questEnders, questItems, locales,
+    addon, loot, spawnAddon, questStarters, questEnders, questItems, locales,
     ...editor,
     editingEntry: editor.editingId,
     markListLoaded, setGameObjects,

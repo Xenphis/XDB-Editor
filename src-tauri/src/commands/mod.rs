@@ -19,7 +19,6 @@ pub mod creature_text_locale;
 pub mod gameobject_addon;
 pub mod gameobject_loot;
 pub mod gameobject_model_tags;
-pub mod gameobject_overrides;
 pub mod gameobject_spawn;
 pub mod gameobject_template;
 pub mod gameobject_template_addon;

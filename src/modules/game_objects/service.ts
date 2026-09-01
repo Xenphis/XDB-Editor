@@ -3,7 +3,6 @@ import type { GameObjectTemplate } from '@/modules/game_objects/types/gameobject
 import type { GameObjectTemplateAddon } from '@/modules/game_objects/types/gameobject_template/gameobject_template_addon'
 import type { GameObject } from '@/modules/game_objects/types/gameobject/gameobject'
 import type { GameObjectAddon } from '@/modules/game_objects/types/gameobject/gameobject_addon'
-import type { GameObjectOverrides } from '@/modules/game_objects/types/gameobject/gameobject_overrides'
 import type { GameObjectLootTemplate } from '@/modules/game_objects/types/gameobject_template/gameobject_loot_template'
 import type { GameObjectQuestItem } from '@/modules/game_objects/types/gameobject_template/gameobject_questitem'
 import type { GameObjectTemplateLocale } from '@/modules/game_objects/types/gameobject_template/gameobject_template_locale'
@@ -54,14 +53,6 @@ export async function getGameObjectSpawnAddon(guid: number): Promise<GameObjectA
 
 export async function saveGameObjectSpawnAddon(guid: number, addon: GameObjectAddon): Promise<void> {
   return invoke('save_gameobject_spawn_addon', { guid, addon })
-}
-
-export async function getGameObjectOverrides(spawnId: number): Promise<GameObjectOverrides | null> {
-  return invoke('get_gameobject_overrides', { spawnId })
-}
-
-export async function saveGameObjectOverrides(spawnId: number, overrides: GameObjectOverrides): Promise<void> {
-  return invoke('save_gameobject_overrides', { spawnId, overrides })
 }
 
 export async function getGameObjectSpawns(id: number): Promise<GameObject[]> {

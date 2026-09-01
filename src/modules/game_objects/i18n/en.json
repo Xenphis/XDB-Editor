@@ -72,7 +72,6 @@
       "size": "Size",
       "AIName": "AI Name",
       "ScriptName": "Script Name",
-      "StringId": "String ID",
       "VerifiedBuild": "Verified Build",
       "addon_faction": "Faction (addon)",
       "addon_flags": "Flags (addon)",
@@ -106,8 +105,6 @@
     "discard": "Discard",
     "tooltips": {
       "phaseMask": "Bitmask of phases in which the object is visible. Phase 1 = 1, Phase 2 = 2, Phase 1+2 = 3, etc.",
-      "overrides_faction": "Replaces gameobject_template_addon.faction for this spawn only.",
-      "overrides_flags": "Replaces gameobject_template_addon.flags for this spawn only.",
       "invisibilityType": "Invisibility type: 0 = GENERAL, 3 = TRAP, 6 = DRUNK",
       "invisibilityValue": "The larger the value, the harder it is to detect this gameobject."
     },
@@ -122,8 +119,6 @@
       "rotationDesc": "Object rotation quaternion",
       "state": "State",
       "stateDesc": "Animation progress and object state",
-      "overrides": "Overrides",
-      "overridesDesc": "Overrides faction and flags from the template addon for this spawn (gameobject_overrides table)",
       "spawnAddon": "Spawn Addon",
       "spawnAddonDesc": "Additional per-spawn parameters (gameobject_addon table)",
       "script": "Script",
@@ -148,8 +143,6 @@
       "spawntimesecs": "Spawn Time (sec)",
       "animprogress": "Anim Progress",
       "state": "State",
-      "overrides_faction": "Faction (override)",
-      "overrides_flags": "Flags (override)",
       "parent_rotation0": "Parent Rotation 0 (X)",
       "parent_rotation1": "Parent Rotation 1 (Y)",
       "parent_rotation2": "Parent Rotation 2 (Z)",
@@ -157,8 +150,8 @@
       "invisibilityType": "Invisibility Type",
       "invisibilityValue": "Invisibility Value",
       "ScriptName": "Script Name",
-      "StringId": "String ID",
-      "VerifiedBuild": "Verified Build"
+      "VerifiedBuild": "Verified Build",
+      "Comment": "Comment"
     },
     "stateOptions": {
       "open": "Open (0)",

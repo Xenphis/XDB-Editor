@@ -458,9 +458,6 @@ const mainTabs = computed<SectionTabItem[]>(() => [
               <EditorField :label="t('gameobjectEditor.fields.ScriptName')" :modified="isFieldModified('ScriptName')">
                 <InputText v-model="form.ScriptName" fluid />
               </EditorField>
-              <EditorField :label="t('gameobjectEditor.fields.StringId')" :modified="isFieldModified('StringId')">
-                <InputText v-model="form.StringId" fluid />
-              </EditorField>
               <EditorField :label="t('gameobjectEditor.fields.VerifiedBuild')" :modified="isFieldModified('VerifiedBuild')">
                 <InputNumber v-model="form.VerifiedBuild" :useGrouping="false" fluid />
               </EditorField>

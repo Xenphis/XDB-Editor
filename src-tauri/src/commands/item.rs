@@ -54,28 +54,26 @@ pub struct ItemTemplate {
     pub stackable: Option<i32>,
     #[sqlx(rename = "ContainerSlots")]
     pub ContainerSlots: u8,
-    #[sqlx(rename = "StatsCount")]
-    pub StatsCount: u8,
     pub stat_type1: u8,
-    pub stat_value1: i16,
+    pub stat_value1: i32,
     pub stat_type2: u8,
-    pub stat_value2: i16,
+    pub stat_value2: i32,
     pub stat_type3: u8,
-    pub stat_value3: i16,
+    pub stat_value3: i32,
     pub stat_type4: u8,
-    pub stat_value4: i16,
+    pub stat_value4: i32,
     pub stat_type5: u8,
-    pub stat_value5: i16,
+    pub stat_value5: i32,
     pub stat_type6: u8,
-    pub stat_value6: i16,
+    pub stat_value6: i32,
     pub stat_type7: u8,
-    pub stat_value7: i16,
+    pub stat_value7: i32,
     pub stat_type8: u8,
-    pub stat_value8: i16,
+    pub stat_value8: i32,
     pub stat_type9: u8,
-    pub stat_value9: i16,
+    pub stat_value9: i32,
     pub stat_type10: u8,
-    pub stat_value10: i16,
+    pub stat_value10: i32,
     #[sqlx(rename = "ScalingStatDistribution")]
     pub ScalingStatDistribution: i16,
     #[sqlx(rename = "ScalingStatValue")]
@@ -86,13 +84,13 @@ pub struct ItemTemplate {
     pub dmg_min2: f32,
     pub dmg_max2: f32,
     pub dmg_type2: u8,
-    pub armor: u16,
-    pub holy_res: u8,
-    pub fire_res: u8,
-    pub nature_res: u8,
-    pub frost_res: u8,
-    pub shadow_res: u8,
-    pub arcane_res: u8,
+    pub armor: u32,
+    pub holy_res: Option<i16>,
+    pub fire_res: Option<i16>,
+    pub nature_res: Option<i16>,
+    pub frost_res: Option<i16>,
+    pub shadow_res: Option<i16>,
+    pub arcane_res: Option<i16>,
     pub delay: u16,
     pub ammo_type: u8,
     #[sqlx(rename = "RangedModRange")]
@@ -302,7 +300,7 @@ pub async fn save_item(
             AllowableClass, AllowableRace, ItemLevel, RequiredLevel, RequiredSkill,
             RequiredSkillRank, requiredspell, requiredhonorrank, RequiredCityRank,
             RequiredReputationFaction, RequiredReputationRank, maxcount, stackable,
-            ContainerSlots, StatsCount, stat_type1, stat_value1, stat_type2, stat_value2,
+            ContainerSlots, stat_type1, stat_value1, stat_type2, stat_value2,
             stat_type3, stat_value3, stat_type4, stat_value4, stat_type5, stat_value5,
             stat_type6, stat_value6, stat_type7, stat_value7, stat_type8, stat_value8,
             stat_type9, stat_value9, stat_type10, stat_value10, ScalingStatDistribution,
@@ -326,12 +324,12 @@ pub async fn save_item(
             flagsCustom, VerifiedBuild
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), class = VALUES(class), subclass = VALUES(subclass), SoundOverrideSubclass = VALUES(SoundOverrideSubclass), name = VALUES(name), displayid = VALUES(displayid), Quality = VALUES(Quality), Flags = VALUES(Flags), FlagsExtra = VALUES(FlagsExtra), BuyCount = VALUES(BuyCount), BuyPrice = VALUES(BuyPrice), SellPrice = VALUES(SellPrice), InventoryType = VALUES(InventoryType), AllowableClass = VALUES(AllowableClass), AllowableRace = VALUES(AllowableRace), ItemLevel = VALUES(ItemLevel), RequiredLevel = VALUES(RequiredLevel), RequiredSkill = VALUES(RequiredSkill), RequiredSkillRank = VALUES(RequiredSkillRank), requiredspell = VALUES(requiredspell), requiredhonorrank = VALUES(requiredhonorrank), RequiredCityRank = VALUES(RequiredCityRank), RequiredReputationFaction = VALUES(RequiredReputationFaction), RequiredReputationRank = VALUES(RequiredReputationRank), maxcount = VALUES(maxcount), stackable = VALUES(stackable), ContainerSlots = VALUES(ContainerSlots), StatsCount = VALUES(StatsCount), stat_type1 = VALUES(stat_type1), stat_value1 = VALUES(stat_value1), stat_type2 = VALUES(stat_type2), stat_value2 = VALUES(stat_value2), stat_type3 = VALUES(stat_type3), stat_value3 = VALUES(stat_value3), stat_type4 = VALUES(stat_type4), stat_value4 = VALUES(stat_value4), stat_type5 = VALUES(stat_type5), stat_value5 = VALUES(stat_value5), stat_type6 = VALUES(stat_type6), stat_value6 = VALUES(stat_value6), stat_type7 = VALUES(stat_type7), stat_value7 = VALUES(stat_value7), stat_type8 = VALUES(stat_type8), stat_value8 = VALUES(stat_value8), stat_type9 = VALUES(stat_type9), stat_value9 = VALUES(stat_value9), stat_type10 = VALUES(stat_type10), stat_value10 = VALUES(stat_value10), ScalingStatDistribution = VALUES(ScalingStatDistribution), ScalingStatValue = VALUES(ScalingStatValue), dmg_min1 = VALUES(dmg_min1), dmg_max1 = VALUES(dmg_max1), dmg_type1 = VALUES(dmg_type1), dmg_min2 = VALUES(dmg_min2), dmg_max2 = VALUES(dmg_max2), dmg_type2 = VALUES(dmg_type2), armor = VALUES(armor), holy_res = VALUES(holy_res), fire_res = VALUES(fire_res), nature_res = VALUES(nature_res), frost_res = VALUES(frost_res), shadow_res = VALUES(shadow_res), arcane_res = VALUES(arcane_res), delay = VALUES(delay), ammo_type = VALUES(ammo_type), RangedModRange = VALUES(RangedModRange), spellid_1 = VALUES(spellid_1), spelltrigger_1 = VALUES(spelltrigger_1), spellcharges_1 = VALUES(spellcharges_1), spellppmRate_1 = VALUES(spellppmRate_1), spellcooldown_1 = VALUES(spellcooldown_1), spellcategory_1 = VALUES(spellcategory_1), spellcategorycooldown_1 = VALUES(spellcategorycooldown_1), spellid_2 = VALUES(spellid_2), spelltrigger_2 = VALUES(spelltrigger_2), spellcharges_2 = VALUES(spellcharges_2), spellppmRate_2 = VALUES(spellppmRate_2), spellcooldown_2 = VALUES(spellcooldown_2), spellcategory_2 = VALUES(spellcategory_2), spellcategorycooldown_2 = VALUES(spellcategorycooldown_2), spellid_3 = VALUES(spellid_3), spelltrigger_3 = VALUES(spelltrigger_3), spellcharges_3 = VALUES(spellcharges_3), spellppmRate_3 = VALUES(spellppmRate_3), spellcooldown_3 = VALUES(spellcooldown_3), spellcategory_3 = VALUES(spellcategory_3), spellcategorycooldown_3 = VALUES(spellcategorycooldown_3), spellid_4 = VALUES(spellid_4), spelltrigger_4 = VALUES(spelltrigger_4), spellcharges_4 = VALUES(spellcharges_4), spellppmRate_4 = VALUES(spellppmRate_4), spellcooldown_4 = VALUES(spellcooldown_4), spellcategory_4 = VALUES(spellcategory_4), spellcategorycooldown_4 = VALUES(spellcategorycooldown_4), spellid_5 = VALUES(spellid_5), spelltrigger_5 = VALUES(spelltrigger_5), spellcharges_5 = VALUES(spellcharges_5), spellppmRate_5 = VALUES(spellppmRate_5), spellcooldown_5 = VALUES(spellcooldown_5), spellcategory_5 = VALUES(spellcategory_5), spellcategorycooldown_5 = VALUES(spellcategorycooldown_5), bonding = VALUES(bonding), description = VALUES(description), PageText = VALUES(PageText), LanguageID = VALUES(LanguageID), PageMaterial = VALUES(PageMaterial), startquest = VALUES(startquest), lockid = VALUES(lockid), Material = VALUES(Material), sheath = VALUES(sheath), RandomProperty = VALUES(RandomProperty), RandomSuffix = VALUES(RandomSuffix), block = VALUES(block), itemset = VALUES(itemset), MaxDurability = VALUES(MaxDurability), area = VALUES(area), Map = VALUES(Map), BagFamily = VALUES(BagFamily), TotemCategory = VALUES(TotemCategory), socketColor_1 = VALUES(socketColor_1), socketContent_1 = VALUES(socketContent_1), socketColor_2 = VALUES(socketColor_2), socketContent_2 = VALUES(socketContent_2), socketColor_3 = VALUES(socketColor_3), socketContent_3 = VALUES(socketContent_3), socketBonus = VALUES(socketBonus), GemProperties = VALUES(GemProperties), RequiredDisenchantSkill = VALUES(RequiredDisenchantSkill), ArmorDamageModifier = VALUES(ArmorDamageModifier), duration = VALUES(duration), ItemLimitCategory = VALUES(ItemLimitCategory), HolidayId = VALUES(HolidayId), ScriptName = VALUES(ScriptName), DisenchantID = VALUES(DisenchantID), FoodType = VALUES(FoodType), minMoneyLoot = VALUES(minMoneyLoot), maxMoneyLoot = VALUES(maxMoneyLoot), flagsCustom = VALUES(flagsCustom), VerifiedBuild = VALUES(VerifiedBuild)";
+        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), class = VALUES(class), subclass = VALUES(subclass), SoundOverrideSubclass = VALUES(SoundOverrideSubclass), name = VALUES(name), displayid = VALUES(displayid), Quality = VALUES(Quality), Flags = VALUES(Flags), FlagsExtra = VALUES(FlagsExtra), BuyCount = VALUES(BuyCount), BuyPrice = VALUES(BuyPrice), SellPrice = VALUES(SellPrice), InventoryType = VALUES(InventoryType), AllowableClass = VALUES(AllowableClass), AllowableRace = VALUES(AllowableRace), ItemLevel = VALUES(ItemLevel), RequiredLevel = VALUES(RequiredLevel), RequiredSkill = VALUES(RequiredSkill), RequiredSkillRank = VALUES(RequiredSkillRank), requiredspell = VALUES(requiredspell), requiredhonorrank = VALUES(requiredhonorrank), RequiredCityRank = VALUES(RequiredCityRank), RequiredReputationFaction = VALUES(RequiredReputationFaction), RequiredReputationRank = VALUES(RequiredReputationRank), maxcount = VALUES(maxcount), stackable = VALUES(stackable), ContainerSlots = VALUES(ContainerSlots), stat_type1 = VALUES(stat_type1), stat_value1 = VALUES(stat_value1), stat_type2 = VALUES(stat_type2), stat_value2 = VALUES(stat_value2), stat_type3 = VALUES(stat_type3), stat_value3 = VALUES(stat_value3), stat_type4 = VALUES(stat_type4), stat_value4 = VALUES(stat_value4), stat_type5 = VALUES(stat_type5), stat_value5 = VALUES(stat_value5), stat_type6 = VALUES(stat_type6), stat_value6 = VALUES(stat_value6), stat_type7 = VALUES(stat_type7), stat_value7 = VALUES(stat_value7), stat_type8 = VALUES(stat_type8), stat_value8 = VALUES(stat_value8), stat_type9 = VALUES(stat_type9), stat_value9 = VALUES(stat_value9), stat_type10 = VALUES(stat_type10), stat_value10 = VALUES(stat_value10), ScalingStatDistribution = VALUES(ScalingStatDistribution), ScalingStatValue = VALUES(ScalingStatValue), dmg_min1 = VALUES(dmg_min1), dmg_max1 = VALUES(dmg_max1), dmg_type1 = VALUES(dmg_type1), dmg_min2 = VALUES(dmg_min2), dmg_max2 = VALUES(dmg_max2), dmg_type2 = VALUES(dmg_type2), armor = VALUES(armor), holy_res = VALUES(holy_res), fire_res = VALUES(fire_res), nature_res = VALUES(nature_res), frost_res = VALUES(frost_res), shadow_res = VALUES(shadow_res), arcane_res = VALUES(arcane_res), delay = VALUES(delay), ammo_type = VALUES(ammo_type), RangedModRange = VALUES(RangedModRange), spellid_1 = VALUES(spellid_1), spelltrigger_1 = VALUES(spelltrigger_1), spellcharges_1 = VALUES(spellcharges_1), spellppmRate_1 = VALUES(spellppmRate_1), spellcooldown_1 = VALUES(spellcooldown_1), spellcategory_1 = VALUES(spellcategory_1), spellcategorycooldown_1 = VALUES(spellcategorycooldown_1), spellid_2 = VALUES(spellid_2), spelltrigger_2 = VALUES(spelltrigger_2), spellcharges_2 = VALUES(spellcharges_2), spellppmRate_2 = VALUES(spellppmRate_2), spellcooldown_2 = VALUES(spellcooldown_2), spellcategory_2 = VALUES(spellcategory_2), spellcategorycooldown_2 = VALUES(spellcategorycooldown_2), spellid_3 = VALUES(spellid_3), spelltrigger_3 = VALUES(spelltrigger_3), spellcharges_3 = VALUES(spellcharges_3), spellppmRate_3 = VALUES(spellppmRate_3), spellcooldown_3 = VALUES(spellcooldown_3), spellcategory_3 = VALUES(spellcategory_3), spellcategorycooldown_3 = VALUES(spellcategorycooldown_3), spellid_4 = VALUES(spellid_4), spelltrigger_4 = VALUES(spelltrigger_4), spellcharges_4 = VALUES(spellcharges_4), spellppmRate_4 = VALUES(spellppmRate_4), spellcooldown_4 = VALUES(spellcooldown_4), spellcategory_4 = VALUES(spellcategory_4), spellcategorycooldown_4 = VALUES(spellcategorycooldown_4), spellid_5 = VALUES(spellid_5), spelltrigger_5 = VALUES(spelltrigger_5), spellcharges_5 = VALUES(spellcharges_5), spellppmRate_5 = VALUES(spellppmRate_5), spellcooldown_5 = VALUES(spellcooldown_5), spellcategory_5 = VALUES(spellcategory_5), spellcategorycooldown_5 = VALUES(spellcategorycooldown_5), bonding = VALUES(bonding), description = VALUES(description), PageText = VALUES(PageText), LanguageID = VALUES(LanguageID), PageMaterial = VALUES(PageMaterial), startquest = VALUES(startquest), lockid = VALUES(lockid), Material = VALUES(Material), sheath = VALUES(sheath), RandomProperty = VALUES(RandomProperty), RandomSuffix = VALUES(RandomSuffix), block = VALUES(block), itemset = VALUES(itemset), MaxDurability = VALUES(MaxDurability), area = VALUES(area), Map = VALUES(Map), BagFamily = VALUES(BagFamily), TotemCategory = VALUES(TotemCategory), socketColor_1 = VALUES(socketColor_1), socketContent_1 = VALUES(socketContent_1), socketColor_2 = VALUES(socketColor_2), socketContent_2 = VALUES(socketContent_2), socketColor_3 = VALUES(socketColor_3), socketContent_3 = VALUES(socketContent_3), socketBonus = VALUES(socketBonus), GemProperties = VALUES(GemProperties), RequiredDisenchantSkill = VALUES(RequiredDisenchantSkill), ArmorDamageModifier = VALUES(ArmorDamageModifier), duration = VALUES(duration), ItemLimitCategory = VALUES(ItemLimitCategory), HolidayId = VALUES(HolidayId), ScriptName = VALUES(ScriptName), DisenchantID = VALUES(DisenchantID), FoodType = VALUES(FoodType), minMoneyLoot = VALUES(minMoneyLoot), maxMoneyLoot = VALUES(maxMoneyLoot), flagsCustom = VALUES(flagsCustom), VerifiedBuild = VALUES(VerifiedBuild)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(item.entry)
@@ -361,7 +359,6 @@ pub async fn save_item(
         .bind(item.maxcount)
         .bind(item.stackable)
         .bind(item.ContainerSlots)
-        .bind(item.StatsCount)
         .bind(item.stat_type1)
         .bind(item.stat_value1)
         .bind(item.stat_type2)
@@ -480,7 +477,7 @@ pub async fn save_item(
         item.InventoryType, item.AllowableClass, item.AllowableRace, item.ItemLevel, item.RequiredLevel,
         item.RequiredSkill, item.RequiredSkillRank, item.requiredspell, item.requiredhonorrank,
         item.RequiredCityRank, item.RequiredReputationFaction, item.RequiredReputationRank,
-        item.maxcount, item.stackable, item.ContainerSlots, item.StatsCount,
+        item.maxcount, item.stackable, item.ContainerSlots,
         item.stat_type1, item.stat_value1, item.stat_type2, item.stat_value2,
         item.stat_type3, item.stat_value3, item.stat_type4, item.stat_value4,
         item.stat_type5, item.stat_value5, item.stat_type6, item.stat_value6,

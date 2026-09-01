@@ -31,7 +31,6 @@ export interface ItemTemplate {
   maxcount: number;
   stackable: number | null;
   ContainerSlots: number;
-  StatsCount: number;
   stat_type1: number;
   stat_value1: number;
   stat_type2: number;
@@ -61,12 +60,12 @@ export interface ItemTemplate {
   dmg_max2: number;
   dmg_type2: number;
   armor: number;
-  holy_res: number;
-  fire_res: number;
-  nature_res: number;
-  frost_res: number;
-  shadow_res: number;
-  arcane_res: number;
+  holy_res: number | null;
+  fire_res: number | null;
+  nature_res: number | null;
+  frost_res: number | null;
+  shadow_res: number | null;
+  arcane_res: number | null;
   delay: number;
   ammo_type: number;
   RangedModRange: number;
@@ -133,7 +132,7 @@ export interface ItemTemplate {
   GemProperties: number;
   RequiredDisenchantSkill: number;
   ArmorDamageModifier: number;
-  Duration: number;
+  duration: number;
   ItemLimitCategory: number;
   HolidayId: number;
   ScriptName: string;

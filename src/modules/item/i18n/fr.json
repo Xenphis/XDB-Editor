@@ -87,7 +87,6 @@
       "maxcount": "Quantité maximale",
       "stackable": "Empilable",
       "ContainerSlots": "Emplacements de conteneur",
-      "StatsCount": "Nombre de stats",
       "stat_type": "Type de stat",
       "stat_value": "Valeur de stat",
       "ScalingStatDistribution": "Distribution de stat évolutive",

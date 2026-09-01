@@ -20,59 +20,57 @@ pub struct GameObjectTemplate {
     pub unk1: String,
     pub size: f32,
     #[sqlx(rename = "Data0")]
-    pub Data0: i32,
+    pub Data0: u32,
     #[sqlx(rename = "Data1")]
     pub Data1: i32,
     #[sqlx(rename = "Data2")]
-    pub Data2: i32,
+    pub Data2: u32,
     #[sqlx(rename = "Data3")]
-    pub Data3: i32,
+    pub Data3: u32,
     #[sqlx(rename = "Data4")]
-    pub Data4: i32,
+    pub Data4: u32,
     #[sqlx(rename = "Data5")]
-    pub Data5: i32,
+    pub Data5: u32,
     #[sqlx(rename = "Data6")]
     pub Data6: i32,
     #[sqlx(rename = "Data7")]
-    pub Data7: i32,
+    pub Data7: u32,
     #[sqlx(rename = "Data8")]
-    pub Data8: i32,
+    pub Data8: u32,
     #[sqlx(rename = "Data9")]
-    pub Data9: i32,
+    pub Data9: u32,
     #[sqlx(rename = "Data10")]
-    pub Data10: i32,
+    pub Data10: u32,
     #[sqlx(rename = "Data11")]
-    pub Data11: i32,
+    pub Data11: u32,
     #[sqlx(rename = "Data12")]
-    pub Data12: i32,
+    pub Data12: u32,
     #[sqlx(rename = "Data13")]
-    pub Data13: i32,
+    pub Data13: u32,
     #[sqlx(rename = "Data14")]
-    pub Data14: i32,
+    pub Data14: u32,
     #[sqlx(rename = "Data15")]
-    pub Data15: i32,
+    pub Data15: u32,
     #[sqlx(rename = "Data16")]
-    pub Data16: i32,
+    pub Data16: u32,
     #[sqlx(rename = "Data17")]
-    pub Data17: i32,
+    pub Data17: u32,
     #[sqlx(rename = "Data18")]
-    pub Data18: i32,
+    pub Data18: u32,
     #[sqlx(rename = "Data19")]
-    pub Data19: i32,
+    pub Data19: u32,
     #[sqlx(rename = "Data20")]
-    pub Data20: i32,
+    pub Data20: u32,
     #[sqlx(rename = "Data21")]
-    pub Data21: i32,
+    pub Data21: u32,
     #[sqlx(rename = "Data22")]
-    pub Data22: i32,
+    pub Data22: u32,
     #[sqlx(rename = "Data23")]
-    pub Data23: i32,
+    pub Data23: u32,
     #[sqlx(rename = "AIName")]
     pub AIName: String,
     #[sqlx(rename = "ScriptName")]
     pub ScriptName: String,
-    #[sqlx(rename = "StringId")]
-    pub StringId: Option<String>,
     #[sqlx(rename = "VerifiedBuild")]
     pub VerifiedBuild: Option<i32>,
 }
@@ -237,14 +235,14 @@ pub async fn save_gameobject(
             Data0, Data1, Data2, Data3, Data4, Data5, Data6, Data7,
             Data8, Data9, Data10, Data11, Data12, Data13, Data14, Data15,
             Data16, Data17, Data18, Data19, Data20, Data21, Data22, Data23,
-            AIName, ScriptName, StringId, VerifiedBuild
+            AIName, ScriptName, VerifiedBuild
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?
-        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), `type` = VALUES(`type`), displayId = VALUES(displayId), name = VALUES(name), IconName = VALUES(IconName), castBarCaption = VALUES(castBarCaption), unk1 = VALUES(unk1), size = VALUES(size), Data0 = VALUES(Data0), Data1 = VALUES(Data1), Data2 = VALUES(Data2), Data3 = VALUES(Data3), Data4 = VALUES(Data4), Data5 = VALUES(Data5), Data6 = VALUES(Data6), Data7 = VALUES(Data7), Data8 = VALUES(Data8), Data9 = VALUES(Data9), Data10 = VALUES(Data10), Data11 = VALUES(Data11), Data12 = VALUES(Data12), Data13 = VALUES(Data13), Data14 = VALUES(Data14), Data15 = VALUES(Data15), Data16 = VALUES(Data16), Data17 = VALUES(Data17), Data18 = VALUES(Data18), Data19 = VALUES(Data19), Data20 = VALUES(Data20), Data21 = VALUES(Data21), Data22 = VALUES(Data22), Data23 = VALUES(Data23), AIName = VALUES(AIName), ScriptName = VALUES(ScriptName), StringId = VALUES(StringId), VerifiedBuild = VALUES(VerifiedBuild)";
+            ?, ?, ?
+        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), `type` = VALUES(`type`), displayId = VALUES(displayId), name = VALUES(name), IconName = VALUES(IconName), castBarCaption = VALUES(castBarCaption), unk1 = VALUES(unk1), size = VALUES(size), Data0 = VALUES(Data0), Data1 = VALUES(Data1), Data2 = VALUES(Data2), Data3 = VALUES(Data3), Data4 = VALUES(Data4), Data5 = VALUES(Data5), Data6 = VALUES(Data6), Data7 = VALUES(Data7), Data8 = VALUES(Data8), Data9 = VALUES(Data9), Data10 = VALUES(Data10), Data11 = VALUES(Data11), Data12 = VALUES(Data12), Data13 = VALUES(Data13), Data14 = VALUES(Data14), Data15 = VALUES(Data15), Data16 = VALUES(Data16), Data17 = VALUES(Data17), Data18 = VALUES(Data18), Data19 = VALUES(Data19), Data20 = VALUES(Data20), Data21 = VALUES(Data21), Data22 = VALUES(Data22), Data23 = VALUES(Data23), AIName = VALUES(AIName), ScriptName = VALUES(ScriptName), VerifiedBuild = VALUES(VerifiedBuild)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(data.entry)
@@ -263,7 +261,6 @@ pub async fn save_gameobject(
         .bind(data.Data20).bind(data.Data21).bind(data.Data22).bind(data.Data23)
         .bind(&data.AIName)
         .bind(&data.ScriptName)
-        .bind(&data.StringId)
         .bind(data.VerifiedBuild)
         .execute(pool)
         .await,
@@ -271,7 +268,7 @@ pub async fn save_gameobject(
         data.Data0, data.Data1, data.Data2, data.Data3, data.Data4, data.Data5, data.Data6, data.Data7,
         data.Data8, data.Data9, data.Data10, data.Data11, data.Data12, data.Data13, data.Data14, data.Data15,
         data.Data16, data.Data17, data.Data18, data.Data19, data.Data20, data.Data21, data.Data22, data.Data23,
-        &data.AIName, &data.ScriptName, &data.StringId, data.VerifiedBuild
+        &data.AIName, &data.ScriptName, data.VerifiedBuild
     ).map_err(|e| format!("Save failed: {}", e))?;
 
     log::info!("Saved GameObject entry {}", data.entry);

@@ -18,6 +18,6 @@ export interface GameObject {
   animprogress: number;
   state: number;
   ScriptName: string | null;
-  StringId: string | null;
   VerifiedBuild: number | null;
+  Comment: string | null;
 }

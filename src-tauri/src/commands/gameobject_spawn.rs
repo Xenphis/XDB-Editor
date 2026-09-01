@@ -28,8 +28,8 @@ pub struct GameObjectSpawn {
     pub animprogress: u8,
     pub state: u8,
     pub ScriptName: Option<String>,
-    pub StringId: Option<String>,
     pub VerifiedBuild: Option<i32>,
+    pub Comment: Option<String>,
 }
 
 #[tauri::command]
@@ -67,8 +67,8 @@ pub async fn save_gameobject_spawn(
             position_x, position_y, position_z, orientation,
             rotation0, rotation1, rotation2, rotation3,
             spawntimesecs, animprogress, state,
-            ScriptName, StringId, VerifiedBuild
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guid = VALUES(guid), id = VALUES(id), map = VALUES(map), zoneId = VALUES(zoneId), areaId = VALUES(areaId), spawnMask = VALUES(spawnMask), phaseMask = VALUES(phaseMask), position_x = VALUES(position_x), position_y = VALUES(position_y), position_z = VALUES(position_z), orientation = VALUES(orientation), rotation0 = VALUES(rotation0), rotation1 = VALUES(rotation1), rotation2 = VALUES(rotation2), rotation3 = VALUES(rotation3), spawntimesecs = VALUES(spawntimesecs), animprogress = VALUES(animprogress), state = VALUES(state), ScriptName = VALUES(ScriptName), StringId = VALUES(StringId), VerifiedBuild = VALUES(VerifiedBuild)";
+            ScriptName, VerifiedBuild, Comment
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guid = VALUES(guid), id = VALUES(id), map = VALUES(map), zoneId = VALUES(zoneId), areaId = VALUES(areaId), spawnMask = VALUES(spawnMask), phaseMask = VALUES(phaseMask), position_x = VALUES(position_x), position_y = VALUES(position_y), position_z = VALUES(position_z), orientation = VALUES(orientation), rotation0 = VALUES(rotation0), rotation1 = VALUES(rotation1), rotation2 = VALUES(rotation2), rotation3 = VALUES(rotation3), spawntimesecs = VALUES(spawntimesecs), animprogress = VALUES(animprogress), state = VALUES(state), ScriptName = VALUES(ScriptName), VerifiedBuild = VALUES(VerifiedBuild), Comment = VALUES(Comment)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(spawn.guid)
@@ -90,15 +90,15 @@ pub async fn save_gameobject_spawn(
         .bind(spawn.animprogress)
         .bind(spawn.state)
         .bind(&spawn.ScriptName)
-        .bind(&spawn.StringId)
         .bind(spawn.VerifiedBuild)
+        .bind(&spawn.Comment)
         .execute(pool)
         .await,
         spawn.guid, spawn.id, spawn.map, spawn.zoneId, spawn.areaId, spawn.spawnMask, spawn.phaseMask,
         spawn.position_x, spawn.position_y, spawn.position_z, spawn.orientation,
         spawn.rotation0, spawn.rotation1, spawn.rotation2, spawn.rotation3,
         spawn.spawntimesecs, spawn.animprogress, spawn.state,
-        &spawn.ScriptName, &spawn.StringId, spawn.VerifiedBuild
+        &spawn.ScriptName, spawn.VerifiedBuild, &spawn.Comment
     ).map_err(|e| format!("Save failed: {}", e))?;
 
     log::info!("Saved gameobject spawn guid {}", spawn.guid);

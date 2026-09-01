@@ -33,6 +33,5 @@ export interface GameObjectTemplate {
   Data23: number;
   AIName: string;
   ScriptName: string;
-  StringId: string | null;
   VerifiedBuild: number | null;
 }

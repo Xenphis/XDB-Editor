@@ -388,10 +388,6 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   <p>{{ t('itemEditor.groups.statsDesc') }}</p>
                 </div>
                 <div class="field-grid">
-                  <EditorField :label="t('itemEditor.fields.StatsCount')" :modified="isFieldModified('StatsCount')">
-                    <InputNumber v-model="form.StatsCount" fluid />
-                  </EditorField>
-
                   <template v-for="i in 10" :key="`stat-${i}`">
                     <EditorField :label="`${t('itemEditor.fields.stat_type')} ${i}`" :modified="isFieldModified(`stat_type${i}`)">
                       <Select v-model="(form as any)[`stat_type${i}`]" :options="statTypeOptions" optionLabel="name" optionValue="value" fluid />
@@ -653,7 +649,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.duration')" :modified="isFieldModified('duration')">
-                    <InputNumber v-model="form.Duration" fluid />
+                    <InputNumber v-model="form.duration" fluid />
                   </EditorField>
 
                   <EditorField :label="t('itemEditor.fields.ItemLimitCategory')" :modified="isFieldModified('ItemLimitCategory')">
