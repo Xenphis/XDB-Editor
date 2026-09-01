@@ -36,7 +36,7 @@ use crate::debug_sql;
 pub struct LootTemplateRow {
     pub Entry: u32,
     pub Item: u32,
-    pub Reference: u32,
+    pub Reference: i32,
     pub Chance: f32,
     pub QuestRequired: bool,
     pub LootMode: u16,
