@@ -11,18 +11,24 @@ defineProps<{
   <div class="field" :class="{ 'field-modified': modified, 'full-width': fullWidth }">
     <label>
       {{ label }}
-      <i 
-        v-if="tooltip" 
-        class="pi pi-question-circle" 
+      <i
+        v-if="tooltip"
+        class="pi pi-question-circle"
         v-tooltip.top="tooltip"
       ></i>
     </label>
-    <slot />
+    <div class="field-input"><slot /></div>
   </div>
 </template>
 
 <style scoped>
-.field label {
+div.field {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+}
+
+div.field label {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -34,30 +40,34 @@ defineProps<{
   margin-bottom: 0.3rem;
 }
 
-.field label i {
+.field-input {
+  min-width: 0;
+}
+
+div.field label i {
   font-size: 0.8rem;
   color: var(--text-muted);
   cursor: help;
   transition: color 0.2s;
 }
 
-.field label i:hover {
+div.field label i:hover {
   color: var(--text-soft);
 }
 
-.field.full-width {
+div.field.full-width {
   grid-column: 1 / -1;
 }
 
-.field.field-modified {
+div.field.field-modified {
   position: relative;
 }
 
-.field.field-modified label {
+div.field.field-modified label {
   color: var(--accent);
 }
 
-.field.field-modified::before {
+div.field.field-modified::before {
   content: '';
   position: absolute;
   left: -0.5rem;
@@ -68,9 +78,9 @@ defineProps<{
   border-radius: 2px;
 }
 
-.field.field-modified :deep(.p-inputtext),
-.field.field-modified :deep(.p-inputnumber-input),
-.field.field-modified :deep(.p-select) {
+div.field.field-modified :deep(.p-inputtext),
+div.field.field-modified :deep(.p-inputnumber-input),
+div.field.field-modified :deep(.p-select) {
   border-color: var(--accent-focus) !important;
   background: var(--accent-soft) !important;
 }

@@ -254,13 +254,4 @@ onMounted(() => {
 .field-grid-4 {
   grid-template-columns: repeat(4, 1fr);
 }
-
-/* Subgrid: sync each field's label row to the tallest label in its
-   visual row, so inputs stay aligned regardless of label wrap. */
-.field-grid-4 > .field {
-  display: grid;
-  grid-template-rows: subgrid;
-  grid-row: span 2;
-  gap: 0.35rem;
-}
 </style>
