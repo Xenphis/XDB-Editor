@@ -56,11 +56,11 @@ pub async fn get_creature_formation_groups(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "SELECT cf.leaderGUID, COUNT(*) AS memberCount, c.id AS entry, ct.name, c.map \
+    const SQL: &str = "SELECT cf.leaderGUID, COUNT(*) AS memberCount, c.id1 AS entry, ct.name, c.map \
          FROM creature_formations cf \
          LEFT JOIN creature c ON c.guid = cf.leaderGUID \
-         LEFT JOIN creature_template ct ON ct.entry = c.id \
-         GROUP BY cf.leaderGUID, c.id, ct.name, c.map \
+         LEFT JOIN creature_template ct ON ct.entry = c.id1 \
+         GROUP BY cf.leaderGUID, c.id1, ct.name, c.map \
          ORDER BY cf.leaderGUID";
     debug_sql!(app, debug, SQL,
         sqlx::query_as::<_, CreatureFormationGroup>(SQL)
@@ -82,10 +82,10 @@ pub async fn get_creature_formation(
     // The leader's own row (memberGUID = leaderGUID) sorts first so the editor
     // can pin it without re-sorting client side.
     const SQL: &str = "SELECT cf.leaderGUID, cf.memberGUID, cf.dist, cf.angle, cf.groupAI, cf.point_1, cf.point_2, \
-         c.id AS entry, ct.name, c.map \
+         c.id1 AS entry, ct.name, c.map \
          FROM creature_formations cf \
          LEFT JOIN creature c ON c.guid = cf.memberGUID \
-         LEFT JOIN creature_template ct ON ct.entry = c.id \
+         LEFT JOIN creature_template ct ON ct.entry = c.id1 \
          WHERE cf.leaderGUID = ? \
          ORDER BY cf.memberGUID = cf.leaderGUID DESC, cf.memberGUID";
     debug_sql!(app, debug, SQL,
@@ -110,10 +110,10 @@ pub async fn get_creature_formation_of_member(
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
     const SQL: &str = "SELECT cf.leaderGUID, cf.memberGUID, cf.dist, cf.angle, cf.groupAI, cf.point_1, cf.point_2, \
-         c.id AS entry, ct.name, c.map \
+         c.id1 AS entry, ct.name, c.map \
          FROM creature_formations cf \
          LEFT JOIN creature c ON c.guid = cf.leaderGUID \
-         LEFT JOIN creature_template ct ON ct.entry = c.id \
+         LEFT JOIN creature_template ct ON ct.entry = c.id1 \
          WHERE cf.memberGUID = ?";
     debug_sql!(app, debug, SQL,
         sqlx::query_as::<_, CreatureFormationMember>(SQL)
@@ -143,12 +143,12 @@ pub async fn search_creature_spawns(
     let numeric = query.trim().parse::<u32>().ok();
     let like = format!("%{}%", query.trim());
 
-    const SQL: &str = "SELECT c.guid, c.id, c.map, ct.name, cf.leaderGUID \
+    const SQL: &str = "SELECT c.guid, c.id1 AS id, c.map, ct.name, cf.leaderGUID \
          FROM creature c \
-         LEFT JOIN creature_template ct ON ct.entry = c.id \
+         LEFT JOIN creature_template ct ON ct.entry = c.id1 \
          LEFT JOIN creature_formations cf ON cf.memberGUID = c.guid \
          WHERE (? IS NULL OR c.map = ?) \
-           AND (c.guid = ? OR c.id = ? OR ct.name LIKE ?) \
+           AND (c.guid = ? OR c.id1 = ? OR ct.name LIKE ?) \
          ORDER BY c.guid \
          LIMIT ?";
     debug_sql!(app, debug, SQL,

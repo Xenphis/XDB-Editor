@@ -12,18 +12,8 @@ pub struct CreatureTemplateAddon {
     pub entry: u32,
     pub path_id: u32,
     pub mount: u32,
-    #[sqlx(rename = "MountCreatureID")]
-    pub MountCreatureID: u32,
-    #[sqlx(rename = "StandState")]
-    pub StandState: u8,
-    #[sqlx(rename = "AnimTier")]
-    pub AnimTier: u8,
-    #[sqlx(rename = "VisFlags")]
-    pub VisFlags: u8,
-    #[sqlx(rename = "SheathState")]
-    pub SheathState: u8,
-    #[sqlx(rename = "PvPFlags")]
-    pub PvPFlags: u8,
+    pub bytes1: u32,
+    pub bytes2: u32,
     pub emote: u32,
     pub visibilityDistanceType: u8,
     pub auras: Option<String>,
@@ -60,26 +50,21 @@ pub async fn save_npc_addon(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "INSERT INTO creature_template_addon (entry, path_id, mount, MountCreatureID, StandState, AnimTier, VisFlags, SheathState, PvPFlags, emote, visibilityDistanceType, auras) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE entry = VALUES(entry), path_id = VALUES(path_id), mount = VALUES(mount), MountCreatureID = VALUES(MountCreatureID), StandState = VALUES(StandState), AnimTier = VALUES(AnimTier), VisFlags = VALUES(VisFlags), SheathState = VALUES(SheathState), PvPFlags = VALUES(PvPFlags), emote = VALUES(emote), visibilityDistanceType = VALUES(visibilityDistanceType), auras = VALUES(auras)";
+    const SQL: &str = "INSERT INTO creature_template_addon (entry, path_id, mount, bytes1, bytes2, emote, visibilityDistanceType, auras) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE entry = VALUES(entry), path_id = VALUES(path_id), mount = VALUES(mount), bytes1 = VALUES(bytes1), bytes2 = VALUES(bytes2), emote = VALUES(emote), visibilityDistanceType = VALUES(visibilityDistanceType), auras = VALUES(auras)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(entry)
         .bind(addon.path_id)
         .bind(addon.mount)
-        .bind(addon.MountCreatureID)
-        .bind(addon.StandState)
-        .bind(addon.AnimTier)
-        .bind(addon.VisFlags)
-        .bind(addon.SheathState)
-        .bind(addon.PvPFlags)
+        .bind(addon.bytes1)
+        .bind(addon.bytes2)
         .bind(addon.emote)
         .bind(addon.visibilityDistanceType)
         .bind(&addon.auras)
         .execute(pool)
         .await,
-        entry, addon.path_id, addon.mount, addon.MountCreatureID,
-        addon.StandState, addon.AnimTier, addon.VisFlags, addon.SheathState,
-        addon.PvPFlags, addon.emote, addon.visibilityDistanceType, &addon.auras
+        entry, addon.path_id, addon.mount, addon.bytes1, addon.bytes2,
+        addon.emote, addon.visibilityDistanceType, &addon.auras
     ).map_err(|e| format!("Save failed: {}", e))?;
 
     log::info!("Saved addon for creature {}", entry);

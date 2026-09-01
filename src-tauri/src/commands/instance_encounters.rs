@@ -85,7 +85,7 @@ pub async fn get_instance_encounters_by_map(
     let pool = db.as_ref().ok_or("Not connected to database")?;
     const SQL: &str = "SELECT DISTINCT ie.entry, ie.creditType, ie.creditEntry, ie.lastEncounterDungeon, ie.comment \
         FROM instance_encounters ie \
-        JOIN creature c ON c.id = ie.creditEntry AND ie.creditType = 0 \
+        JOIN creature c ON c.id1 = ie.creditEntry AND ie.creditType = 0 \
         WHERE c.map = ? ORDER BY ie.entry";
     let rows: Vec<InstanceEncounter> = debug_sql!(app, debug, SQL,
         sqlx::query_as(SQL).bind(map).fetch_all(pool).await,

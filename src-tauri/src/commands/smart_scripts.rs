@@ -98,7 +98,7 @@ pub async fn get_smart_script_owners(
          FROM smart_scripts ss \
          LEFT JOIN creature_template ct ON ss.source_type = 0 AND ss.entryorguid > 0 AND ct.entry = ss.entryorguid \
          LEFT JOIN creature c ON ss.source_type = 0 AND ss.entryorguid < 0 AND c.guid = -ss.entryorguid \
-         LEFT JOIN creature_template ctg ON ctg.entry = c.id \
+         LEFT JOIN creature_template ctg ON ctg.entry = c.id1 \
          LEFT JOIN gameobject_template gt ON ss.source_type = 1 AND ss.entryorguid > 0 AND gt.entry = ss.entryorguid \
          LEFT JOIN gameobject g ON ss.source_type = 1 AND ss.entryorguid < 0 AND g.guid = -ss.entryorguid \
          LEFT JOIN gameobject_template gtg ON gtg.entry = g.id \
@@ -159,7 +159,7 @@ pub async fn get_smart_script_owner_info(
         )),
         (0, false) => Some((
             "SELECT ct.name, ct.AIName AS ai_name, ct.ScriptName AS script_name \
-             FROM creature c JOIN creature_template ct ON ct.entry = c.id WHERE c.guid = ?",
+             FROM creature c JOIN creature_template ct ON ct.entry = c.id1 WHERE c.guid = ?",
             -entryorguid,
         )),
         (1, true) => Some((

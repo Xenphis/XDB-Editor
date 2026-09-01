@@ -3,5 +3,5 @@ export interface CreatureTemplateLocale {
   locale: string
   Name: string
   Title: string | null
-  VerifiedBuild: number
+  VerifiedBuild: number | null
 }

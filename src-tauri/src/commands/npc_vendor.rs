@@ -10,10 +10,6 @@ use crate::debug_sql;
 /// One `npc_vendor` row enriched with the sold item's identity, so the stock
 /// table can label an item id without a second round-trip. The joined columns
 /// are optional: a vendor may reference an item that no longer exists.
-///
-/// `VerifiedBuild` is deliberately absent — it is sniffer metadata the editor
-/// has no use for, and leaving it out of both the SELECT and the generated
-/// INSERT keeps the module working on cores that lack the column.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct NpcVendorItem {
     pub entry: u32,
@@ -22,6 +18,7 @@ pub struct NpcVendorItem {
     pub maxcount: u32,
     pub incrtime: u32,
     pub ExtendedCost: u32,
+    pub VerifiedBuild: Option<i32>,
     pub itemName: Option<String>,
     pub itemQuality: Option<u8>,
 }
@@ -89,7 +86,7 @@ pub async fn get_npc_vendor(
 
     // Ordered like the in-game vendor window: by slot, then by item id for the
     // rows that share the default slot 0.
-    const SQL: &str = "SELECT nv.entry, nv.slot, nv.item, nv.maxcount, nv.incrtime, nv.ExtendedCost, \
+    const SQL: &str = "SELECT nv.entry, nv.slot, nv.item, nv.maxcount, nv.incrtime, nv.ExtendedCost, nv.VerifiedBuild, \
          it.name AS itemName, it.Quality AS itemQuality \
          FROM npc_vendor nv \
          LEFT JOIN item_template it ON it.entry = nv.item \

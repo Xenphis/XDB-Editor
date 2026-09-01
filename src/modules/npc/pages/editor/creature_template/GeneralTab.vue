@@ -6,6 +6,7 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { locale_options } from '@core/types/common'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
+import { getByte, setByte } from '@/modules/npc/composables/bytesFields'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
@@ -22,6 +23,12 @@ const repForm = store.onKillRep.newEntry
 const localeEntries = computed(() => store.locales.getNewEntries())
 
 const { pvpFlagsOptions, rankOptions, unitClassOptions, typeOptions, familyOptions, iconOptions } = useCreatureEnumOptions()
+
+// bytes2 = SheathState (byte 0) / PvPFlags (byte 1) / unused (bytes 2-3)
+const addonPvpFlags = computed({
+  get: () => getByte(addonForm.bytes2, 1),
+  set: (v: number) => { addonForm.bytes2 = setByte(addonForm.bytes2, 1, v) },
+})
 
 const regenHealthOptions = computed(() => [
   { value: 0, label: t('creature_enums.regen_health.0.name') },
@@ -131,8 +138,8 @@ onMounted(() => {
           />
         </div>
       </EditorField>
-      <EditorField :label="t('creature_template.fields.addon_pvpflags')" :modified="isAddonModified('PvPFlags')">
-        <BitmaskField v-model="addonForm.PvPFlags" :options="pvpFlagsOptions" :label="t('creature_template.fields.addon_pvpflags')" />
+      <EditorField :label="t('creature_template.fields.addon_pvpflags')" :modified="isAddonModified('bytes2')">
+        <BitmaskField v-model="addonPvpFlags" :options="pvpFlagsOptions" :label="t('creature_template.fields.addon_pvpflags')" />
       </EditorField>
     </div>
   </div>

@@ -5,6 +5,7 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
+import { getByte, setByte } from '@/modules/npc/composables/bytesFields'
 import EditorField from '@core/components/EditorField.vue'
 import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
@@ -34,6 +35,20 @@ function onModelSelect(displayId: number) {
 }
 
 const { visFlagsOptions, standStateOptions, animTierOptions, visibilityDistanceOptions: visDistOptions } = useCreatureEnumOptions()
+
+// bytes1 = StandState (byte 0) / unused (byte 1) / VisFlags (byte 2) / AnimTier (byte 3)
+const addonStandState = computed({
+  get: () => getByte(addonForm.bytes1, 0),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 0, v) },
+})
+const addonAnimTier = computed({
+  get: () => getByte(addonForm.bytes1, 3),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 3, v) },
+})
+const addonVisFlags = computed({
+  get: () => getByte(addonForm.bytes1, 2),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 2, v) },
+})
 
 const equipHasChanges = computed(() => store.equips.getSqlDiff(form.entry).length > 0)
 
@@ -110,11 +125,11 @@ function removeModel(index: number) {
       <p>{{ t('creature_template.groups.animationDesc') }}</p>
     </div>
     <div class="field-grid">
-      <EditorField :label="t('creature_template.fields.addon_standstate')" :modified="isAddonModified('StandState')">
-        <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
+      <EditorField :label="t('creature_template.fields.addon_standstate')" :modified="isAddonModified('bytes1')">
+        <Select v-model="addonStandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
-      <EditorField :label="t('creature_template.fields.addon_animtier')" :modified="isAddonModified('AnimTier')">
-        <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
+      <EditorField :label="t('creature_template.fields.addon_animtier')" :modified="isAddonModified('bytes1')">
+        <Select v-model="addonAnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_emote')" :modified="isAddonModified('emote')">
         <InputNumber v-model="addonForm.emote" :useGrouping="false" fluid />
@@ -129,8 +144,8 @@ function removeModel(index: number) {
       <p>{{ t('creature_template.groups.visibilityDesc') }}</p>
     </div>
     <div class="field-grid">
-      <EditorField :label="t('creature_template.fields.addon_visflags')" :modified="isAddonModified('VisFlags')">
-        <BitmaskField v-model="addonForm.VisFlags" :options="visFlagsOptions" :label="t('creature_template.fields.addon_visflags')" />
+      <EditorField :label="t('creature_template.fields.addon_visflags')" :modified="isAddonModified('bytes1')">
+        <BitmaskField v-model="addonVisFlags" :options="visFlagsOptions" :label="t('creature_template.fields.addon_visflags')" />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_visdistance')" :modified="isAddonModified('visibilityDistanceType')">
         <Select v-model="addonForm.visibilityDistanceType" :options="visDistOptions" optionLabel="name" optionValue="value" fluid />
@@ -147,9 +162,6 @@ function removeModel(index: number) {
     <div class="field-grid">
       <EditorField :label="t('creature_template.fields.addon_mount')" :modified="isAddonModified('mount')">
         <InputNumber v-model="addonForm.mount" :useGrouping="false" fluid />
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.addon_mountcreatureid')" :modified="isAddonModified('MountCreatureID')">
-        <InputNumber v-model="addonForm.MountCreatureID" :useGrouping="false" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.VehicleId')" :modified="isFieldModified('VehicleId')">
         <InputNumber v-model="form.VehicleId" :useGrouping="false" fluid />

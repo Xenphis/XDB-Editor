@@ -4,6 +4,7 @@ import type { Trainer } from '@/modules/npc/types/trainer/trainer'
 import type { CompositeKeyConfig } from '@core/composables/useQueryGenerator'
 import { ArraySubTable } from '@core/stores/SubTableManager'
 import { createEntityEditorStore } from '@core/stores/createEntityEditorStore'
+import { sqlText } from '@core/utils/sql'
 import * as npcService from '@/modules/npc/service'
 
 // ─── TrainerSpellEntry (store-side, no TrainerId needed) ─────────────────────
@@ -23,6 +24,12 @@ export interface CreatureDefaultTrainerEntry {
   CreatureId: number
 }
 
+export interface TrainerLocaleEntry {
+  locale: string
+  Greeting_lang: string | null
+  VerifiedBuild: number | null
+}
+
 // ─── Composite key config for trainer_spell ──────────────────────────────────
 
 const trainerSpellConfig: Omit<CompositeKeyConfig<TrainerSpellEntry>, 'parentId'> = {
@@ -39,6 +46,17 @@ const trainerSpellConfig: Omit<CompositeKeyConfig<TrainerSpellEntry>, 'parentId'
     a.ReqAbility3 === b.ReqAbility3 &&
     a.ReqLevel === b.ReqLevel,
   toSqlValues: (e) => [e.MoneyCost, e.ReqSkillLine, e.ReqSkillRank, e.ReqAbility1, e.ReqAbility2, e.ReqAbility3, e.ReqLevel, 0],
+}
+
+// ─── Composite key config for trainer_locale ─────────────────────────────────
+
+const trainerLocaleConfig: Omit<CompositeKeyConfig<TrainerLocaleEntry>, 'parentId'> = {
+  table: 'trainer_locale',
+  parentKey: 'Id',
+  childKey: 'locale',
+  columns: ['Greeting_lang', 'VerifiedBuild'],
+  isEqual: (a, b) => a.Greeting_lang === b.Greeting_lang,
+  toSqlValues: (e) => [sqlText(e.Greeting_lang), 0],
 }
 
 // ─── Default factory ─────────────────────────────────────────────────────────
@@ -84,6 +102,14 @@ export const useTrainerStore = defineStore('trainer', () => {
     summarize: (e) => String(e.CreatureId),
   })
 
+  // --- Sub-table: trainer_locale ---
+  const locales = new ArraySubTable<TrainerLocaleEntry>({
+    tableName: 'trainer_locale',
+    compositeConfig: trainerLocaleConfig,
+    fieldPrefix: 'trainer_locale',
+    summarize: (e) => e.locale,
+  })
+
   const editor = createEntityEditorStore<Trainer>({
     tableName: 'trainer',
     primaryKey: 'Id',
@@ -114,6 +140,17 @@ export const useTrainerStore = defineStore('trainer', () => {
           return rows.map(row => ({ CreatureId: row.CreatureId })) satisfies CreatureDefaultTrainerEntry[]
         },
       },
+      {
+        manager: locales,
+        load: async (id) => {
+          const rows = await npcService.getTrainerLocales(id).catch(() => [])
+          return rows.map(row => ({
+            locale: row.locale,
+            Greeting_lang: row.Greeting_lang,
+            VerifiedBuild: row.VerifiedBuild,
+          })) satisfies TrainerLocaleEntry[]
+        },
+      },
     ],
   })
 
@@ -134,6 +171,7 @@ export const useTrainerStore = defineStore('trainer', () => {
     // sub-tables
     spells,
     creatureLinks,
+    locales,
     ...editor,
     // actions
     setTrainers,

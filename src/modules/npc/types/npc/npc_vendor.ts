@@ -7,6 +7,7 @@ export interface NpcVendor {
   maxcount: number;
   incrtime: number;
   ExtendedCost: number;
+  VerifiedBuild: number | null;
 }
 
 /** A stock row joined with the sold item (name/quality may be missing when the

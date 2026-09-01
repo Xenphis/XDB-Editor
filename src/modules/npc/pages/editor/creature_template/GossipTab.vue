@@ -107,10 +107,7 @@ const textSlots = Array.from({ length: 8 }, (_value, index) => ({
   broadcast: `BroadcastTextID${index}`,
   lang: `lang${index}`,
   probability: `Probability${index}`,
-  emotes: [0, 1, 2].map(emoteIndex => ({
-    delay: `EmoteDelay${index}_${emoteIndex}`,
-    emote: `Emote${index}_${emoteIndex}`,
-  })),
+  emotes: [0, 1, 2, 3, 4, 5].map(emoteIndex => `em${index}_${emoteIndex}`),
 }))
 
 function getField(row: object | null, field: string) {
@@ -499,14 +496,9 @@ const optionSectionTabs = computed<SectionTabItem[]>(() => [
             <EditorField :label="t('creature_template.gossip.fields.Probability')">
               <InputNumber :modelValue="getField(detailText, slot.probability)" :minFractionDigits="0" :maxFractionDigits="3" :useGrouping="false" fluid @update:modelValue="value => setField(detailText, slot.probability, value)" />
             </EditorField>
-            <template v-for="(emote, emoteIndex) in slot.emotes" :key="`${slot.index}-${emoteIndex}`">
-              <EditorField :label="`${t('creature_template.gossip.fields.EmoteDelay')} ${emoteIndex}`">
-                <InputNumber :modelValue="getField(detailText, emote.delay)" :useGrouping="false" fluid @update:modelValue="value => setField(detailText, emote.delay, value)" />
-              </EditorField>
-              <EditorField :label="`${t('creature_template.gossip.fields.Emote')} ${emoteIndex}`">
-                <InputNumber :modelValue="getField(detailText, emote.emote)" :useGrouping="false" fluid @update:modelValue="value => setField(detailText, emote.emote, value)" />
-              </EditorField>
-            </template>
+            <EditorField v-for="(emoteField, emoteIndex) in slot.emotes" :key="`${slot.index}-${emoteIndex}`" :label="`${t('creature_template.gossip.fields.Emote')} ${emoteIndex}`">
+              <InputNumber :modelValue="getField(detailText, emoteField)" :useGrouping="false" fluid @update:modelValue="value => setField(detailText, emoteField, value)" />
+            </EditorField>
           </div>
         </div>
       </div>

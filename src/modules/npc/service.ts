@@ -17,6 +17,7 @@ import type { CreatureOnkillReputation } from '@/modules/npc/types/creature_temp
 import type { Trainer } from '@/modules/npc/types/trainer/trainer'
 import type { TrainerSpell } from '@/modules/npc/types/trainer/trainer_spell'
 import type { CreatureDefaultTrainer } from '@/modules/npc/types/trainer/creature_default_trainer'
+import type { TrainerLocale } from '@/modules/npc/types/trainer/trainer_locale'
 import type { GossipMenu } from '@/modules/npc/types/gossip/gossip_menu'
 import type { GossipMenuOption } from '@/modules/npc/types/gossip/gossip_menu_option'
 import type { GossipMenuOptionLocale } from '@/modules/npc/types/gossip/gossip_menu_option_locale'
@@ -254,6 +255,14 @@ export async function getCreatureDefaultTrainers(trainerId: number): Promise<Cre
 
 export async function saveCreatureDefaultTrainers(trainerId: number, entries: CreatureDefaultTrainer[]): Promise<void> {
   return invoke('save_creature_default_trainers', { trainerId, entries })
+}
+
+export async function getTrainerLocales(trainerId: number): Promise<TrainerLocale[]> {
+  return invoke('get_trainer_locales', { trainerId })
+}
+
+export async function saveTrainerLocales(trainerId: number, locales: TrainerLocale[]): Promise<void> {
+  return invoke('save_trainer_locales', { trainerId, locales })
 }
 
 // ─── quest relations (quests this creature starts / ends) ────────────────────

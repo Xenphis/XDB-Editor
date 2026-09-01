@@ -160,7 +160,6 @@
         "lang": "Langue",
         "Probability": "Probabilité",
         "Probability0": "Probabilité 0",
-        "EmoteDelay": "Délai emote",
         "Emote": "Emote",
         "OptionID": "OptionID",
         "OptionIcon": "Icône",
@@ -291,7 +290,6 @@
       "locale_select": "Choisir une langue",
       "addon_path_id": "ID Chemin (Waypoint)",
       "addon_mount": "Monture (DisplayID)",
-      "addon_mountcreatureid": "Monture (CreatureID)",
       "addon_standstate": "État de posture",
       "addon_animtier": "Niveau d'animation",
       "addon_visflags": "Flags de visibilité",
@@ -446,7 +444,6 @@
       "text_add": "Ajouter un texte",
       "addon_path_id": "Waypoint ID",
       "addon_mount": "Monture (DisplayID)",
-      "addon_mountcreatureid": "Monture (CreatureID)",
       "equipment": "Équipement",
       "equipmentDesc": "Configuration de l'équipement",
       "addon_standstate": "État de posture",
@@ -511,7 +508,9 @@
       "creatures": "Créatures liées",
       "creaturesDesc": "Créatures utilisant cet entraîneur par défaut (table creature_default_trainer)",
       "misc": "Divers",
-      "miscDesc": "Vérification du build et autres champs techniques"
+      "miscDesc": "Vérification du build et autres champs techniques",
+      "locales": "Traductions",
+      "localesDesc": "Texte d'accueil traduit par langue (table trainer_locale)"
     },
     "fields": {
       "id": "ID",
@@ -612,6 +611,7 @@
       "maxcount": "Quantité max",
       "incrtime": "Réappro. (s)",
       "extendedCost": "Coût étendu",
+      "verifiedBuild": "Build vérifié",
       "entry": "Entry",
       "npcflag": "npcflag",
       "items": "Objets"

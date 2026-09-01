@@ -4,7 +4,9 @@ import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import { locale_options } from '@core/types/common'
 import EditorField from '@core/components/EditorField.vue'
+import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
 import { useTrainerStore } from '@/modules/npc/stores/trainerStore'
 import { useTrainerFieldModifiers } from '@/modules/npc/pages/useTrainerFieldModifiers'
 
@@ -13,6 +15,22 @@ const store = useTrainerStore()
 const { isFieldModified } = useTrainerFieldModifiers()
 
 const form = store.formData
+const localeEntries = computed(() => store.locales.getNewEntries())
+const localeHasChanges = computed(() => store.locales.getSqlDiff(form.Id).length > 0)
+const localeSelectOptions = locale_options.map(o => ({ value: o.value, label: `${o.value} — ${o.comment}` }))
+
+const localeColumns: ColumnDef[] = [
+  { field: 'locale', header: 'Locale', type: 'select', width: '12rem', options: localeSelectOptions },
+  { field: 'Greeting_lang', header: t('trainer.fields.greeting'), type: 'text' },
+]
+
+function addLocale() {
+  store.locales.pushNewEntry({ locale: '', Greeting_lang: null, VerifiedBuild: null })
+}
+
+function removeLocale(index: number) {
+  store.locales.removeNewEntry(index)
+}
 
 const typeOptions = [
   { value: 0, label: t('trainer.types.class') },
@@ -71,6 +89,22 @@ const requirementLabel = computed(() => {
         <InputNumber v-model="form.VerifiedBuild" :useGrouping="false" fluid />
       </EditorField>
     </div>
+  </div>
+
+  <!-- Locales (trainer_locale) -->
+  <div class="field-group" :class="{ 'field-group-modified': localeHasChanges }">
+    <EditableDataTable
+      :entries="localeEntries"
+      :columns="localeColumns"
+      :hasChanges="localeHasChanges"
+      :title="t('trainer.groups.locales')"
+      :description="t('trainer.groups.localesDesc')"
+      dataKey="locale"
+      showHeaderAdd
+      embedded
+      @add="addLocale"
+      @remove="removeLocale"
+    />
   </div>
 </template>
 

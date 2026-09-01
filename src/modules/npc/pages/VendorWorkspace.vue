@@ -262,6 +262,7 @@ async function onRemoveVendor(vendor: NpcVendorGroup) {
                   <th class="col-num">{{ t('vendor.columns.maxcount') }}</th>
                   <th class="col-num">{{ t('vendor.columns.incrtime') }}</th>
                   <th class="col-num">{{ t('vendor.columns.extendedCost') }}</th>
+                  <th class="col-num">{{ t('vendor.columns.verifiedBuild') }}</th>
                   <th class="col-action"></th>
                 </tr>
               </thead>
@@ -288,6 +289,9 @@ async function onRemoveVendor(vendor: NpcVendorGroup) {
                   <td class="col-num">
                     <InputNumber v-model="row.ExtendedCost" :useGrouping="false" :min="0" fluid />
                   </td>
+                  <td class="col-num">
+                    <InputNumber v-model="row.VerifiedBuild" :useGrouping="false" fluid />
+                  </td>
                   <td class="col-action">
                     <Button
                       icon="pi pi-trash"
@@ -300,7 +304,7 @@ async function onRemoveVendor(vendor: NpcVendorGroup) {
                   </td>
                 </tr>
                 <tr v-if="stockEntries.length === 0">
-                  <td colspan="6" class="vendor-empty">{{ t('vendor.noItems') }}</td>
+                  <td colspan="7" class="vendor-empty">{{ t('vendor.noItems') }}</td>
                 </tr>
               </tbody>
             </table>

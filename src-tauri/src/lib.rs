@@ -66,6 +66,7 @@ use commands::quest_details::get_quest_details;
 use commands::quest_relations::{get_quest_relations, get_creature_quest_relations, get_gameobject_quest_relations};
 use commands::creature_questitem::{get_creature_questitem, save_creature_questitem};
 use commands::trainer::{get_trainers, get_trainer, save_trainer, delete_trainer, get_trainer_spells, save_trainer_spells, get_creature_default_trainers, save_creature_default_trainers};
+use commands::trainer_locale::{get_trainer_locales, save_trainer_locales};
 use commands::creature_onkill_reputation::{get_creature_onkill_reputation, save_creature_onkill_reputation};
 use commands::smart_scripts::{get_smart_scripts, get_smart_script_owners, get_smart_script_owner_info};
 
@@ -252,6 +253,8 @@ pub fn run() {
       save_trainer_spells,
       get_creature_default_trainers,
       save_creature_default_trainers,
+      get_trainer_locales,
+      save_trainer_locales,
       get_npc_vendors,
       get_npc_vendor,
       search_vendor_creatures,

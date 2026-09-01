@@ -53,4 +53,5 @@ pub mod quest_request_items_locale;
 pub mod quest_details;
 pub mod quest_relations;
 pub mod trainer;
+pub mod trainer_locale;
 pub mod smart_scripts;

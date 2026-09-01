@@ -11,6 +11,7 @@ import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.v
 import type { FieldChange } from '@core/composables/useQueryGenerator'
 import type { Creature } from '@/modules/npc/types/creature/creature'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
+import { getByte, setByte } from '@/modules/npc/composables/bytesFields'
 import type { CreatureAddon } from '@/modules/npc/types/creature/creature_addon'
 import type { CreatureMovementOverride } from '@/modules/npc/types/creature/creature_movement_override'
 import type { CreatureFormationMember } from '@/modules/npc/types/misc/creature_formations'
@@ -101,15 +102,34 @@ const addonForm = reactive<CreatureAddon>({
   guid: 0,
   path_id: 0,
   mount: 0,
-  MountCreatureID: 0,
-  StandState: 0,
-  AnimTier: 0,
-  VisFlags: 0,
-  SheathState: 0,
-  PvPFlags: 0,
+  bytes1: 0,
+  bytes2: 0,
   emote: 0,
   visibilityDistanceType: 0,
   auras: null,
+})
+
+// bytes1 = StandState (byte 0) / unused (byte 1) / VisFlags (byte 2) / AnimTier (byte 3)
+// bytes2 = SheathState (byte 0) / PvPFlags (byte 1) / unused (bytes 2-3)
+const addonStandState = computed({
+  get: () => getByte(addonForm.bytes1, 0),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 0, v) },
+})
+const addonAnimTier = computed({
+  get: () => getByte(addonForm.bytes1, 3),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 3, v) },
+})
+const addonVisFlags = computed({
+  get: () => getByte(addonForm.bytes1, 2),
+  set: (v: number) => { addonForm.bytes1 = setByte(addonForm.bytes1, 2, v) },
+})
+const addonSheathState = computed({
+  get: () => getByte(addonForm.bytes2, 0),
+  set: (v: number) => { addonForm.bytes2 = setByte(addonForm.bytes2, 0, v) },
+})
+const addonPvpFlags = computed({
+  get: () => getByte(addonForm.bytes2, 1),
+  set: (v: number) => { addonForm.bytes2 = setByte(addonForm.bytes2, 1, v) },
 })
 
 const originalAddon = ref<CreatureAddon | null>(null)
@@ -490,14 +510,14 @@ onMounted(async () => {
               <p>{{ t('creature.groups.animationDesc') }}</p>
             </div>
             <div class="field-grid">
-              <EditorField :label="t('creature.fields.addon_standstate')" :modified="isAddonFieldModified('StandState')">
-                <Select v-model="addonForm.StandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
+              <EditorField :label="t('creature.fields.addon_standstate')" :modified="isAddonFieldModified('bytes1')">
+                <Select v-model="addonStandState" :options="standStateOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
-              <EditorField :label="t('creature.fields.addon_animtier')" :modified="isAddonFieldModified('AnimTier')">
-                <Select v-model="addonForm.AnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
+              <EditorField :label="t('creature.fields.addon_animtier')" :modified="isAddonFieldModified('bytes1')">
+                <Select v-model="addonAnimTier" :options="animTierOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
-              <EditorField :label="t('creature.fields.addon_sheathstate')" :modified="isAddonFieldModified('SheathState')">
-                <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
+              <EditorField :label="t('creature.fields.addon_sheathstate')" :modified="isAddonFieldModified('bytes2')">
+                <Select v-model="addonSheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_emote')" :modified="isAddonFieldModified('emote')">
                 <InputNumber v-model="addonForm.emote" :useGrouping="false" fluid />
@@ -521,11 +541,11 @@ onMounted(async () => {
               <EditorField :label="t('creature.fields.dynamicflags')" :tooltip="t('creature.tooltips.dynamicflags')" :modified="isFieldModified('dynamicflags')">
                 <BitmaskField v-model="form.dynamicflags" :options="dynamicflagsOptions" :label="t('creature.fields.dynamicflags')" />
               </EditorField>
-              <EditorField :label="t('creature.fields.addon_visflags')" :modified="isAddonFieldModified('VisFlags')">
-                <BitmaskField v-model="addonForm.VisFlags" :options="visFlagsOptions" :label="t('creature.fields.addon_visflags')" />
+              <EditorField :label="t('creature.fields.addon_visflags')" :modified="isAddonFieldModified('bytes1')">
+                <BitmaskField v-model="addonVisFlags" :options="visFlagsOptions" :label="t('creature.fields.addon_visflags')" />
               </EditorField>
-              <EditorField :label="t('creature.fields.addon_pvpflags')" :modified="isAddonFieldModified('PvPFlags')">
-                <BitmaskField v-model="addonForm.PvPFlags" :options="pvpFlagsOptions" :label="t('creature.fields.addon_pvpflags')" />
+              <EditorField :label="t('creature.fields.addon_pvpflags')" :modified="isAddonFieldModified('bytes2')">
+                <BitmaskField v-model="addonPvpFlags" :options="pvpFlagsOptions" :label="t('creature.fields.addon_pvpflags')" />
               </EditorField>
             </div>
           </div>
@@ -561,9 +581,6 @@ onMounted(async () => {
             <div class="field-grid">
               <EditorField :label="t('creature.fields.addon_mount')" :modified="isAddonFieldModified('mount')">
                 <InputNumber v-model="addonForm.mount" :useGrouping="false" fluid />
-              </EditorField>
-              <EditorField :label="t('creature.fields.addon_mountcreatureid')" :modified="isAddonFieldModified('MountCreatureID')">
-                <InputNumber v-model="addonForm.MountCreatureID" :useGrouping="false" fluid />
               </EditorField>
             </div>
           </div>

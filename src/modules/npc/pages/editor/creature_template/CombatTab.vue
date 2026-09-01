@@ -5,6 +5,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
+import { getByte, setByte } from '@/modules/npc/composables/bytesFields'
 import EditorField from '@core/components/EditorField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
 import { useNpcModuleStore } from '@/modules/npc/store'
@@ -16,6 +17,12 @@ const { isFieldModified, isAddonModified } = useNpcFieldModifiers()
 
 const form = store.formData
 const addonForm = store.addon.newEntry
+
+// bytes2 = SheathState (byte 0) / PvPFlags (byte 1) / unused (bytes 2-3)
+const addonSheathState = computed({
+  get: () => getByte(addonForm.bytes2, 0),
+  set: (v: number) => { addonForm.bytes2 = setByte(addonForm.bytes2, 0, v) },
+})
 const spellEntries = computed(() => store.spells.getNewEntries())
 const resistanceEntries = computed(() => store.resistances.getNewEntries())
 
@@ -103,8 +110,8 @@ function removeResistance(index: number) {
       <EditorField :label="t('creature_template.fields.RangeVariance')" :modified="isFieldModified('RangeVariance')">
         <InputNumber v-model="form.RangeVariance" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
       </EditorField>
-      <EditorField :label="t('creature_template.fields.addon_sheathstate')" :modified="isAddonModified('SheathState')">
-        <Select v-model="addonForm.SheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
+      <EditorField :label="t('creature_template.fields.addon_sheathstate')" :modified="isAddonModified('bytes2')">
+        <Select v-model="addonSheathState" :options="sheathStateOptions" optionLabel="name" optionValue="value" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.dmgschool')" :modified="isFieldModified('dmgschool')">
         <Select v-model="form.dmgschool" :options="dmgschoolOptions" optionLabel="name" optionValue="value" fluid />

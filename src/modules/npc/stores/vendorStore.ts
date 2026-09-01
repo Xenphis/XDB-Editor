@@ -16,6 +16,7 @@ export interface VendorStockEntry {
   maxcount: number
   incrtime: number
   ExtendedCost: number
+  VerifiedBuild: number | null
   itemName: string | null
   itemQuality: number | null
 }
@@ -31,7 +32,7 @@ const stockConfig: Omit<CompositeKeyConfig<VendorStockEntry>, 'parentId'> = {
   table: 'npc_vendor',
   parentKey: 'entry',
   childKey: 'item',
-  columns: ['slot', 'maxcount', 'incrtime', 'ExtendedCost'],
+  columns: ['slot', 'maxcount', 'incrtime', 'ExtendedCost', 'VerifiedBuild'],
   getUniqueKey: (e) => `${e.item}:${e.ExtendedCost}`,
   buildWhereClause: (e, parentId) =>
     `\`entry\` = ${parentId} AND \`item\` = ${e.item} AND \`ExtendedCost\` = ${e.ExtendedCost}`,
@@ -39,8 +40,9 @@ const stockConfig: Omit<CompositeKeyConfig<VendorStockEntry>, 'parentId'> = {
     a.slot === b.slot &&
     a.maxcount === b.maxcount &&
     a.incrtime === b.incrtime &&
-    a.ExtendedCost === b.ExtendedCost,
-  toSqlValues: (e) => [e.slot, e.maxcount, e.incrtime, e.ExtendedCost],
+    a.ExtendedCost === b.ExtendedCost &&
+    a.VerifiedBuild === b.VerifiedBuild,
+  toSqlValues: (e) => [e.slot, e.maxcount, e.incrtime, e.ExtendedCost, e.VerifiedBuild],
 }
 
 /** The main "entity" carries nothing but the key: all columns live in rows. */
@@ -59,6 +61,7 @@ export function createStockEntry(item: number, template: Partial<VendorStockEntr
     maxcount: 0,
     incrtime: 0,
     ExtendedCost: 0,
+    VerifiedBuild: null,
     itemName: null,
     itemQuality: null,
     ...template,
@@ -97,6 +100,7 @@ export const useVendorStore = defineStore('npcVendor', () => {
             maxcount: row.maxcount,
             incrtime: row.incrtime,
             ExtendedCost: row.ExtendedCost,
+            VerifiedBuild: row.VerifiedBuild,
             itemName: row.itemName,
             itemQuality: row.itemQuality,
           }))

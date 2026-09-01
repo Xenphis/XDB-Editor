@@ -37,9 +37,12 @@ export interface CreatureSpawnOption {
   leaderGUID: number | null;
 }
 
-/** GroupAIFlags — TrinityCore, src/server/game/Entities/Creature/CreatureGroups.h */
+/** GroupAiFlags — AzerothCore, src/server/game/Entities/Creature/CreatureGroups.h */
 export const formation_group_ai_options: BitmaskOption[] = [
-  { value: 0x001, hex: '0x00000001', name: 'Members Assist Leader', comment: 'Members join the fight when the leader is attacked.' },
+  { value: 0x001, hex: '0x00000001', name: 'Member Assists Leader', comment: 'Members join the fight when the leader is attacked.' },
   { value: 0x002, hex: '0x00000002', name: 'Leader Assists Member', comment: 'The leader joins the fight when a member is attacked.' },
-  { value: 0x200, hex: '0x00000200', name: 'Idle In Formation', comment: 'Members hold the formation while idle instead of standing on their own spawn point.' },
+  { value: 0x004, hex: '0x00000004', name: 'Evade Together', comment: 'Every member evades if any member enters evade mode.' },
+  { value: 0x008, hex: '0x00000008', name: 'Respawn On Evade', comment: 'Every member respawns if a member enters evade mode.' },
+  { value: 0x010, hex: '0x00000010', name: "Don't Respawn Leader On Evade", comment: 'Used with "Respawn On Evade" to keep the leader from respawning.' },
+  { value: 0x200, hex: '0x00000200', name: 'Follow Leader', comment: 'Members hold the formation while idle instead of standing on their own spawn point.' },
 ]

@@ -8,74 +8,71 @@ use crate::debug::DebugState;
 use crate::debug_sql;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct CreatureTemplateLocale {
-    pub entry: u32,
+pub struct TrainerLocale {
+    #[sqlx(rename = "Id")]
+    pub Id: u32,
+    #[sqlx(rename = "locale")]
     pub locale: String,
-    #[sqlx(rename = "Name")]
-    pub Name: String,
-    #[sqlx(rename = "Title")]
-    pub Title: Option<String>,
+    #[sqlx(rename = "Greeting_lang")]
+    pub Greeting_lang: Option<String>,
     #[sqlx(rename = "VerifiedBuild")]
     pub VerifiedBuild: Option<i32>,
 }
 
 #[tauri::command]
-pub async fn get_npc_locales(
+pub async fn get_trainer_locales(
     state: State<'_, DbState>,
     app: tauri::AppHandle,
     debug: State<'_, DebugState>,
-    entry: u32,
-) -> Result<Vec<CreatureTemplateLocale>, String> {
+    trainer_id: u32,
+) -> Result<Vec<TrainerLocale>, String> {
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "SELECT * FROM creature_template_locale WHERE entry = ?";
+    const SQL: &str = "SELECT * FROM trainer_locale WHERE Id = ? ORDER BY locale";
     debug_sql!(app, debug, SQL,
-        sqlx::query_as::<_, CreatureTemplateLocale>(SQL)
-        .bind(entry)
+        sqlx::query_as::<_, TrainerLocale>(SQL)
+        .bind(trainer_id)
         .fetch_all(pool)
         .await,
-        entry
+        trainer_id
     ).map_err(|e| format!("Query failed: {}", e))
 }
 
 #[tauri::command]
-pub async fn save_npc_locales(
+pub async fn save_trainer_locales(
     state: State<'_, DbState>,
     app: tauri::AppHandle,
     debug: State<'_, DebugState>,
-    entry: u32,
-    locales: Vec<CreatureTemplateLocale>,
+    trainer_id: u32,
+    locales: Vec<TrainerLocale>,
 ) -> Result<(), String> {
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    // Delete all existing locale rows for this entry
-    const SQL_DELETE: &str = "DELETE FROM creature_template_locale WHERE entry = ?";
+    const SQL_DELETE: &str = "DELETE FROM trainer_locale WHERE Id = ?";
     debug_sql!(app, debug, SQL_DELETE,
         sqlx::query(SQL_DELETE)
-        .bind(entry)
+        .bind(trainer_id)
         .execute(pool)
         .await,
-        entry
+        trainer_id
     ).map_err(|e| format!("Delete failed: {}", e))?;
 
-    // Insert each locale row
-    const SQL_INSERT: &str = "INSERT INTO creature_template_locale (entry, locale, Name, Title, VerifiedBuild) VALUES (?, ?, ?, ?, ?)";
+    const SQL_INSERT: &str = "INSERT INTO trainer_locale (Id, locale, Greeting_lang, VerifiedBuild) VALUES (?, ?, ?, ?)";
     for loc in &locales {
         debug_sql!(app, debug, SQL_INSERT,
             sqlx::query(SQL_INSERT)
-            .bind(entry)
+            .bind(trainer_id)
             .bind(&loc.locale)
-            .bind(&loc.Name)
-            .bind(&loc.Title)
+            .bind(&loc.Greeting_lang)
             .bind(loc.VerifiedBuild)
             .execute(pool)
             .await,
-            entry, &loc.locale, &loc.Name, &loc.Title, loc.VerifiedBuild
+            trainer_id, &loc.locale, &loc.Greeting_lang, loc.VerifiedBuild
         ).map_err(|e| format!("Insert failed: {}", e))?;
     }
 
-    log::info!("Saved {} locale(s) for creature {}", locales.len(), entry);
+    log::info!("Saved {} trainer locale(s) for trainer {}", locales.len(), trainer_id);
     Ok(())
 }

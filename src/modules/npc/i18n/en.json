@@ -160,7 +160,6 @@
         "lang": "Language",
         "Probability": "Probability",
         "Probability0": "Probability 0",
-        "EmoteDelay": "Emote Delay",
         "Emote": "Emote",
         "OptionID": "OptionID",
         "OptionIcon": "Icon",
@@ -291,7 +290,6 @@
       "locale_select": "Choose a language",
       "addon_path_id": "Path ID (Waypoint)",
       "addon_mount": "Mount (DisplayID)",
-      "addon_mountcreatureid": "Mount (CreatureID)",
       "addon_standstate": "Stand State",
       "addon_animtier": "Animation Tier",
       "addon_visflags": "Visibility Flags",
@@ -448,7 +446,6 @@
       "text_add": "Add text",
       "addon_path_id": "Waypoint ID",
       "addon_mount": "Mount (DisplayID)",
-      "addon_mountcreatureid": "Mount (CreatureID)",
       "equipment": "Equipment",
       "equipmentDesc": "Equipment configuration",
       "addon_standstate": "Stand State",
@@ -513,7 +510,9 @@
       "creatures": "Linked Creatures",
       "creaturesDesc": "Creatures that use this trainer by default (creature_default_trainer table)",
       "misc": "Miscellaneous",
-      "miscDesc": "Build verification and other technical fields"
+      "miscDesc": "Build verification and other technical fields",
+      "locales": "Locales",
+      "localesDesc": "Translated greeting text per locale (trainer_locale table)"
     },
     "fields": {
       "id": "ID",
@@ -614,6 +613,7 @@
       "maxcount": "Max count",
       "incrtime": "Restock (s)",
       "extendedCost": "Extended cost",
+      "verifiedBuild": "Verified build",
       "entry": "Entry",
       "npcflag": "npcflag",
       "items": "Items"
