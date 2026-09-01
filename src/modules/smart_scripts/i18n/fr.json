@@ -139,18 +139,19 @@
       "1": { "name": "IC", "comment": "Le minuteur ne tourne qu'en combat" },
       "2": { "name": "ALWAYS", "comment": "Le minuteur tourne toujours" }
     },
-    "sai_movement_slot_options": {
-      "0": { "name": "Par défaut" },
-      "1": { "name": "Actif" },
-      "2": { "name": "Contrôlé" }
-    },
     "sai_spawn_type_options": {
       "0": { "name": "Créature" },
       "1": { "name": "Objet de jeu" }
     },
-    "sai_inst_data_type_options": {
-      "0": { "name": "SetData" },
-      "1": { "name": "SetBossState" }
+    "sai_alive_state_options": {
+      "0": { "name": "Les deux" },
+      "1": { "name": "Vivant" },
+      "2": { "name": "Mort" }
+    },
+    "sai_gossip_hello_filter_options": {
+      "0": { "name": "Aucun filtre", "comment": "Exécute toujours l'action" },
+      "1": { "name": "GossipHello uniquement", "comment": "Ignore l'action si le hello vient d'un reportUse" },
+      "2": { "name": "ReportUse uniquement", "comment": "Ignore l'action sur un GossipHello classique" }
     },
     "sai_event_flags": {
       "1": { "name": "NOT_REPEATABLE", "comment": "L'événement ne peut pas se répéter" },

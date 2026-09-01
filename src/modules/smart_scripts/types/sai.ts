@@ -11,9 +11,9 @@ import { SAI_ACTION_PARAMS } from './sai-params-actions'
 import { SAI_TARGET_PARAMS } from './sai-params-targets'
 
 export type SaiParamKey =
-  | 'event_param1' | 'event_param2' | 'event_param3' | 'event_param4'
+  | 'event_param1' | 'event_param2' | 'event_param3' | 'event_param4' | 'event_param5' | 'event_param6'
   | 'action_param1' | 'action_param2' | 'action_param3' | 'action_param4' | 'action_param5' | 'action_param6'
-  | 'target_param1' | 'target_param2' | 'target_param3'
+  | 'target_param1' | 'target_param2' | 'target_param3' | 'target_param4'
 
 // How the value is rendered/edited; 'uint' is the plain number default.
 export type SaiParamKind = 'uint' | 'int' | 'bool' | 'percent' | 'ms' | 'seconds' | 'enum' | 'flags'

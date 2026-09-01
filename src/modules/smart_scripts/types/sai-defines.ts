@@ -101,25 +101,26 @@ export const sai_timer_update_options: SelectOption[] = [
   { value: 2, name: 'ALWAYS', comment: 'Timer always runs' },
 ]
 
-export const sai_movement_slot_options: SelectOption[] = [
-  { value: 0, name: 'Default' },
-  { value: 1, name: 'Active' },
-  { value: 2, name: 'Controlled' },
-]
-
 export const sai_spawn_type_options: SelectOption[] = [
   { value: 0, name: 'Creature' },
   { value: 1, name: 'GameObject' },
 ]
 
-export const sai_inst_data_type_options: SelectOption[] = [
-  { value: 0, name: 'SetData' },
-  { value: 1, name: 'SetBossState' },
-]
-
 export const sai_bool_options: SelectOption[] = [
   { value: 0, name: 'No' },
   { value: 1, name: 'Yes' },
+]
+
+export const sai_alive_state_options: SelectOption[] = [
+  { value: 0, name: 'Both' },
+  { value: 1, name: 'Alive' },
+  { value: 2, name: 'Dead' },
+]
+
+export const sai_gossip_hello_filter_options: SelectOption[] = [
+  { value: 0, name: 'No filter', comment: 'Always execute the action' },
+  { value: 1, name: 'GossipHello only', comment: 'Skip the action if the hello was triggered by a reportUse' },
+  { value: 2, name: 'ReportUse only', comment: 'Skip the action on a plain GossipHello' },
 ]
 
 export const sai_credit_type_options: SelectOption[] = [

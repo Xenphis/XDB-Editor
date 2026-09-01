@@ -11,5 +11,10 @@ export interface CreatureClassLevelStats {
   damage_base: number
   damage_exp1: number
   damage_exp2: number
+  Strength: number
+  Agility: number
+  Stamina: number
+  Intellect: number
+  Spirit: number
   comment: string | null
 }

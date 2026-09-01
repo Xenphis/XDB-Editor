@@ -22,6 +22,11 @@
       "damage_base": "Base Damage (Vanilla)",
       "damage_exp1": "Base Damage (TBC)",
       "damage_exp2": "Base Damage (WotLK)",
+      "Strength": "Strength",
+      "Agility": "Agility",
+      "Stamina": "Stamina",
+      "Intellect": "Intellect",
+      "Spirit": "Spirit",
       "comment": "Comment"
     },
     "tooltips": {
@@ -43,6 +48,8 @@
       "attackDesc": "Melee and ranged attack power bonus added to base damage",
       "damage": "Base Damage",
       "damageDesc": "Base damage per expansion tier (multiplied by creature_template.DamageModifier)",
+      "primaryStats": "Primary Stats",
+      "primaryStatsDesc": "AzerothCore-only base primary stats for this class/level (creature_classlevelstats.Strength/Agility/Stamina/Intellect/Spirit)",
       "misc": "Miscellaneous",
       "miscDesc": "Optional comment for this entry"
     }

@@ -265,6 +265,46 @@ function onDiscard() {
             </div>
           </div>
 
+          <!-- Primary Stats (AzerothCore-only) -->
+          <div class="field-group">
+            <div class="field-group-header">
+              <h4>{{ t('creature_classlevelstats.groups.primaryStats') }}</h4>
+              <p>{{ t('creature_classlevelstats.groups.primaryStatsDesc') }}</p>
+            </div>
+            <div class="field-grid">
+              <EditorField
+                :label="t('creature_classlevelstats.fields.Strength')"
+                :modified="isFieldModified('Strength')"
+              >
+                <InputNumber v-model="form.Strength" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField
+                :label="t('creature_classlevelstats.fields.Agility')"
+                :modified="isFieldModified('Agility')"
+              >
+                <InputNumber v-model="form.Agility" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField
+                :label="t('creature_classlevelstats.fields.Stamina')"
+                :modified="isFieldModified('Stamina')"
+              >
+                <InputNumber v-model="form.Stamina" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField
+                :label="t('creature_classlevelstats.fields.Intellect')"
+                :modified="isFieldModified('Intellect')"
+              >
+                <InputNumber v-model="form.Intellect" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField
+                :label="t('creature_classlevelstats.fields.Spirit')"
+                :modified="isFieldModified('Spirit')"
+              >
+                <InputNumber v-model="form.Spirit" :useGrouping="false" fluid />
+              </EditorField>
+            </div>
+          </div>
+
           <!-- Misc -->
           <div class="field-group">
             <div class="field-group-header">

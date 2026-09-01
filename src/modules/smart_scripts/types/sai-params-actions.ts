@@ -5,21 +5,21 @@ import {
   sai_credit_type_options,
   sai_field_type_options,
   sai_go_state_options,
-  sai_inst_data_type_options,
   sai_loot_state_options,
-  sai_movement_slot_options,
   sai_movement_type_options,
   sai_power_type_options,
   sai_react_state_options,
   sai_sheath_options,
-  sai_spawn_type_options,
   sai_summon_type_options,
   sai_timer_update_options,
 } from './sai-defines'
 
 // Curated action_param1..6 definitions per action type, faithful to the
-// comments in TrinityCore 3.3.5 SmartScriptMgr.h. Types without an entry
-// (UNUSED / master-only / no params) fall back to generic fields in the UI.
+// comments in AzerothCore's SmartScriptMgr.h (a fork of TrinityCore 3.3.5's
+// SmartAI — several ids are renamed or repurposed, e.g. id 46 is MOVE_FORWARD
+// here, not TC's ATTACK_STOP, and AC adds its own action ids in the 200+
+// range). Types without an entry (UNUSED / master-only / no params) fall back
+// to generic fields in the UI.
 
 const key = (n: 1 | 2 | 3 | 4 | 5 | 6): SaiParamDef['key'] => `action_param${n}` as SaiParamDef['key']
 
@@ -49,6 +49,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   4: [ // SOUND
     { key: 'action_param1', label: 'Sound ID', ref: 'sound' },
     { key: 'action_param2', label: 'Only self', kind: 'bool' },
+    { key: 'action_param3', label: 'Distance' },
   ],
   5: [ // PLAY_EMOTE
     { key: 'action_param1', label: 'Emote ID', ref: 'emote' },
@@ -71,13 +72,15 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
     { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
     { key: 'action_param3', label: 'Triggered flags', tooltip: 'TriggerCastFlags mask, only if cast flags has TRIGGERED' },
+    { key: 'action_param4', label: 'Targets limit', tooltip: '0 = no limit' },
   ],
   12: [ // SUMMON_CREATURE
     { key: 'action_param1', label: 'Creature entry', ref: 'creature' },
     { key: 'action_param2', label: 'Summon type', kind: 'enum', options: sai_summon_type_options, i18nNamespace: 'sai_enums.sai_summon_type_options' },
     { key: 'action_param3', label: 'Duration', kind: 'ms' },
     { key: 'action_param4', label: 'Attack invoker', kind: 'bool' },
-    { key: 'action_param5', label: 'Summon flags', tooltip: 'SmartActionSummonCreatureFlags mask' },
+    { key: 'action_param5', label: 'Attack script owner', kind: 'bool' },
+    { key: 'action_param6', label: 'Summon flags', tooltip: 'SmartActionSummonCreatureFlags mask' },
   ],
   13: [ // THREAT_SINGLE_PCT
     { key: 'action_param1', label: 'Threat', kind: 'percent' },
@@ -103,9 +106,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   23: [ // INC_EVENT_PHASE
     { key: 'action_param1', label: 'Increment', kind: 'int', tooltip: 'Negative to decrement, must not be 0' },
   ],
-  24: [ // EVADE
-    { key: 'action_param1', label: 'To last home position', kind: 'bool', tooltip: 'Off = move to respawn position, on = move to last stored home position' },
-  ],
+  24: [], // EVADE — no params in this fork
   25: [ // FLEE_FOR_ASSIST
     { key: 'action_param1', label: 'With emote', kind: 'bool' },
   ],
@@ -129,6 +130,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
       options: sai_credit_type_options,
       i18nNamespace: 'sai_enums.sai_credit_type_options',
     },
+    { key: 'action_param6', label: 'Alive state', kind: 'bool', tooltip: 'Off = creature must be alive, on = a dead creature can trigger arrival' },
   ],
   30: [1, 2, 3, 4, 5, 6].map(n => (
     { key: key(n as 1), label: `Phase ${n}`, tooltip: '0 = unused slot' }
@@ -144,16 +146,20 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   34: [ // SET_INST_DATA
     { key: 'action_param1', label: 'Field' },
     { key: 'action_param2', label: 'Data' },
-    { key: 'action_param3', label: 'Type', kind: 'enum', options: sai_inst_data_type_options, i18nNamespace: 'sai_enums.sai_inst_data_type_options' },
   ],
   35: [ // SET_INST_DATA64
     { key: 'action_param1', label: 'Field', tooltip: 'Data is the SAI target’s GUID' },
   ],
   36: [ // UPDATE_TEMPLATE
     { key: 'action_param1', label: 'Creature entry', ref: 'creature' },
+    { key: 'action_param2', label: 'Update level', kind: 'bool' },
   ],
-  37: [], // DIE
-  38: [], // SET_IN_COMBAT_WITH_ZONE
+  37: [ // DIE
+    { key: 'action_param1', label: 'Delay', kind: 'ms' },
+  ],
+  38: [ // SET_IN_COMBAT_WITH_ZONE
+    { key: 'action_param1', label: 'Range', tooltip: 'Only applied if outside of a dungeon' },
+  ],
   39: [ // CALL_FOR_HELP
     { key: 'action_param1', label: 'Radius' },
     { key: 'action_param2', label: 'With emote', kind: 'bool' },
@@ -178,7 +184,9 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Field' },
     { key: 'action_param2', label: 'Data' },
   ],
-  46: [], // ATTACK_STOP
+  46: [ // MOVE_FORWARD
+    { key: 'action_param1', label: 'Distance' },
+  ],
   47: [ // SET_VISIBILITY
     { key: 'action_param1', label: 'Visible', kind: 'bool' },
   ],
@@ -188,23 +196,26 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   49: [], // ATTACK_START
   50: [ // SUMMON_GO
     { key: 'action_param1', label: 'GameObject entry', ref: 'gameobject' },
-    { key: 'action_param2', label: 'Despawn time', kind: 'seconds' },
+    { key: 'action_param2', label: 'Despawn time' },
+    { key: 'action_param3', label: 'Target summon', kind: 'bool' },
+    { key: 'action_param4', label: 'Summon type', kind: 'bool', tooltip: 'Off = despawn after time, on = despawn when the summoner dies' },
   ],
   51: [], // KILL_UNIT
   52: [ // ACTIVATE_TAXI
     { key: 'action_param1', label: 'Taxi path ID', ref: 'taxi' },
   ],
-  53: [ // WP_START
+  53: [ // ESCORT_START
     { key: 'action_param1', label: 'Run', kind: 'bool', tooltip: 'Off = walk, on = run' },
     { key: 'action_param2', label: 'Path ID', ref: 'waypoint' },
     { key: 'action_param3', label: 'Can repeat', kind: 'bool' },
     { key: 'action_param4', label: 'Quest ID', ref: 'quest' },
     { key: 'action_param5', label: 'Despawn time', kind: 'ms' },
+    { key: 'action_param6', label: 'React state', kind: 'enum', options: sai_react_state_options, i18nNamespace: 'sai_enums.sai_react_state_options' },
   ],
-  54: [ // WP_PAUSE
+  54: [ // ESCORT_PAUSE
     { key: 'action_param1', label: 'Pause time', kind: 'ms' },
   ],
-  55: [ // WP_STOP
+  55: [ // ESCORT_STOP
     { key: 'action_param1', label: 'Despawn time', kind: 'ms' },
     { key: 'action_param2', label: 'Quest ID', ref: 'quest' },
     { key: 'action_param3', label: 'Fail quest', kind: 'bool' },
@@ -220,8 +231,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   59: [ // SET_RUN
     { key: 'action_param1', label: 'Run', kind: 'bool' },
   ],
-  60: [ // SET_DISABLE_GRAVITY
-    { key: 'action_param1', label: 'Disable gravity', kind: 'bool' },
+  60: [ // SET_FLY
+    { key: 'action_param1', label: 'Fly', kind: 'bool' },
   ],
   62: [ // TELEPORT
     { key: 'action_param1', label: 'Map ID', ref: 'map', tooltip: 'Destination position comes from target_x/y/z/o' },
@@ -234,8 +245,11 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   64: [ // STORE_TARGET_LIST
     { key: 'action_param1', label: 'Variable ID' },
   ],
-  65: [], // WP_RESUME
-  66: [], // SET_ORIENTATION — faces the SAI target (or target_o)
+  65: [], // ESCORT_RESUME
+  66: [ // SET_ORIENTATION
+    { key: 'action_param1', label: 'Random orientation', kind: 'bool', tooltip: 'Off = quick change to target_o / the SAI target, on = a random orientation' },
+    { key: 'action_param2', label: 'Turn angle' },
+  ],
   67: [ // CREATE_TIMED_EVENT
     { key: 'action_param1', label: 'Event ID' },
     { key: 'action_param2', label: 'Initial min', kind: 'ms' },
@@ -248,13 +262,14 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Movie entry', ref: 'movie' },
   ],
   69: [ // MOVE_TO_POS
-    { key: 'action_param1', label: 'Point ID' },
+    { key: 'action_param1', label: 'Point ID', tooltip: 'Optional x/y/z offset from target_x/y/z' },
     { key: 'action_param2', label: 'Transport', kind: 'bool' },
-    { key: 'action_param3', label: 'Disable pathfinding', kind: 'bool' },
+    { key: 'action_param3', label: 'Controlled', kind: 'bool' },
     { key: 'action_param4', label: 'Contact distance' },
   ],
-  70: [ // ENABLE_TEMP_GOBJ
-    { key: 'action_param1', label: 'Despawn timer', kind: 'seconds' },
+  70: [ // RESPAWN_TARGET
+    { key: 'action_param1', label: 'Force', kind: 'bool' },
+    { key: 'action_param2', label: 'GO respawn time' },
   ],
   71: [ // EQUIP
     { key: 'action_param1', label: 'Equipment entry', ref: 'equipment', tooltip: 'creature_equip_template entry; 0 = use the slot params instead' },
@@ -289,6 +304,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   85: [ // SELF_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
     { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
+    { key: 'action_param3', label: 'Triggered flags', tooltip: 'TriggerCastFlags mask, only if cast flags has TRIGGERED' },
+    { key: 'action_param4', label: 'Targets limit', tooltip: '0 = no limit' },
   ],
   86: [ // CROSS_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
@@ -335,7 +352,8 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   ],
   97: [ // JUMP_TO_POS
     { key: 'action_param1', label: 'Speed XY' },
-    { key: 'action_param2', label: 'Speed Z', tooltip: 'Jumps to the SAI target position (target_x/y/z)' },
+    { key: 'action_param2', label: 'Speed Z' },
+    { key: 'action_param3', label: 'Self jump', kind: 'bool', tooltip: 'Off = jump to the SAI target position (target_x/y/z), on = jump in place' },
   ],
   98: [ // SEND_GOSSIP_MENU
     { key: 'action_param1', label: 'Menu ID', ref: 'gossip_menu' },
@@ -347,7 +365,9 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   100: [ // SEND_TARGET_TO_TARGET
     { key: 'action_param1', label: 'Variable ID', tooltip: 'Stored target list ID to send' },
   ],
-  101: [], // SET_HOME_POS
+  101: [ // SET_HOME_POS
+    { key: 'action_param1', label: 'Spawn position', kind: 'bool', tooltip: 'Off = use the SAI target position, on = use the creature respawn position' },
+  ],
   102: [ // SET_HEALTH_REGEN
     { key: 'action_param1', label: 'Regenerate health', kind: 'bool' },
   ],
@@ -357,6 +377,7 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   107: [ // SUMMON_CREATURE_GROUP
     { key: 'action_param1', label: 'Summon group', ref: 'creature_group' },
     { key: 'action_param2', label: 'Attack invoker', kind: 'bool' },
+    { key: 'action_param3', label: 'Attack script owner', kind: 'bool' },
   ],
   108: powerParams('New power'), // SET_POWER
   109: powerParams('Power to add'), // ADD_POWER
@@ -367,17 +388,22 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
   112: [ // GAME_EVENT_START
     { key: 'action_param1', label: 'Game event ID', ref: 'game_event' },
   ],
-  113: [1, 2, 3, 4, 5, 6].map(n => (
-    { key: key(n as 1), label: `Path ID ${n}`, ref: 'waypoint' as const, tooltip: '0 = unused slot' }
-  )), // START_CLOSEST_WAYPOINT
+  113: [ // START_CLOSEST_WAYPOINT — header comment says wp1..wp7, but the
+    // actual struct (SmartAction::startClosestWaypoint) only has these 5 fields
+    { key: 'action_param1', label: 'Path ID 1', ref: 'waypoint', tooltip: '0 = unused slot' },
+    { key: 'action_param2', label: 'Path ID 2', ref: 'waypoint', tooltip: '0 = unused slot' },
+    { key: 'action_param3', label: 'Repeat', kind: 'bool' },
+    { key: 'action_param4', label: 'Forced movement' },
+    { key: 'action_param5', label: 'Path source' },
+  ], // START_CLOSEST_WAYPOINT
   114: [], // MOVE_OFFSET — offset comes from target_x/y/z
-  115: [ // RANDOM_SOUND
+  115: [ // RANDOM_SOUND — only 4 sound id slots in this fork (TC had 5)
     { key: 'action_param1', label: 'Sound ID 1', ref: 'sound' },
     { key: 'action_param2', label: 'Sound ID 2', ref: 'sound' },
     { key: 'action_param3', label: 'Sound ID 3', ref: 'sound' },
     { key: 'action_param4', label: 'Sound ID 4', ref: 'sound' },
-    { key: 'action_param5', label: 'Sound ID 5', ref: 'sound' },
-    { key: 'action_param6', label: 'Only self', kind: 'bool' },
+    { key: 'action_param5', label: 'Only self', kind: 'bool' },
+    { key: 'action_param6', label: 'Distance' },
   ],
   116: [ // SET_CORPSE_DELAY
     { key: 'action_param1', label: 'Corpse delay', kind: 'seconds' },
@@ -399,30 +425,22 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param1', label: 'Event ID min' },
     { key: 'action_param2', label: 'Event ID max' },
   ],
-  127: [ // PAUSE_MOVEMENT
-    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options, i18nNamespace: 'sai_enums.sai_movement_slot_options' },
-    { key: 'action_param2', label: 'Pause time', kind: 'ms' },
-    { key: 'action_param3', label: 'Force', kind: 'bool' },
-  ],
+  127: [], // REMOVE_MOVEMENT — not supported yet in this fork (was TC's PAUSE_MOVEMENT; see 235 MOVEMENT_PAUSE)
   131: [ // SPAWN_SPAWNGROUP
     { key: 'action_param1', label: 'Group ID', ref: 'spawn_group' },
-    { key: 'action_param2', label: 'Min delay', kind: 'seconds' },
-    { key: 'action_param3', label: 'Max delay', kind: 'seconds' },
-    { key: 'action_param4', label: 'Spawn flags' },
+    { key: 'action_param2', label: 'Ignore respawn', kind: 'bool' },
+    { key: 'action_param3', label: 'Force', kind: 'bool' },
   ],
   132: [ // DESPAWN_SPAWNGROUP
     { key: 'action_param1', label: 'Group ID', ref: 'spawn_group' },
-    { key: 'action_param2', label: 'Min delay', kind: 'seconds' },
-    { key: 'action_param3', label: 'Max delay', kind: 'seconds' },
-    { key: 'action_param4', label: 'Spawn flags' },
+    { key: 'action_param2', label: 'Delete respawn times', kind: 'bool' },
   ],
-  133: [ // RESPAWN_BY_SPAWNID
-    { key: 'action_param1', label: 'Spawn type', kind: 'enum', options: sai_spawn_type_options, i18nNamespace: 'sai_enums.sai_spawn_type_options' },
-    { key: 'action_param2', label: 'Spawn ID' },
-  ],
+  133: [], // RESPAWN_BY_SPAWNID — not supported yet in this fork
   134: [ // INVOKER_CAST
     { key: 'action_param1', label: 'Spell ID', ref: 'spell' },
     { key: 'action_param2', label: 'Cast flags', kind: 'flags', flags: sai_cast_flags, i18nNamespace: 'sai_enums.sai_cast_flags' },
+    { key: 'action_param3', label: 'Triggered flags', tooltip: 'TriggerCastFlags mask, only if cast flags has TRIGGERED' },
+    { key: 'action_param4', label: 'Targets limit', tooltip: '0 = no limit' },
   ],
   135: [ // PLAY_CINEMATIC
     { key: 'action_param1', label: 'Cinematic entry', ref: 'cinematic' },
@@ -432,39 +450,19 @@ export const SAI_ACTION_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'action_param2', label: 'Speed (integer part)' },
     { key: 'action_param3', label: 'Speed (fraction part)' },
   ],
-  138: [ // OVERRIDE_LIGHT
-    { key: 'action_param1', label: 'Zone ID', ref: 'zone' },
-    { key: 'action_param2', label: 'Light ID' },
-    { key: 'action_param3', label: 'Transition', kind: 'ms' },
-  ],
-  139: [ // OVERRIDE_WEATHER
-    { key: 'action_param1', label: 'Zone ID', ref: 'zone' },
-    { key: 'action_param2', label: 'Weather ID' },
-    { key: 'action_param3', label: 'Intensity' },
-  ],
-  141: [ // SET_HOVER
-    { key: 'action_param1', label: 'Hover', kind: 'bool' },
-  ],
+  // ids 138-141, 143-148 (OVERRIDE_LIGHT/WEATHER, SET_HOVER, SET_IMMUNE_PC/NPC,
+  // SET_UNINTERACTIBLE, ACTIVATE_GAMEOBJECT, ADD_TO_STORED_TARGET_LIST…) don't
+  // exist in this AzerothCore fork; id 158 (RESUME_MOVEMENT) moved to 236.
   142: [ // SET_HEALTH_PCT
     { key: 'action_param1', label: 'Health', kind: 'percent' },
   ],
-  144: [ // SET_IMMUNE_PC
-    { key: 'action_param1', label: 'Immune to players', kind: 'bool' },
+  207: [ // SET_HOVER
+    { key: 'action_param1', label: 'Hover', kind: 'bool' },
   ],
-  145: [ // SET_IMMUNE_NPC
-    { key: 'action_param1', label: 'Immune to NPCs', kind: 'bool' },
+  235: [ // MOVEMENT_PAUSE
+    { key: 'action_param1', label: 'Timer', kind: 'ms' },
   ],
-  146: [ // SET_UNINTERACTIBLE
-    { key: 'action_param1', label: 'Uninteractible', kind: 'bool' },
-  ],
-  147: [ // ACTIVATE_GAMEOBJECT
-    { key: 'action_param1', label: 'GameObject action', tooltip: 'GameObjectActions id' },
-  ],
-  148: [ // ADD_TO_STORED_TARGET_LIST
-    { key: 'action_param1', label: 'Variable ID' },
-  ],
-  158: [ // RESUME_MOVEMENT
-    { key: 'action_param1', label: 'Movement slot', kind: 'enum', options: sai_movement_slot_options, i18nNamespace: 'sai_enums.sai_movement_slot_options' },
-    { key: 'action_param2', label: 'Resume time', kind: 'ms' },
+  236: [ // MOVEMENT_RESUME
+    { key: 'action_param1', label: 'Timer override', kind: 'ms' },
   ],
 }

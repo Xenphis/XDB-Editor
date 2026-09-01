@@ -26,9 +26,9 @@ const props = defineProps<{
 const { t } = useI18n()
 
 const PART_KEYS: Record<'event' | 'action' | 'target', SaiParamKey[]> = {
-  event: ['event_param1', 'event_param2', 'event_param3', 'event_param4'],
+  event: ['event_param1', 'event_param2', 'event_param3', 'event_param4', 'event_param5', 'event_param6'],
   action: ['action_param1', 'action_param2', 'action_param3', 'action_param4', 'action_param5', 'action_param6'],
-  target: ['target_param1', 'target_param2', 'target_param3'],
+  target: ['target_param1', 'target_param2', 'target_param3', 'target_param4'],
 }
 
 const typeField = computed(() => `${props.part}_type` as 'event_type' | 'action_type' | 'target_type')

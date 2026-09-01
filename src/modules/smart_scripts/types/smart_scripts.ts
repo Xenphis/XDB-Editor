@@ -13,6 +13,8 @@ export interface SmartScript {
   event_param2: number;
   event_param3: number;
   event_param4: number;
+  event_param5: number;
+  event_param6: number;
   action_type: number;
   action_param1: number;
   action_param2: number;
@@ -24,6 +26,7 @@ export interface SmartScript {
   target_param1: number;
   target_param2: number;
   target_param3: number;
+  target_param4: number;
   target_x: number;
   target_y: number;
   target_z: number;

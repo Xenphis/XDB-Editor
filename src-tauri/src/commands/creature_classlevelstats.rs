@@ -16,11 +16,16 @@ pub struct CreatureClassLevelStats {
     pub basehp2: u32,
     pub basemana: u32,
     pub basearmor: u32,
-    pub attackpower: u16,
-    pub rangedattackpower: u16,
+    pub attackpower: u32,
+    pub rangedattackpower: u32,
     pub damage_base: f32,
     pub damage_exp1: f32,
     pub damage_exp2: f32,
+    pub Strength: i32,
+    pub Agility: i32,
+    pub Stamina: i32,
+    pub Intellect: i32,
+    pub Spirit: i32,
     pub comment: Option<String>,
 }
 
@@ -71,9 +76,11 @@ pub async fn save_creature_classlevelstat(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
     const SQL: &str = "INSERT INTO creature_classlevelstats (level, class, basehp0, basehp1, basehp2, basemana, basearmor, \
-         attackpower, rangedattackpower, damage_base, damage_exp1, damage_exp2, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE level = VALUES(level), class = VALUES(class), basehp0 = VALUES(basehp0), basehp1 = VALUES(basehp1), basehp2 = VALUES(basehp2), basemana = VALUES(basemana), basearmor = VALUES(basearmor), \
-         attackpower = VALUES(\
-         attackpower), rangedattackpower = VALUES(rangedattackpower), damage_base = VALUES(damage_base), damage_exp1 = VALUES(damage_exp1), damage_exp2 = VALUES(damage_exp2), comment = VALUES(comment)";
+         attackpower, rangedattackpower, damage_base, damage_exp1, damage_exp2, Strength, Agility, Stamina, Intellect, Spirit, comment) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON DUPLICATE KEY UPDATE level = VALUES(level), class = VALUES(class), basehp0 = VALUES(basehp0), basehp1 = VALUES(basehp1), basehp2 = VALUES(basehp2), basemana = VALUES(basemana), basearmor = VALUES(basearmor), \
+         attackpower = VALUES(attackpower), rangedattackpower = VALUES(rangedattackpower), damage_base = VALUES(damage_base), damage_exp1 = VALUES(damage_exp1), damage_exp2 = VALUES(damage_exp2), \
+         Strength = VALUES(Strength), Agility = VALUES(Agility), Stamina = VALUES(Stamina), Intellect = VALUES(Intellect), Spirit = VALUES(Spirit), comment = VALUES(comment)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
             .bind(data.level)
@@ -88,6 +95,11 @@ pub async fn save_creature_classlevelstat(
             .bind(data.damage_base)
             .bind(data.damage_exp1)
             .bind(data.damage_exp2)
+            .bind(data.Strength)
+            .bind(data.Agility)
+            .bind(data.Stamina)
+            .bind(data.Intellect)
+            .bind(data.Spirit)
             .bind(&data.comment)
             .execute(pool)
             .await,

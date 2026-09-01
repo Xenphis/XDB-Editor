@@ -95,9 +95,9 @@ function describe(
   return summary ? `${def.name} (${summary})` : def.name
 }
 
-const EVENT_KEYS: SaiParamDef['key'][] = ['event_param1', 'event_param2', 'event_param3', 'event_param4']
+const EVENT_KEYS: SaiParamDef['key'][] = ['event_param1', 'event_param2', 'event_param3', 'event_param4', 'event_param5', 'event_param6']
 const ACTION_KEYS: SaiParamDef['key'][] = ['action_param1', 'action_param2', 'action_param3', 'action_param4', 'action_param5', 'action_param6']
-const TARGET_KEYS: SaiParamDef['key'][] = ['target_param1', 'target_param2', 'target_param3']
+const TARGET_KEYS: SaiParamDef['key'][] = ['target_param1', 'target_param2', 'target_param3', 'target_param4']
 
 export function describeEvent(row: SmartScript): string {
   return describe(getSaiEventDef(row.event_type), row.event_type, row, EVENT_KEYS)

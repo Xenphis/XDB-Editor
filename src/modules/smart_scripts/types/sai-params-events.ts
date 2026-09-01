@@ -1,18 +1,22 @@
 import type { SaiParamDef } from './sai'
 import {
-  sai_loot_state_options,
+  sai_go_state_options,
+  sai_gossip_hello_filter_options,
   sai_los_hostility_options,
   sai_movement_type_options,
   sai_respawn_condition_options,
+  sai_spawn_type_options,
   sai_spell_school_mask,
   sai_team_options,
 } from './sai-defines'
 
-// Curated event_param1..4 definitions per event type, faithful to the comments
-// in TrinityCore 3.3.5 SmartScriptMgr.h. Types without an entry (UNUSED /
-// master-only / no params) fall back to generic fields in the UI.
+// Curated event_param1..6 definitions per event type, faithful to the comments
+// in AzerothCore's SmartScriptMgr.h (a fork of TrinityCore 3.3.5's SmartAI —
+// several ids are renamed, e.g. WAYPOINT_* -> ESCORT_*, and AC adds its own
+// event ids in the 100+ range). Types without an entry (UNUSED / master-only /
+// no params) fall back to generic fields in the UI.
 
-const repeat = (offset: 1 | 2 | 3): SaiParamDef[] => [
+const repeat = (offset: 1 | 2 | 3 | 4): SaiParamDef[] => [
   { key: `event_param${offset}` as SaiParamDef['key'], label: 'Repeat min', kind: 'ms' },
   { key: `event_param${offset + 1}` as SaiParamDef['key'], label: 'Repeat max', kind: 'ms' },
 ]
@@ -31,11 +35,6 @@ const updateTimers: SaiParamDef[] = [
 const waypointParams: SaiParamDef[] = [
   { key: 'event_param1', label: 'Point ID', tooltip: '0 = any point' },
   { key: 'event_param2', label: 'Path ID', ref: 'waypoint', tooltip: '0 = any path' },
-]
-
-const spellWithCooldown: SaiParamDef[] = [
-  { key: 'event_param1', label: 'Spell ID', ref: 'spell' },
-  ...cooldown(2),
 ]
 
 export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
@@ -68,11 +67,14 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Min dist' },
     { key: 'event_param2', label: 'Max dist' },
     ...repeat(3),
+    { key: 'event_param5', label: 'Range min' },
+    { key: 'event_param6', label: 'Range max' },
   ],
   10: [ // OOC_LOS
     { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options, i18nNamespace: 'sai_enums.sai_los_hostility_options' },
     { key: 'event_param2', label: 'Max range' },
     ...cooldown(3),
+    { key: 'event_param5', label: 'Player only', kind: 'bool' },
   ],
   11: [ // RESPAWN
     { key: 'event_param1', label: 'Condition', kind: 'enum', options: sai_respawn_condition_options, i18nNamespace: 'sai_enums.sai_respawn_condition_options' },
@@ -91,6 +93,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Spell ID', ref: 'spell' },
     { key: 'event_param2', label: 'Radius' },
     ...repeat(3),
+    { key: 'event_param5', label: 'Only in combat', kind: 'bool' },
   ],
   17: [ // SUMMONED_UNIT
     { key: 'event_param1', label: 'Creature entry', ref: 'creature', tooltip: '0 = any summon' },
@@ -124,6 +127,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Hostility mode', kind: 'enum', options: sai_los_hostility_options, i18nNamespace: 'sai_enums.sai_los_hostility_options' },
     { key: 'event_param2', label: 'Max range' },
     ...cooldown(3),
+    { key: 'event_param5', label: 'Player only', kind: 'bool' },
   ],
   27: cooldown(1), // PASSENGER_BOARDED
   28: cooldown(1), // PASSENGER_REMOVED
@@ -139,6 +143,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Min damage' },
     { key: 'event_param2', label: 'Max damage' },
     ...cooldown(3),
+    { key: 'event_param5', label: 'HP% range min', kind: 'percent', tooltip: 'If set: switches to health-check mode (one-shot) instead of raw damage amount' },
   ],
   33: [ // DAMAGED_TARGET
     { key: 'event_param1', label: 'Min damage' },
@@ -148,6 +153,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   34: [ // MOVEMENTINFORM
     { key: 'event_param1', label: 'Movement type', kind: 'enum', options: sai_movement_type_options, i18nNamespace: 'sai_enums.sai_movement_type_options', tooltip: '0 = any movement type' },
     { key: 'event_param2', label: 'Point ID' },
+    { key: 'event_param3', label: 'Path ID', ref: 'waypoint', tooltip: '0 = any path' },
   ],
   35: [ // SUMMON_DESPAWNED
     { key: 'event_param1', label: 'Creature entry', ref: 'creature' },
@@ -160,7 +166,7 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param2', label: 'Value' },
     ...cooldown(3),
   ],
-  40: waypointParams, // WAYPOINT_REACHED
+  40: waypointParams, // ESCORT_REACHED
   41: [], // TRANSPORT_ADDPLAYER
   42: [ // TRANSPORT_ADDCREATURE
     { key: 'event_param1', label: 'Creature entry', ref: 'creature', tooltip: '0 = any creature' },
@@ -197,10 +203,10 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     ...cooldown(3),
   ],
   54: [], // JUST_SUMMONED
-  55: waypointParams, // WAYPOINT_PAUSED
-  56: waypointParams, // WAYPOINT_RESUMED
-  57: waypointParams, // WAYPOINT_STOPPED
-  58: waypointParams, // WAYPOINT_ENDED
+  55: waypointParams, // ESCORT_PAUSED
+  56: waypointParams, // ESCORT_RESUMED
+  57: waypointParams, // ESCORT_STOPPED
+  58: waypointParams, // ESCORT_ENDED
   59: [ // TIMED_EVENT_TRIGGERED
     { key: 'event_param1', label: 'Event ID', tooltip: 'ID used by CREATE_TIMED_EVENT / TRIGGER_TIMED_EVENT' },
   ],
@@ -212,7 +218,13 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   ],
   63: [], // JUST_CREATED
   64: [ // GOSSIP_HELLO
-    { key: 'event_param1', label: 'No report use', kind: 'bool', tooltip: 'GameObjects only: on = do not report the use to scripts' },
+    {
+      key: 'event_param1',
+      label: 'Filter',
+      kind: 'enum',
+      options: sai_gossip_hello_filter_options,
+      i18nNamespace: 'sai_enums.sai_gossip_hello_filter_options',
+    },
   ],
   65: [], // FOLLOW_COMPLETED
   68: [ // GAME_EVENT_START
@@ -221,8 +233,8 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
   69: [ // GAME_EVENT_END
     { key: 'event_param1', label: 'Game event entry', ref: 'game_event' },
   ],
-  70: [ // GO_LOOT_STATE_CHANGED
-    { key: 'event_param1', label: 'Loot state', kind: 'enum', options: sai_loot_state_options, i18nNamespace: 'sai_enums.sai_loot_state_options' },
+  70: [ // GO_STATE_CHANGED
+    { key: 'event_param1', label: 'GO state', kind: 'enum', options: sai_go_state_options, i18nNamespace: 'sai_enums.sai_go_state_options' },
   ],
   71: [ // GO_EVENT_INFORM
     { key: 'event_param1', label: 'Event ID' },
@@ -231,10 +243,12 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Event ID', tooltip: 'SharedDefines.EventId' },
   ],
   73: [], // ON_SPELLCLICK — clicker becomes the action invoker
-  74: [ // FRIENDLY_HEALTH_PCT
-    { key: 'event_param1', label: 'HP min', kind: 'percent' },
-    { key: 'event_param2', label: 'HP max', kind: 'percent' },
-    ...repeat(3),
+  74: [ // FRIENDLY_HEALTH_PCT — min/max (param1/2) are unused by the handler,
+    // only repeatMin/repeatMax/hpPct/radius (param3-6) drive behavior.
+    { key: 'event_param3', label: 'Repeat min', kind: 'ms' },
+    { key: 'event_param4', label: 'Repeat max', kind: 'ms' },
+    { key: 'event_param5', label: 'HP%', kind: 'percent', tooltip: 'Selects a friendly unit at or below this HP%' },
+    { key: 'event_param6', label: 'Radius' },
   ],
   75: [ // DISTANCE_CREATURE
     { key: 'event_param1', label: 'GUID', tooltip: '0 = any GUID (use entry instead)' },
@@ -257,10 +271,60 @@ export const SAI_EVENT_PARAMS: Record<number, SaiParamDef[]> = {
     { key: 'event_param1', label: 'Creature entry', ref: 'creature', tooltip: '0 = any summon' },
     ...cooldown(2),
   ],
-  83: spellWithCooldown, // ON_SPELL_CAST
-  84: spellWithCooldown, // ON_SPELL_FAILED
-  85: spellWithCooldown, // ON_SPELL_START
-  86: [], // ON_DESPAWN
-  89: spellWithCooldown, // ON_AURA_APPLIED
-  90: spellWithCooldown, // ON_AURA_REMOVED
+  // ids 83-99 (ON_SPELL_CAST/FAILED/START, ON_DESPAWN, ON_AURA_APPLIED/REMOVED…)
+  // don't exist in this AzerothCore fork — TC's SmartAI ends at SMART_EVENT_TC_END
+  // (83) and AC's own ids resume at 100 (SMART_EVENT_AC_START).
+  101: [ // NEAR_PLAYERS
+    { key: 'event_param1', label: 'Min count' },
+    { key: 'event_param2', label: 'Radius' },
+    { key: 'event_param3', label: 'First timer', kind: 'ms' },
+    ...repeat(4),
+  ],
+  102: [ // NEAR_PLAYERS_NEGATION
+    { key: 'event_param1', label: 'Max count' },
+    { key: 'event_param2', label: 'Radius' },
+    { key: 'event_param3', label: 'First timer', kind: 'ms' },
+    ...repeat(4),
+  ],
+  103: [ // NEAR_UNIT
+    { key: 'event_param1', label: 'Type', kind: 'enum', options: sai_spawn_type_options, i18nNamespace: 'sai_enums.sai_spawn_type_options' },
+    { key: 'event_param2', label: 'Entry', tooltip: 'Creature or GameObject entry, per Type' },
+    { key: 'event_param3', label: 'Count' },
+    { key: 'event_param4', label: 'Range' },
+    { key: 'event_param5', label: 'Timer', kind: 'ms' },
+  ],
+  104: [ // NEAR_UNIT_NEGATION
+    { key: 'event_param1', label: 'Type', kind: 'enum', options: sai_spawn_type_options, i18nNamespace: 'sai_enums.sai_spawn_type_options' },
+    { key: 'event_param2', label: 'Entry', tooltip: 'Creature or GameObject entry, per Type' },
+    { key: 'event_param3', label: 'Count' },
+    { key: 'event_param4', label: 'Range' },
+    { key: 'event_param5', label: 'Timer', kind: 'ms' },
+  ],
+  105: [ // AREA_CASTING
+    { key: 'event_param1', label: 'Min' },
+    { key: 'event_param2', label: 'Max' },
+    ...repeat(3),
+    { key: 'event_param5', label: 'Range min' },
+    { key: 'event_param6', label: 'Range max' },
+  ],
+  106: [ // AREA_RANGE
+    { key: 'event_param1', label: 'Min' },
+    { key: 'event_param2', label: 'Max' },
+    ...repeat(3),
+    { key: 'event_param5', label: 'Range min' },
+    { key: 'event_param6', label: 'Range max' },
+  ],
+  107: [ // SUMMONED_UNIT_EVADE
+    { key: 'event_param1', label: 'Creature entry', ref: 'creature', tooltip: '0 = any summon' },
+    ...cooldown(2),
+  ],
+  108: waypointParams, // WAYPOINT_REACHED
+  109: waypointParams, // WAYPOINT_ENDED
+  110: [ // IS_IN_MELEE_RANGE
+    { key: 'event_param1', label: 'Min' },
+    { key: 'event_param2', label: 'Max' },
+    ...repeat(3),
+    { key: 'event_param5', label: 'Distance' },
+    { key: 'event_param6', label: 'Invert', kind: 'bool' },
+  ],
 }

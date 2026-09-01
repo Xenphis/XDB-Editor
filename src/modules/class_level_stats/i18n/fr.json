@@ -22,6 +22,11 @@
       "damage_base": "Dégâts de base (Vanilla)",
       "damage_exp1": "Dégâts de base (TBC)",
       "damage_exp2": "Dégâts de base (WotLK)",
+      "Strength": "Force",
+      "Agility": "Agilité",
+      "Stamina": "Endurance",
+      "Intellect": "Intelligence",
+      "Spirit": "Esprit",
       "comment": "Commentaire"
     },
     "tooltips": {
@@ -43,6 +48,8 @@
       "attackDesc": "Bonus de puissance d'attaque corps-à-corps et à distance ajouté aux dégâts de base",
       "damage": "Dégâts de base",
       "damageDesc": "Dégâts de base par palier d'extension (multiplié par creature_template.DamageModifier)",
+      "primaryStats": "Statistiques primaires",
+      "primaryStatsDesc": "Statistiques primaires de base spécifiques à AzerothCore pour cette classe/niveau (creature_classlevelstats.Strength/Agility/Stamina/Intellect/Spirit)",
       "misc": "Divers",
       "miscDesc": "Commentaire optionnel pour cette entrée"
     }

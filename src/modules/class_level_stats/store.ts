@@ -22,6 +22,7 @@ const EDITABLE_KEYS: (keyof CreatureClassLevelStats)[] = [
   'basemana', 'basearmor',
   'attackpower', 'rangedattackpower',
   'damage_base', 'damage_exp1', 'damage_exp2',
+  'Strength', 'Agility', 'Stamina', 'Intellect', 'Spirit',
   'comment',
 ]
 
@@ -44,7 +45,8 @@ export function generateFullQuery(row: CreatureClassLevelStats): string {
   const cols: (keyof CreatureClassLevelStats)[] = [
     'level', 'class', 'basehp0', 'basehp1', 'basehp2',
     'basemana', 'basearmor', 'attackpower', 'rangedattackpower',
-    'damage_base', 'damage_exp1', 'damage_exp2', 'comment',
+    'damage_base', 'damage_exp1', 'damage_exp2',
+    'Strength', 'Agility', 'Stamina', 'Intellect', 'Spirit', 'comment',
   ]
   const colNames = cols.map(c => `\`${c}\``).join(', ')
   const vals = cols.map(c => escapeVal(row[c])).join(', ')
@@ -79,6 +81,11 @@ function createDefault(): CreatureClassLevelStats {
     damage_base: 0,
     damage_exp1: 0,
     damage_exp2: 0,
+    Strength: 0,
+    Agility: 0,
+    Stamina: 0,
+    Intellect: 0,
+    Spirit: 0,
     comment: null,
   }
 }

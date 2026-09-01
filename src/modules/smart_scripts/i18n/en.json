@@ -139,18 +139,19 @@
       "1": { "name": "IC", "comment": "Timer runs in combat only" },
       "2": { "name": "ALWAYS", "comment": "Timer always runs" }
     },
-    "sai_movement_slot_options": {
-      "0": { "name": "Default" },
-      "1": { "name": "Active" },
-      "2": { "name": "Controlled" }
-    },
     "sai_spawn_type_options": {
       "0": { "name": "Creature" },
       "1": { "name": "GameObject" }
     },
-    "sai_inst_data_type_options": {
-      "0": { "name": "SetData" },
-      "1": { "name": "SetBossState" }
+    "sai_alive_state_options": {
+      "0": { "name": "Both" },
+      "1": { "name": "Alive" },
+      "2": { "name": "Dead" }
+    },
+    "sai_gossip_hello_filter_options": {
+      "0": { "name": "No filter", "comment": "Always execute the action" },
+      "1": { "name": "GossipHello only", "comment": "Skip the action if the hello was triggered by a reportUse" },
+      "2": { "name": "ReportUse only", "comment": "Skip the action on a plain GossipHello" }
     },
     "sai_event_flags": {
       "1": { "name": "NOT_REPEATABLE", "comment": "Event can not repeat" },
