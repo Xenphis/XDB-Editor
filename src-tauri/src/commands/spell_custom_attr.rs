@@ -7,10 +7,11 @@ use crate::debug_sql;
 
 /// `spell_custom_attr`: `SpellCustomAttributes` bitmask, TrinityCore's own
 /// engine-behavior flags for a spell (crowd control, armor ignore, talent…).
-/// One optional row per spell.
+/// One optional row per spell. AzerothCore keys this table on `spell_id`,
+/// not `entry` like the other spell_* overlay tables.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SpellCustomAttr {
-    pub entry: u32,
+    pub spell_id: u32,
     pub attributes: u32,
 }
 
@@ -24,7 +25,7 @@ pub async fn get_spell_custom_attr(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "SELECT * FROM spell_custom_attr WHERE entry = ?";
+    const SQL: &str = "SELECT * FROM spell_custom_attr WHERE spell_id = ?";
     debug_sql!(app, debug, SQL,
         sqlx::query_as::<_, SpellCustomAttr>(SQL)
         .bind(entry)
@@ -44,7 +45,7 @@ pub async fn delete_spell_custom_attr(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "DELETE FROM spell_custom_attr WHERE entry = ?";
+    const SQL: &str = "DELETE FROM spell_custom_attr WHERE spell_id = ?";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(entry)

@@ -1,11 +1,13 @@
 /**
  * `spell_bonus_data`, `spell_threat`, `spell_custom_attr`: optional per-spell
  * override rows edited together as one spell's "tuning". Each `*Form` type
- * mirrors its table's columns minus `entry` — `entry` is the shared key,
- * injected by the `ReactiveSubTable` bindings in `store.ts`, exactly like
+ * mirrors its table's columns minus its key column — the key is injected by
+ * the `ReactiveSubTable` bindings in `store.ts`, exactly like
  * `creature_template_addon`'s `AddonForm` in the NPC module. The plain
- * `SpellBonusData` / `SpellThreat` / `SpellCustomAttr` types (with `entry`)
- * mirror the Rust structs one-for-one, for `service.ts`.
+ * `SpellBonusData` / `SpellThreat` / `SpellCustomAttr` types (with the key)
+ * mirror the Rust structs one-for-one, for `service.ts`. `spell_custom_attr`
+ * is keyed on `spell_id` in AzerothCore's schema, unlike the other two which
+ * use `entry`.
  */
 
 export interface SpellBonusData extends SpellBonusForm {
@@ -17,7 +19,7 @@ export interface SpellThreat extends SpellThreatForm {
 }
 
 export interface SpellCustomAttr extends SpellCustomAttrForm {
-  entry: number
+  spell_id: number
 }
 
 /** `spell_bonus_data`: healing/damage coefficients TrinityCore would

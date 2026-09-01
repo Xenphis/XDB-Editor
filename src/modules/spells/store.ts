@@ -42,6 +42,12 @@ function withoutEntry<T extends { entry: number }>(row: T): Omit<T, 'entry'> {
   return rest
 }
 
+/** Same as `withoutEntry`, for `spell_custom_attr` which is keyed on `spell_id` instead. */
+function withoutSpellId<T extends { spell_id: number }>(row: T): Omit<T, 'spell_id'> {
+  const { spell_id: _spellId, ...rest } = row
+  return rest
+}
+
 export const useSpellTuningStore = defineStore('spellTuning', () => {
   const bonus = new ReactiveSubTable<SpellBonusForm>({
     tableName: 'spell_bonus_data',
@@ -57,7 +63,7 @@ export const useSpellTuningStore = defineStore('spellTuning', () => {
 
   const customAttr = new ReactiveSubTable<SpellCustomAttrForm>({
     tableName: 'spell_custom_attr',
-    primaryKey: 'entry',
+    primaryKey: 'spell_id',
     createDefault: createDefaultSpellCustomAttrForm,
   })
 
@@ -90,7 +96,7 @@ export const useSpellTuningStore = defineStore('spellTuning', () => {
         manager: customAttr,
         load: async (entry) => {
           const row = await spellsService.getSpellCustomAttr(entry).catch(() => null)
-          return row ? withoutEntry(row) : null
+          return row ? withoutSpellId(row) : null
         },
         commitWhenMissing: true,
       },
