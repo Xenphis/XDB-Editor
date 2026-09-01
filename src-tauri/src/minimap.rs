@@ -14,6 +14,7 @@ use tauri::Manager;
 use wow_mpq::PatchChain;
 
 use crate::liquids::{build_tile_liquids, LiquidMesh};
+use crate::spell_dbc::{build_index, SpellIndex};
 use crate::wmo::{adt_wmo_placements, build_model, to_m2_path, wdt_wmo_placements, WmoModel, WmoPlacement};
 
 /// Minimap tile pipeline for the map editor.
@@ -118,6 +119,55 @@ impl MinimapState {
     fn zone_bounds(&self) -> Result<Arc<HashMap<u32, ZoneWorldBounds>>, String> {
         self.with_data(|data| data.zone_bounds())
     }
+
+    /// Spell.dbc name/icon index, built on first use (see `spell_dbc.rs`).
+    ///
+    /// Unlike the small DBCs above this one is NOT parsed inside `with_data`.
+    /// Spell.dbc is ~46 MB and takes hundreds of ms to walk, and the lock this
+    /// would hold is the same one every terrain/texture request queues on — the
+    /// 3D view would stall for the whole parse. So the bytes are pulled out
+    /// under the lock, the lock is released, and the parse happens outside,
+    /// exactly like `render_native_tile` does with minimap BLPs.
+    ///
+    /// Two racing first callers can both parse; the loser's work is dropped.
+    /// That is cheaper than holding a lock across the parse to prevent it.
+    pub(crate) fn spell_index(&self) -> Result<Arc<SpellIndex>, String> {
+        if let Some(index) = self.with_data(|data| data.spell_index.clone())? {
+            return Ok(index);
+        }
+        // Read through the chain directly rather than `read_cached`: 46 MB of
+        // DBC would evict most of the 128 MB read cache, which exists for the
+        // assets the 3D scene actually re-reads. This one is parsed once and
+        // then lives on as the index.
+        let spells = self.with_data(|data| {
+            data.chain
+                .read_file("DBFilesClient\\Spell.dbc")
+                .map_err(|e| format!("Spell.dbc: {e}"))
+        })??;
+        // The three cross-reference DBCs (icon, cast time, duration, range)
+        // are each a few hundred KB at most, so reading them alongside Spell.dbc
+        // costs nothing extra worth splitting into their own lock round-trips.
+        let icons =
+            self.with_data(|data| data.chain.read_file("DBFilesClient\\SpellIcon.dbc").ok())?;
+        let cast_times =
+            self.with_data(|data| data.chain.read_file("DBFilesClient\\SpellCastTimes.dbc").ok())?;
+        let durations =
+            self.with_data(|data| data.chain.read_file("DBFilesClient\\SpellDuration.dbc").ok())?;
+        let ranges =
+            self.with_data(|data| data.chain.read_file("DBFilesClient\\SpellRange.dbc").ok())?;
+
+        // Lock released for the expensive half.
+        let index = Arc::new(build_index(
+            &spells,
+            icons.as_deref(),
+            cast_times.as_deref(),
+            durations.as_deref(),
+            ranges.as_deref(),
+        ));
+        log::info!("spell_dbc: indexed {} spells", index.len());
+        self.with_data(|data| data.spell_index = Some(Arc::clone(&index)))?;
+        Ok(index)
+    }
 }
 
 pub struct MinimapData {
@@ -137,6 +187,10 @@ pub struct MinimapData {
     /// WorldMapArea.dbc: AreaTable zone id -> world bounds, parsed lazily on
     /// the first zone-bounds request (empty if the DBC is gone).
     zone_bounds: Option<Arc<HashMap<u32, ZoneWorldBounds>>>,
+    /// Spell.dbc (+ SpellIcon.dbc): searchable spell name/icon index, built
+    /// lazily on the first spell lookup (empty if the DBCs are gone). Built by
+    /// `MinimapState::spell_index`, which parses outside the state lock.
+    spell_index: Option<Arc<SpellIndex>>,
 }
 
 /// World-space rectangle of a zone's UI map (WorldMapArea.dbc), used to scope
@@ -696,6 +750,7 @@ fn build_data(archives: Vec<(PathBuf, i32)>, cache_dir: PathBuf) -> Result<Minim
         creature_models: None,
         gameobject_models: None,
         zone_bounds: None,
+        spell_index: None,
     })
 }
 
@@ -1226,6 +1281,49 @@ pub fn handle_file_request(app: &tauri::AppHandle, request: Request<Vec<u8>>) ->
             .unwrap_or_else(|_| status_response(500)),
         Err(_) => status_response(404),
     }
+}
+
+/// `blp://localhost/<mpq path>` scheme handler: serves any BLP from the loaded
+/// patch chain re-encoded as PNG, since the webview cannot put a BLP in an
+/// `<img>`. Spell icons (`Interface\Icons\*.blp`) are the first consumer, but
+/// it is deliberately generic — item icons will want the same thing.
+///
+/// Unlike Spell.dbc, icons do go through the read cache: they are a few KB
+/// each and the same handful is re-read every time a picker re-renders.
+pub fn handle_blp_request(app: &tauri::AppHandle, request: Request<Vec<u8>>) -> Response<Vec<u8>> {
+    let path = request.uri().path().trim_matches('/');
+    let decoded = percent_decode(path);
+    let mpq_path = decoded.replace('/', "\\");
+    if mpq_path.is_empty() || mpq_path.contains("..") {
+        return status_response(400);
+    }
+
+    let state = app.state::<MinimapState>();
+    if state.wait_ready().is_err() {
+        return status_response(503); // no client loaded yet
+    }
+
+    match decode_blp(&state, &mpq_path) {
+        Ok(png) => Response::builder()
+            .status(200)
+            .header(CONTENT_TYPE, "image/png")
+            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(CACHE_CONTROL, "public, max-age=86400")
+            .body(png)
+            .unwrap_or_else(|_| status_response(500)),
+        Err(e) => {
+            log::debug!("blp: {mpq_path} unavailable: {e}");
+            status_response(404)
+        }
+    }
+}
+
+/// Reads one BLP from the chain and re-encodes it as PNG.
+fn decode_blp(state: &MinimapState, mpq_path: &str) -> Result<Vec<u8>, String> {
+    let bytes = state.read_asset(mpq_path)?;
+    let blp = wow_blp::parser::parse_blp(bytes.as_slice()).map_err(|e| format!("{e:?}"))?;
+    let image = wow_blp::convert::blp_to_image(&blp, 0).map_err(|e| format!("{e:?}"))?;
+    encode_png(&image.to_rgba8())
 }
 
 /// Decodes %XX escapes (asset paths may contain spaces).

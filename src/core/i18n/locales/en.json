@@ -105,6 +105,19 @@
     "currentValue": "Current value:",
     "done": "Done"
   },
+  "spellPicker": {
+    "title": "Select a spell",
+    "searchPlaceholder": "Search by name or spell ID...",
+    "loading": "Reading the client's spells...",
+    "empty": "No spell matches this search",
+    "noClient": "No WoW client configured",
+    "noClientHint": "Spell names come from the client's Spell.dbc. Set the client folder in the settings to search spells by name; spell IDs stay editable without it.",
+    "columns": {
+      "id": "ID",
+      "name": "Name",
+      "rank": "Rank"
+    }
+  },
   "common": {
     "search": "Search...",
     "filter": "Filter",

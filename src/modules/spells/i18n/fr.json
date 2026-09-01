@@ -1,0 +1,272 @@
+{
+  "spells": {
+    "searchPlaceholder": "Rechercher un sort par nom ou par ID...",
+    "unknownSpell": "Sort inconnu",
+    "discard": "Annuler",
+    "execute": "Exécuter",
+    "clearOverride": "Réinitialiser",
+    "clearOverrideTooltip": "Supprime la ligne de surcharge — le comportement natif du moteur s'applique à nouveau.",
+    "rankCount": "1 rang | {count} rangs",
+    "kindAll": "Tous",
+    "kindSpell": "Sorts",
+    "kindAura": "Auras",
+    "columns": {
+      "entry": "ID du sort",
+      "rank": "Rang"
+    },
+    "groups": {
+      "bonus": "Bonus de soin & dégâts",
+      "bonusDesc": "spell_bonus_data — surcharge les coefficients que TrinityCore calculerait à partir des effets du sort.",
+      "threat": "Menace",
+      "threatDesc": "spell_threat — surcharge la menace générée par ce sort.",
+      "customAttr": "Attributs personnalisés",
+      "customAttrDesc": "spell_custom_attr — drapeaux de comportement calculés par TrinityCore, distincts des attributs DBC du sort."
+    },
+    "fields": {
+      "direct_bonus": "Bonus direct",
+      "dot_bonus": "Bonus DoT",
+      "ap_bonus": "Bonus de puissance d'attaque",
+      "ap_dot_bonus": "Bonus DoT de puissance d'attaque",
+      "comments": "Commentaires",
+      "flatMod": "Menace fixe",
+      "pctMod": "Multiplicateur de menace",
+      "apPctMod": "Bonus de menace (puissance d'attaque)",
+      "attributes": "Attributs"
+    },
+    "customAttrFlags": {
+      "enchantProc": {
+        "name": "Proc d'enchantement",
+        "comment": "Se déclenche depuis un enchantement d'arme temporaire"
+      },
+      "coneBack": {
+        "name": "Cône arrière",
+        "comment": "Effet en cône dirigé vers l'arrière du lanceur"
+      },
+      "coneLine": {
+        "name": "Cône en ligne",
+        "comment": "Effet en cône en forme de ligne"
+      },
+      "shareDamage": {
+        "name": "Dégâts partagés",
+        "comment": "Les dégâts sont répartis entre les cibles"
+      },
+      "noInitialThreat": {
+        "name": "Aucune menace initiale",
+        "comment": "Ne génère aucune menace au lancement"
+      },
+      "auraCc": {
+        "name": "Aura de contrôle",
+        "comment": "Aura de contrôle de foule (comptée pour la réduction de durée)"
+      },
+      "dontBreakStealth": {
+        "name": "Ne brise pas la discrétion",
+        "comment": "Lancer ce sort ne rompt pas la discrétion"
+      },
+      "canCrit": {
+        "name": "Peut critique",
+        "comment": "Peut infliger un coup critique"
+      },
+      "directDamage": {
+        "name": "Dégâts directs",
+        "comment": "L'effet inflige des dégâts directs"
+      },
+      "charge": {
+        "name": "Charge",
+        "comment": "Capacité de type charge"
+      },
+      "pickpocket": {
+        "name": "Vol à la tire",
+        "comment": "Capacité de vol à la tire"
+      },
+      "rollingPeriodic": {
+        "name": "Périodique cumulatif",
+        "comment": "Les dégâts périodiques se reportent sur le tic suivant"
+      },
+      "negativeEffect0": {
+        "name": "Effet négatif 0",
+        "comment": "L'emplacement d'effet 0 est considéré comme néfaste"
+      },
+      "negativeEffect1": {
+        "name": "Effet négatif 1",
+        "comment": "L'emplacement d'effet 1 est considéré comme néfaste"
+      },
+      "negativeEffect2": {
+        "name": "Effet négatif 2",
+        "comment": "L'emplacement d'effet 2 est considéré comme néfaste"
+      },
+      "ignoreArmor": {
+        "name": "Ignore l'armure",
+        "comment": "Les dégâts ignorent la réduction par l'armure"
+      },
+      "requiresTargetFacingCaster": {
+        "name": "Cible face au lanceur",
+        "comment": "La cible doit faire face au lanceur"
+      },
+      "requiresCasterBehindTarget": {
+        "name": "Lanceur derrière la cible",
+        "comment": "Le lanceur doit être derrière la cible"
+      },
+      "allowInflightTarget": {
+        "name": "Cible aérienne autorisée",
+        "comment": "Peut cibler des unités en vol"
+      },
+      "needsAmmoData": {
+        "name": "Nécessite des munitions",
+        "comment": "Nécessite des données de munitions à distance"
+      },
+      "binarySpell": {
+        "name": "Sort binaire",
+        "comment": "Se résout en touché/manqué pur, sans résistance partielle"
+      },
+      "schoolmaskNormalWithMagic": {
+        "name": "École physique + magique",
+        "comment": "École physique combinée à une école de magie"
+      },
+      "deprecatedLiquidAura": {
+        "name": "Aura liquide obsolète",
+        "comment": "Obsolète — ne pas utiliser sur de nouvelles données"
+      },
+      "isTalent": {
+        "name": "Est un talent",
+        "comment": "Appris en tant que talent"
+      },
+      "auraCannotBeSaved": {
+        "name": "Aura non sauvegardée",
+        "comment": "L'aura n'est pas conservée après reconnexion"
+      },
+      "canTargetAnyPrivateObject": {
+        "name": "Cible tout objet privé",
+        "comment": "Peut cibler des objets privés (phasés)"
+      }
+    },
+    "tabs": {
+      "info": "Info",
+      "tuning": "Réglages"
+    },
+    "info": {
+      "empty": "Ce sort n'est pas présent dans le client chargé.",
+      "passive": "Passif",
+      "auraBadge": "Aura",
+      "instant": "Instantané",
+      "noDuration": "Sans durée",
+      "permanent": "Permanent",
+      "melee": "Corps à corps",
+      "unresolved": "Index #{index} (non résolu)",
+      "effectSlot": "Effet {n}",
+      "basePoints": "Valeur de base",
+      "auraType": "Type d'aura",
+      "targetA": "Cible",
+      "noEffects": "Ce sort n'a aucun effet.",
+      "groups": {
+        "classification": "Classification",
+        "classificationDesc": "École, type de dissipation et mécanique issus de la fiche DBC du sort.",
+        "costTiming": "Coût & Timing",
+        "costTimingDesc": "Coût en ressource, temps d'incantation, temps de recharge, durée et portée — résolus depuis Spell.dbc et ses tables croisées.",
+        "requirements": "Prérequis & Procs",
+        "requirementsDesc": "Niveaux requis et comportement de déclenchement (proc).",
+        "effects": "Effets",
+        "effectsDesc": "Les 3 emplacements d'effet que ce sort résout au lancement."
+      },
+      "fields": {
+        "dispelType": "Type de dissipation",
+        "mechanic": "Mécanique",
+        "family": "Famille",
+        "powerType": "Type de ressource",
+        "cost": "Coût",
+        "castTime": "Temps d'incantation",
+        "cooldown": "Temps de recharge",
+        "categoryCooldown": "Recharge de catégorie",
+        "duration": "Durée",
+        "range": "Portée",
+        "spellLevel": "Niveau du sort",
+        "baseLevel": "Niveau de base",
+        "maxLevel": "Niveau max",
+        "procChance": "Chance de proc",
+        "procCharges": "Charges de proc"
+      }
+    },
+    "school": {
+      "physical": "Physique",
+      "holy": "Sacré",
+      "fire": "Feu",
+      "nature": "Nature",
+      "frost": "Givre",
+      "shadow": "Ombre",
+      "arcane": "Arcane"
+    },
+    "dispelType": {
+      "none": "Aucun",
+      "magic": "Magie",
+      "curse": "Malédiction",
+      "disease": "Maladie",
+      "poison": "Poison",
+      "stealth": "Discrétion",
+      "invisibility": "Invisibilité",
+      "all": "Tout",
+      "npcOnly": "PNJ uniquement",
+      "enrage": "Rage",
+      "zgTicket": "Ticket ZG"
+    },
+    "mechanic": {
+      "none": "Aucun",
+      "charm": "Charme",
+      "disoriented": "Désorienté",
+      "disarm": "Désarmé",
+      "distract": "Distrait",
+      "fear": "Peur",
+      "grip": "Saisie",
+      "root": "Enracinement",
+      "slowAttack": "Attaque ralentie",
+      "silence": "Silence",
+      "sleep": "Sommeil",
+      "snare": "Entrave",
+      "stun": "Étourdissement",
+      "freeze": "Gel",
+      "knockout": "Assommé",
+      "bleed": "Saignement",
+      "bandage": "Bandage",
+      "polymorph": "Métamorphose",
+      "banish": "Bannissement",
+      "shield": "Bouclier",
+      "shackle": "Enchaînement",
+      "mount": "Monture",
+      "infected": "Infecté",
+      "turn": "Repousse-mort-vivant",
+      "horror": "Horreur",
+      "invulnerability": "Invulnérabilité",
+      "interrupt": "Interruption",
+      "daze": "Étourdi (monture)",
+      "discovery": "Découverte",
+      "immuneShield": "Bouclier d'immunité",
+      "sapped": "Assommé (vol)",
+      "enraged": "Enragé"
+    },
+    "powerType": {
+      "health": "Vie",
+      "mana": "Mana",
+      "rage": "Rage",
+      "focus": "Concentration",
+      "energy": "Énergie",
+      "happiness": "Bonheur",
+      "rune": "Rune",
+      "runicPower": "Puissance runique"
+    },
+    "family": {
+      "generic": "Générique",
+      "unk1": "Inconnu 1",
+      "mage": "Mage",
+      "warrior": "Guerrier",
+      "warlock": "Démoniste",
+      "priest": "Prêtre",
+      "druid": "Druide",
+      "rogue": "Voleur",
+      "hunter": "Chasseur",
+      "paladin": "Paladin",
+      "shaman": "Chaman",
+      "unk2": "Inconnu 2",
+      "potion": "Potion",
+      "deathKnight": "Chevalier de la mort",
+      "pet": "Familier"
+    }
+  }
+}

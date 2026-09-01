@@ -4,12 +4,14 @@ mod commands;
 mod liquids;
 mod minimap;
 mod model_proxy;
+mod spell_dbc;
 mod wmo;
 
 use db::DbState;
 use debug::{DebugState, set_debug_mode, get_debug_mode};
 use minimap::{MinimapState, minimap_load_client, minimap_adt_liquids};
 use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_gameobject_models, minimap_zone_bounds};
+use spell_dbc::{client_spell_search, client_spell_names, client_spell_detail};
 use commands::addon::{get_npc_addon, save_npc_addon};
 use commands::batch::execute_batch;
 use commands::connection::{connect_db, disconnect_db};
@@ -35,6 +37,9 @@ use commands::equip::{get_npc_equip, save_npc_equip};
 use commands::item::{get_items, get_item, save_item, delete_item};
 use commands::loot_template::{get_loot_groups, get_loot_rows, delete_loot_entry};
 use commands::spell::{get_npc_spells, save_npc_spells};
+use commands::spell_bonus_data::{get_spell_bonus_data, delete_spell_bonus_data};
+use commands::spell_threat::{get_spell_threat, delete_spell_threat};
+use commands::spell_custom_attr::{get_spell_custom_attr, delete_spell_custom_attr};
 use commands::npc::{get_npcs, get_npc, save_npc, delete_npc};
 use commands::npc_text::{get_npc_texts, save_npc_texts};
 use commands::npc_text_locale::{get_npc_text_locales, save_npc_text_locales};
@@ -104,6 +109,14 @@ pub fn run() {
       let app = ctx.app_handle().clone();
       tauri::async_runtime::spawn_blocking(move || {
         responder.respond(minimap::handle_file_request(&app, request));
+      });
+    })
+    // `blp://` serves those same files re-encoded as PNG, for the BLP textures
+    // the webview can't render directly (spell icons and, later, item icons).
+    .register_asynchronous_uri_scheme_protocol("blp", |ctx, request, responder| {
+      let app = ctx.app_handle().clone();
+      tauri::async_runtime::spawn_blocking(move || {
+        responder.respond(minimap::handle_blp_request(&app, request));
       });
     })
     .invoke_handler(tauri::generate_handler![
@@ -259,6 +272,15 @@ pub fn run() {
       minimap_creature_models,
       minimap_gameobject_models,
       minimap_zone_bounds,
+      client_spell_search,
+      client_spell_names,
+      client_spell_detail,
+      get_spell_bonus_data,
+      delete_spell_bonus_data,
+      get_spell_threat,
+      delete_spell_threat,
+      get_spell_custom_attr,
+      delete_spell_custom_attr,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

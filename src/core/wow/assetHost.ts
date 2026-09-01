@@ -8,9 +8,30 @@
  */
 
 /** Custom-scheme URL format differs on Windows vs. macOS/Linux. */
-const MPQ_HOST = navigator.userAgent.includes('Windows')
-  ? 'http://mpq.localhost'
-  : 'mpq://localhost'
+function schemeHost(scheme: string): string {
+  return navigator.userAgent.includes('Windows')
+    ? `http://${scheme}.localhost`
+    : `${scheme}://localhost`
+}
 
 /** Base URL for @wowserhq/scene's AssetHost (it appends `/<mpq path>`). */
-export const MPQ_ASSET_BASE_URL = MPQ_HOST
+export const MPQ_ASSET_BASE_URL = schemeHost('mpq')
+
+/**
+ * Same archives, but BLP textures re-encoded as PNG so they can be the `src` of
+ * an `<img>` — the webview has no BLP decoder of its own.
+ */
+export const BLP_ASSET_BASE_URL = schemeHost('blp')
+
+/**
+ * Browser URL for a client texture, from the MPQ path the DBCs store
+ * (backslashes, e.g. `Interface\Icons\Spell_Fire_FlameBolt.blp`).
+ *
+ * Returns '' for an empty path so callers can bind it straight to `<img>` and
+ * hide the element on a falsy value — spells without an icon are ordinary.
+ */
+export function blpTextureUrl(mpqPath: string): string {
+  if (!mpqPath) return ''
+  const segments = mpqPath.split(/[\\/]/).map(encodeURIComponent)
+  return `${BLP_ASSET_BASE_URL}/${segments.join('/')}`
+}

@@ -105,6 +105,19 @@
     "currentValue": "Valeur actuelle :",
     "done": "Valider"
   },
+  "spellPicker": {
+    "title": "Sélectionner un sort",
+    "searchPlaceholder": "Rechercher par nom ou par ID de sort...",
+    "loading": "Lecture des sorts du client...",
+    "empty": "Aucun sort ne correspond à cette recherche",
+    "noClient": "Aucun client WoW configuré",
+    "noClientHint": "Les noms de sorts proviennent du Spell.dbc du client. Renseignez le dossier du client dans les réglages pour rechercher par nom ; les ID de sorts restent modifiables sans cela.",
+    "columns": {
+      "id": "ID",
+      "name": "Nom",
+      "rank": "Rang"
+    }
+  },
   "common": {
     "search": "Rechercher...",
     "filter": "Filtrer",

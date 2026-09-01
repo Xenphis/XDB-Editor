@@ -10,6 +10,9 @@ import { lootAndItemRoutes } from '@/modules/loot_and_item/routes'
 import { mapEditorRoutes } from '@/modules/map_editor/routes'
 import { modelSearchRoutes } from '@/modules/model_search/routes'
 import { smartScriptsRoutes } from '@/modules/smart_scripts/routes'
+import { spellRoutes } from '@/modules/spells/routes'
+import spellsFr from '@/modules/spells/i18n/fr.json'
+import spellsEn from '@/modules/spells/i18n/en.json'
 import objectFr from '@/modules/object/i18n/fr.json'
 import objectEn from '@/modules/object/i18n/en.json'
 import npcFr from '@/modules/npc/i18n/fr.json'
@@ -137,17 +140,15 @@ export const appModules: AppModuleDefinition[] = [
     routes: questRoutes,
   },
   {
+    // The list browses the client's Spell.dbc (there is no `spell` table —
+    // see @core/wow/spellDbc); selecting a spell opens its spell_bonus_data /
+    // spell_threat / spell_custom_attr overlays. More spell_* tables
+    // (spell_ranks, spell_linked_spell…) get their own editors later.
     id: 'spells',
     basePath: '/spells',
     navigation: { id: 'spells', icon: 'pi pi-star' },
-    routes: [
-      {
-        path: 'spells',
-        name: 'spells',
-        component: () => import('@core/components/PlaceholderModule.vue'),
-        props: { moduleId: 'spells' },
-      },
-    ],
+    i18n: { en: spellsEn, fr: spellsFr },
+    routes: spellRoutes,
   },
   {
     // World browser rendered from the local client's data (minimaps, 2D/3D

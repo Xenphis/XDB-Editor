@@ -1,0 +1,272 @@
+{
+  "spells": {
+    "searchPlaceholder": "Search spells by name or ID...",
+    "unknownSpell": "Unknown spell",
+    "discard": "Discard",
+    "execute": "Execute",
+    "clearOverride": "Reset to default",
+    "clearOverrideTooltip": "Deletes the override row — the engine's built-in behavior applies again.",
+    "rankCount": "1 rank | {count} ranks",
+    "kindAll": "All",
+    "kindSpell": "Spells",
+    "kindAura": "Auras",
+    "columns": {
+      "entry": "Spell ID",
+      "rank": "Rank"
+    },
+    "groups": {
+      "bonus": "Healing & damage bonus",
+      "bonusDesc": "spell_bonus_data — overrides the coefficients TrinityCore would otherwise compute from this spell's own effects.",
+      "threat": "Threat",
+      "threatDesc": "spell_threat — overrides how much threat this spell generates.",
+      "customAttr": "Custom attributes",
+      "customAttrDesc": "spell_custom_attr — engine-behavior flags computed by TrinityCore, distinct from the spell's own DBC attributes."
+    },
+    "fields": {
+      "direct_bonus": "Direct bonus",
+      "dot_bonus": "DoT bonus",
+      "ap_bonus": "Attack power bonus",
+      "ap_dot_bonus": "Attack power DoT bonus",
+      "comments": "Comments",
+      "flatMod": "Flat threat",
+      "pctMod": "Threat multiplier",
+      "apPctMod": "Attack power threat bonus",
+      "attributes": "Attributes"
+    },
+    "customAttrFlags": {
+      "enchantProc": {
+        "name": "Enchant Proc",
+        "comment": "Procs from a temporary weapon enchantment"
+      },
+      "coneBack": {
+        "name": "Cone Back",
+        "comment": "Cone effect aimed at the caster's back"
+      },
+      "coneLine": {
+        "name": "Cone Line",
+        "comment": "Cone effect shaped as a line"
+      },
+      "shareDamage": {
+        "name": "Share Damage",
+        "comment": "Damage is shared among targets"
+      },
+      "noInitialThreat": {
+        "name": "No Initial Threat",
+        "comment": "Generates no threat on cast"
+      },
+      "auraCc": {
+        "name": "Aura CC",
+        "comment": "Crowd-control aura (counted for diminishing returns)"
+      },
+      "dontBreakStealth": {
+        "name": "Don't Break Stealth",
+        "comment": "Casting this does not break stealth"
+      },
+      "canCrit": {
+        "name": "Can Crit",
+        "comment": "Can land a critical strike"
+      },
+      "directDamage": {
+        "name": "Direct Damage",
+        "comment": "Effect deals direct damage"
+      },
+      "charge": {
+        "name": "Charge",
+        "comment": "Charge-type ability"
+      },
+      "pickpocket": {
+        "name": "Pickpocket",
+        "comment": "Pickpocket ability"
+      },
+      "rollingPeriodic": {
+        "name": "Rolling Periodic",
+        "comment": "Periodic damage rolls into the next tick"
+      },
+      "negativeEffect0": {
+        "name": "Negative Effect 0",
+        "comment": "Effect slot 0 is treated as harmful"
+      },
+      "negativeEffect1": {
+        "name": "Negative Effect 1",
+        "comment": "Effect slot 1 is treated as harmful"
+      },
+      "negativeEffect2": {
+        "name": "Negative Effect 2",
+        "comment": "Effect slot 2 is treated as harmful"
+      },
+      "ignoreArmor": {
+        "name": "Ignore Armor",
+        "comment": "Damage bypasses armor mitigation"
+      },
+      "requiresTargetFacingCaster": {
+        "name": "Requires Target Facing Caster",
+        "comment": "Target must face the caster"
+      },
+      "requiresCasterBehindTarget": {
+        "name": "Requires Caster Behind Target",
+        "comment": "Caster must be behind the target"
+      },
+      "allowInflightTarget": {
+        "name": "Allow Inflight Target",
+        "comment": "Can target airborne units"
+      },
+      "needsAmmoData": {
+        "name": "Needs Ammo Data",
+        "comment": "Requires ranged ammunition data"
+      },
+      "binarySpell": {
+        "name": "Binary Spell",
+        "comment": "Resolves as a pure hit/miss, no partial resists"
+      },
+      "schoolmaskNormalWithMagic": {
+        "name": "Schoolmask Normal With Magic",
+        "comment": "Physical school combined with a magic school"
+      },
+      "deprecatedLiquidAura": {
+        "name": "Deprecated Liquid Aura",
+        "comment": "Deprecated — do not set on new data"
+      },
+      "isTalent": {
+        "name": "Is Talent",
+        "comment": "Learned as a talent"
+      },
+      "auraCannotBeSaved": {
+        "name": "Aura Cannot Be Saved",
+        "comment": "Aura is not persisted across relogs"
+      },
+      "canTargetAnyPrivateObject": {
+        "name": "Can Target Any Private Object",
+        "comment": "Can target private (phased) objects"
+      }
+    },
+    "tabs": {
+      "info": "Info",
+      "tuning": "Tuning"
+    },
+    "info": {
+      "empty": "This spell isn't in the loaded client.",
+      "passive": "Passive",
+      "auraBadge": "Aura",
+      "instant": "Instant",
+      "noDuration": "No duration",
+      "permanent": "Permanent",
+      "melee": "Melee",
+      "unresolved": "Index #{index} (unresolved)",
+      "effectSlot": "Effect {n}",
+      "basePoints": "Base Points",
+      "auraType": "Aura Type",
+      "targetA": "Target",
+      "noEffects": "This spell has no effects.",
+      "groups": {
+        "classification": "Classification",
+        "classificationDesc": "School, dispel type and mechanic from the spell's own DBC record.",
+        "costTiming": "Cost & Timing",
+        "costTimingDesc": "Resource cost, cast time, cooldown, duration and range — resolved from Spell.dbc and its own cross-reference tables.",
+        "requirements": "Requirements & Procs",
+        "requirementsDesc": "Level requirements and proc behavior.",
+        "effects": "Effects",
+        "effectsDesc": "The 3 effect slots this spell's cast resolves to."
+      },
+      "fields": {
+        "dispelType": "Dispel Type",
+        "mechanic": "Mechanic",
+        "family": "Family",
+        "powerType": "Power Type",
+        "cost": "Cost",
+        "castTime": "Cast Time",
+        "cooldown": "Cooldown",
+        "categoryCooldown": "Category Cooldown",
+        "duration": "Duration",
+        "range": "Range",
+        "spellLevel": "Spell Level",
+        "baseLevel": "Base Level",
+        "maxLevel": "Max Level",
+        "procChance": "Proc Chance",
+        "procCharges": "Proc Charges"
+      }
+    },
+    "school": {
+      "physical": "Physical",
+      "holy": "Holy",
+      "fire": "Fire",
+      "nature": "Nature",
+      "frost": "Frost",
+      "shadow": "Shadow",
+      "arcane": "Arcane"
+    },
+    "dispelType": {
+      "none": "None",
+      "magic": "Magic",
+      "curse": "Curse",
+      "disease": "Disease",
+      "poison": "Poison",
+      "stealth": "Stealth",
+      "invisibility": "Invisibility",
+      "all": "All",
+      "npcOnly": "NPC Only",
+      "enrage": "Enrage",
+      "zgTicket": "ZG Ticket"
+    },
+    "mechanic": {
+      "none": "None",
+      "charm": "Charm",
+      "disoriented": "Disoriented",
+      "disarm": "Disarm",
+      "distract": "Distract",
+      "fear": "Fear",
+      "grip": "Grip",
+      "root": "Root",
+      "slowAttack": "Slow Attack",
+      "silence": "Silence",
+      "sleep": "Sleep",
+      "snare": "Snare",
+      "stun": "Stun",
+      "freeze": "Freeze",
+      "knockout": "Knockout",
+      "bleed": "Bleed",
+      "bandage": "Bandage",
+      "polymorph": "Polymorph",
+      "banish": "Banish",
+      "shield": "Shield",
+      "shackle": "Shackle",
+      "mount": "Mount",
+      "infected": "Infected",
+      "turn": "Turn",
+      "horror": "Horror",
+      "invulnerability": "Invulnerability",
+      "interrupt": "Interrupt",
+      "daze": "Daze",
+      "discovery": "Discovery",
+      "immuneShield": "Immune Shield",
+      "sapped": "Sapped",
+      "enraged": "Enraged"
+    },
+    "powerType": {
+      "health": "Health",
+      "mana": "Mana",
+      "rage": "Rage",
+      "focus": "Focus",
+      "energy": "Energy",
+      "happiness": "Happiness",
+      "rune": "Rune",
+      "runicPower": "Runic Power"
+    },
+    "family": {
+      "generic": "Generic",
+      "unk1": "Unknown 1",
+      "mage": "Mage",
+      "warrior": "Warrior",
+      "warlock": "Warlock",
+      "priest": "Priest",
+      "druid": "Druid",
+      "rogue": "Rogue",
+      "hunter": "Hunter",
+      "paladin": "Paladin",
+      "shaman": "Shaman",
+      "unk2": "Unknown 2",
+      "potion": "Potion",
+      "deathKnight": "Death Knight",
+      "pet": "Pet"
+    }
+  }
+}
