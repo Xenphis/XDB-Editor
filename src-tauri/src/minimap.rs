@@ -41,9 +41,11 @@ const TILE_ZOOM: u32 = 8;
 const MIN_ZOOM: u32 = 4;
 const TILE_SIZE: u32 = 256;
 
-/// Bump when the tile pipeline's output changes for identical archives (e.g.
-/// the wow-blp 0.7 palettized-BLP R↔B fix), so cached PNGs are rebuilt.
-const PIPELINE_VERSION: u32 = 2;
+/// Bump when anything cached under the signature changes shape or meaning for
+/// identical archives — rendered tiles (e.g. the wow-blp 0.7 palettized-BLP
+/// R↔B fix) as well as the extracted WMO models (e.g. the MOCV vertex-lighting
+/// fix) — so the stale entries are dropped and rebuilt.
+const PIPELINE_VERSION: u32 = 3;
 
 /// Cap of the in-memory MPQ read cache (raw, still-compressed-on-disk assets
 /// decompressed once and reused across 3D re-opens within a session).

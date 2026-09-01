@@ -19,6 +19,7 @@ export interface WmoBatchGeometry {
   positions: number[]
   normals: number[]
   uvs: number[]
+  /** Interior lighting to multiply the texture by; empty for exterior batches. */
   colors: number[]
   indices: number[]
 }
@@ -43,14 +44,20 @@ export function buildWmoTemplate(
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(batch.positions, 3))
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(batch.normals, 3))
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(batch.uvs, 2))
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(batch.colors, 3))
     geometry.setIndex(batch.indices)
-    // Exterior groups are shaded by the scene's sun/ambient via their normals;
-    // interior groups stay unlit and rely on baked MOCV. Both multiply the
-    // texture by the (MOCV or white) vertex color.
-    const material = batch.exterior
-      ? new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, vertexColors: true })
-      : new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, vertexColors: true })
+    // Exterior groups are shaded by the scene's sun/ambient via their normals,
+    // and carry no vertex color: in the client MOCV is *added* to that sun +
+    // ambient term, and outdoor MOCV is near-black exactly because the sun
+    // already lights those faces — multiplying by it turns a building into a
+    // black silhouette. Interior groups are the unlit case, where the baked
+    // MOCV the extractor sends is the whole light the texture is multiplied by.
+    let material: THREE.MeshLambertMaterial | THREE.MeshBasicMaterial
+    if (batch.exterior) {
+      material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide })
+    } else {
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(batch.colors, 3))
+      material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, vertexColors: true })
+    }
     // Textures decode asynchronously via the scene's BLP worker.
     textureManager
       .get(batch.texture)

@@ -31,7 +31,10 @@ pub struct WmoBatch {
     pub positions: Vec<f32>,
     pub normals: Vec<f32>,
     pub uvs: Vec<f32>,
-    /// Baked MOCV vertex colors (RGB, 0..1), white where a group has none.
+    /// Interior lighting to multiply the texture by (RGB, 0..1): the group's
+    /// baked MOCV, fixed up and doubled the way the client does, white where a
+    /// group has no MOCV. Empty for exterior batches — the scene's sun lights
+    /// those.
     pub colors: Vec<f32>,
     pub indices: Vec<u32>,
 }
@@ -160,6 +163,53 @@ pub fn build_model(
         // their baked MOCV. The flag is constant for a whole group.
         let exterior = group.flags & 0x8 != 0;
 
+        // Per-vertex interior lighting, only worth computing for the groups
+        // that use it (exterior batches ship no colors at all).
+        //
+        // MOCV is *not* a "tint the texture by this" color: in the client's
+        // lighting formula it is added to the ambient + sun term, and outdoor
+        // MOCV is near-black precisely because the sun already lights those
+        // surfaces (multiplying by it renders the building pitch black).
+        // Interior groups are the unlit case, where that sum is the MOCV
+        // alone, so there the baked color *is* the light the texture is
+        // multiplied by — after the two adjustments the client makes:
+        //
+        //  - CMapObjGroup::FixColorVertexAlpha, run at load time unless MOHD
+        //    sets flag_do_not_fix_vertex_color_alpha (0x8). Vertices below the
+        //    first non-transparency batch are merely halved; the rest fold the
+        //    MOCV alpha into the RGB.
+        //  - the pixel shader's doubling of the light before it multiplies the
+        //    texture, saturated here since the buffer is 0..1.
+        let vertex_light: Vec<[f32; 3]> = if exterior || group.vertex_colors.is_empty() {
+            Vec::new()
+        } else {
+            let fix_alpha = root.flags & 0x8 == 0;
+            // MOBA batches are ordered trans, then int, then ext.
+            let trans_end = match group.trans_batch_count.checked_sub(1) {
+                Some(last) => group
+                    .render_batches
+                    .get(last as usize)
+                    .map_or(0, |b| b.max_index as usize + 1),
+                None => 0,
+            };
+            group
+                .vertex_colors
+                .iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    let light = |v: u8| -> f32 {
+                        let fixed = match (fix_alpha, i >= trans_end) {
+                            (false, _) => v as i32,
+                            (true, true) => ((v as i32 + c.a as i32 * v as i32 / 64) / 2).min(255),
+                            (true, false) => v as i32 / 2,
+                        };
+                        (fixed as f32 / 255.0 * 2.0).min(1.0)
+                    };
+                    [light(c.r), light(c.g), light(c.b)]
+                })
+                .collect()
+        };
+
         // Vertex de-dup is per group file (indices are group-local).
         let mut remaps: HashMap<String, HashMap<u16, u32>> = HashMap::new();
         for batch in &group.render_batches {
@@ -194,15 +244,14 @@ pub fn build_model(
                         Some(t) => buffer.uvs.extend_from_slice(&[t.u, t.v]),
                         None => buffer.uvs.extend_from_slice(&[0.0, 0.0]),
                     }
-                    // MOCV baked lighting (BGRA bytes); white where absent so
-                    // groups without vertex colors keep their full texture.
-                    match group.vertex_colors.get(vi as usize) {
-                        Some(c) => buffer.colors.extend_from_slice(&[
-                            c.r as f32 / 255.0,
-                            c.g as f32 / 255.0,
-                            c.b as f32 / 255.0,
-                        ]),
-                        None => buffer.colors.extend_from_slice(&[1.0, 1.0, 1.0]),
+                    // Interior lighting; white where the group has no MOCV, so
+                    // those keep their full texture. Nothing for exterior
+                    // batches: the scene's sun lights them.
+                    if !exterior {
+                        match vertex_light.get(vi as usize) {
+                            Some(l) => buffer.colors.extend_from_slice(l),
+                            None => buffer.colors.extend_from_slice(&[1.0, 1.0, 1.0]),
+                        }
                     }
                     idx
                 });
