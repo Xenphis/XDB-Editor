@@ -1,6 +1,6 @@
 export interface QuestGreetingLocale {
   ID: number;
-  Type: number;
+  type: number;
   locale: string;
   Greeting?: string;
   VerifiedBuild?: number;

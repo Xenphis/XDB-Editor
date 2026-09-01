@@ -56,8 +56,8 @@ function isOfferModified(field: keyof typeof offerForm): boolean {
         <EditorField :label="t('quest_template.fields.RewardMoney')" :modified="isModified('RewardMoney')">
           <InputNumber v-model="form.RewardMoney" :useGrouping="false" fluid />
         </EditorField>
-        <EditorField :label="t('quest_template.fields.RewardBonusMoney')" :modified="isModified('RewardBonusMoney')">
-          <InputNumber v-model="form.RewardBonusMoney" :useGrouping="false" fluid />
+        <EditorField :label="t('quest_template.fields.RewardMoneyDifficulty')" :modified="isModified('RewardMoneyDifficulty')">
+          <InputNumber v-model="form.RewardMoneyDifficulty" :useGrouping="false" fluid />
         </EditorField>
         <EditorField :label="t('quest_template.fields.RewardDisplaySpell')" :modified="isModified('RewardDisplaySpell')">
           <InputNumber v-model="form.RewardDisplaySpell" :useGrouping="false" fluid />
@@ -160,11 +160,6 @@ function isOfferModified(field: keyof typeof offerForm): boolean {
             <InputNumber v-model="(form as any)[`RewardFactionOverride${i}`]" :useGrouping="false" fluid />
           </EditorField>
         </div>
-      </div>
-      <div class="field-grid" style="margin-top: 0.75rem;">
-        <EditorField :label="t('quest_template.fields.RewardFactionFlags')" :modified="isModified('RewardFactionFlags')">
-          <InputNumber v-model="form.RewardFactionFlags" :useGrouping="false" fluid />
-        </EditorField>
       </div>
     </div>
 

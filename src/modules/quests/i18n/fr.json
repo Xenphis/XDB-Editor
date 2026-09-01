@@ -97,7 +97,6 @@
       "QuestSortID": "Catégorie (Sort ID)",
       "QuestInfoID": "Info ID",
       "SuggestedGroupNum": "Groupe suggéré",
-      "RewardFactionFlags": "Flags récompenses réputation",
       "TimeAllowed": "Temps autorisé (s)",
       "AllowableRaces": "Races autorisées",
       "StartItem": "Item de départ",
@@ -140,7 +139,7 @@
       "RewardHonor": "Honneur",
       "RewardKillHonor": "Honneur (kills)",
       "RewardMoney": "Argent (cuivre)",
-      "RewardBonusMoney": "Argent bonus (cuivre)",
+      "RewardMoneyDifficulty": "Argent bonus (cuivre)",
       "RewardDisplaySpell": "Sort affiché",
       "RewardSpell": "Sort accordé",
       "RewardTitle": "Titre (ID)",
@@ -183,9 +182,7 @@
       "RewardText": "Texte de remise",
       "CompletionText": "Texte de complétion",
       "EmoteOnComplete": "Emote (complété)",
-      "EmoteOnCompleteDelay": "Délai emote (complété)",
       "EmoteOnIncomplete": "Emote (incomplet)",
-      "EmoteOnIncompleteDelay": "Délai emote (incomplet)",
       "emote": "Emote",
       "emoteDelay": "Délai (ms)"
     }

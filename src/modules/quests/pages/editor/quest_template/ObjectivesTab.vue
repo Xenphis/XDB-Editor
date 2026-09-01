@@ -132,14 +132,8 @@ function isReqModified(field: keyof typeof reqForm): boolean {
         <EditorField :label="t('quest_template.fields.EmoteOnComplete')" :modified="isReqModified('EmoteOnComplete')">
           <InputNumber v-model="reqForm.EmoteOnComplete" :useGrouping="false" fluid />
         </EditorField>
-        <EditorField :label="t('quest_template.fields.EmoteOnCompleteDelay')" :modified="isReqModified('EmoteOnCompleteDelay')">
-          <InputNumber v-model="reqForm.EmoteOnCompleteDelay" :useGrouping="false" fluid />
-        </EditorField>
         <EditorField :label="t('quest_template.fields.EmoteOnIncomplete')" :modified="isReqModified('EmoteOnIncomplete')">
           <InputNumber v-model="reqForm.EmoteOnIncomplete" :useGrouping="false" fluid />
-        </EditorField>
-        <EditorField :label="t('quest_template.fields.EmoteOnIncompleteDelay')" :modified="isReqModified('EmoteOnIncompleteDelay')">
-          <InputNumber v-model="reqForm.EmoteOnIncompleteDelay" :useGrouping="false" fluid />
         </EditorField>
       </div>
     </div>

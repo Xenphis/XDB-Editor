@@ -63,8 +63,8 @@ function localeCardModified(mgr: LocaleManager, locale: string, keys: string[]):
 }
 
 const makeTpl = (locale: string) => ({
-  locale, LogTitle: null, QuestDescription: null, LogDescription: null,
-  AreaDescription: null, QuestCompletionLog: null,
+  locale, Title: null, Details: null, Objectives: null,
+  EndText: null, CompletedText: null,
   ObjectiveText1: null, ObjectiveText2: null, ObjectiveText3: null, ObjectiveText4: null,
 })
 const makeOffer = (locale: string) => ({ locale, RewardText: null })
@@ -73,11 +73,11 @@ const makeReq = (locale: string) => ({ locale, CompletionText: null })
 // ─── Template-locale field config (drives the first card) ───────────────────
 
 const tplFields: { key: string; labelKey: string }[] = [
-  { key: 'LogTitle', labelKey: 'quest_template.fields.locale_title' },
-  { key: 'QuestDescription', labelKey: 'quest_template.fields.locale_details' },
-  { key: 'LogDescription', labelKey: 'quest_template.fields.locale_objectives' },
-  { key: 'AreaDescription', labelKey: 'quest_template.fields.locale_endtext' },
-  { key: 'QuestCompletionLog', labelKey: 'quest_template.fields.locale_completedtext' },
+  { key: 'Title', labelKey: 'quest_template.fields.locale_title' },
+  { key: 'Details', labelKey: 'quest_template.fields.locale_details' },
+  { key: 'Objectives', labelKey: 'quest_template.fields.locale_objectives' },
+  { key: 'EndText', labelKey: 'quest_template.fields.locale_endtext' },
+  { key: 'CompletedText', labelKey: 'quest_template.fields.locale_completedtext' },
   { key: 'ObjectiveText1', labelKey: 'quest_template.fields.locale_objectivetext1' },
   { key: 'ObjectiveText2', labelKey: 'quest_template.fields.locale_objectivetext2' },
   { key: 'ObjectiveText3', labelKey: 'quest_template.fields.locale_objectivetext3' },

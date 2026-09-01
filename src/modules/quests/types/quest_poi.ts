@@ -1,15 +1,13 @@
 export interface QuestPoi {
   QuestID: number;
-  BlobIndex: number; // or Idx1
-  Idx1?: number;
+  id: number;
+  ObjectiveIndex: number;
   MapID: number;
-  UiMapID: number;
+  WorldMapAreaId: number;
+  Floor: number;
   Priority: number;
   Flags: number;
-  WorldEffectID: number;
-  PlayerConditionID: number;
-  NavigationPlayerConditionID?: number;
-  SpawnTrackingID?: number;
+  VerifiedBuild?: number;
 }
 
 export interface QuestPoiPoints {
@@ -18,5 +16,5 @@ export interface QuestPoiPoints {
   Idx2: number;
   X: number;
   Y: number;
-  Z: number;
+  VerifiedBuild?: number;
 }

@@ -12,11 +12,11 @@ use crate::debug_sql;
 pub struct QuestTemplateLocale {
     #[sqlx(rename = "ID")] pub ID: u32,
     pub locale: String,
-    #[sqlx(rename = "LogTitle")] pub LogTitle: Option<String>,
-    #[sqlx(rename = "QuestDescription")] pub QuestDescription: Option<String>,
-    #[sqlx(rename = "LogDescription")] pub LogDescription: Option<String>,
-    #[sqlx(rename = "AreaDescription")] pub AreaDescription: Option<String>,
-    #[sqlx(rename = "QuestCompletionLog")] pub QuestCompletionLog: Option<String>,
+    #[sqlx(rename = "Title")] pub Title: Option<String>,
+    #[sqlx(rename = "Details")] pub Details: Option<String>,
+    #[sqlx(rename = "Objectives")] pub Objectives: Option<String>,
+    #[sqlx(rename = "EndText")] pub EndText: Option<String>,
+    #[sqlx(rename = "CompletedText")] pub CompletedText: Option<String>,
     #[sqlx(rename = "ObjectiveText1")] pub ObjectiveText1: Option<String>,
     #[sqlx(rename = "ObjectiveText2")] pub ObjectiveText2: Option<String>,
     #[sqlx(rename = "ObjectiveText3")] pub ObjectiveText3: Option<String>,
@@ -59,18 +59,18 @@ pub async fn save_quest_locales(
 
     for locale in &locales {
         const SQL_INSERT: &str = "INSERT INTO quest_template_locale (
-            ID, locale, LogTitle, QuestDescription, LogDescription, AreaDescription, QuestCompletionLog,
+            ID, locale, Title, Details, Objectives, EndText, CompletedText,
             ObjectiveText1, ObjectiveText2, ObjectiveText3, ObjectiveText4, VerifiedBuild
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
         debug_sql!(app, debug, SQL_INSERT,
             sqlx::query(SQL_INSERT)
             .bind(id)
             .bind(&locale.locale)
-            .bind(&locale.LogTitle)
-            .bind(&locale.QuestDescription)
-            .bind(&locale.LogDescription)
-            .bind(&locale.AreaDescription)
-            .bind(&locale.QuestCompletionLog)
+            .bind(&locale.Title)
+            .bind(&locale.Details)
+            .bind(&locale.Objectives)
+            .bind(&locale.EndText)
+            .bind(&locale.CompletedText)
             .bind(&locale.ObjectiveText1)
             .bind(&locale.ObjectiveText2)
             .bind(&locale.ObjectiveText3)

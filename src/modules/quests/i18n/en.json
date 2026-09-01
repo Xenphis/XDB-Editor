@@ -97,7 +97,6 @@
       "QuestSortID": "Category (Sort ID)",
       "QuestInfoID": "Info ID",
       "SuggestedGroupNum": "Suggested Group",
-      "RewardFactionFlags": "Faction Reward Flags",
       "TimeAllowed": "Time Allowed (s)",
       "AllowableRaces": "Allowable Races",
       "StartItem": "Start Item",
@@ -140,7 +139,7 @@
       "RewardHonor": "Honor",
       "RewardKillHonor": "Kill Honor",
       "RewardMoney": "Money (copper)",
-      "RewardBonusMoney": "Bonus Money (copper)",
+      "RewardMoneyDifficulty": "Bonus Money (copper)",
       "RewardDisplaySpell": "Display Spell",
       "RewardSpell": "Granted Spell",
       "RewardTitle": "Title (ID)",
@@ -183,9 +182,7 @@
       "RewardText": "Turn-in Text",
       "CompletionText": "Completion Text",
       "EmoteOnComplete": "Emote (complete)",
-      "EmoteOnCompleteDelay": "Emote delay (complete)",
       "EmoteOnIncomplete": "Emote (incomplete)",
-      "EmoteOnIncompleteDelay": "Emote delay (incomplete)",
       "emote": "Emote",
       "emoteDelay": "Delay (ms)"
     }

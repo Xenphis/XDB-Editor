@@ -1,6 +1,6 @@
 export interface QuestGreeting {
   ID: number;
-  Type: number;
+  type: number;
   GreetEmoteType: number;
   GreetEmoteDelay: number;
   Greeting?: string;

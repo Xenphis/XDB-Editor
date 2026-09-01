@@ -44,9 +44,7 @@ export interface OfferRewardForm {
 
 export interface RequestItemsForm {
   EmoteOnComplete: number
-  EmoteOnCompleteDelay: number
   EmoteOnIncomplete: number
-  EmoteOnIncompleteDelay: number
   CompletionText: string
 }
 
@@ -63,11 +61,11 @@ export interface DetailsForm {
 
 export interface LocaleEntry {
   locale: string
-  LogTitle: string | null
-  QuestDescription: string | null
-  LogDescription: string | null
-  AreaDescription: string | null
-  QuestCompletionLog: string | null
+  Title: string | null
+  Details: string | null
+  Objectives: string | null
+  EndText: string | null
+  CompletedText: string | null
   ObjectiveText1: string | null
   ObjectiveText2: string | null
   ObjectiveText3: string | null
@@ -103,7 +101,7 @@ export function createDefaultOfferReward(): OfferRewardForm {
 }
 
 export function createDefaultRequestItems(): RequestItemsForm {
-  return { EmoteOnComplete: 0, EmoteOnCompleteDelay: 0, EmoteOnIncomplete: 0, EmoteOnIncompleteDelay: 0, CompletionText: '' }
+  return { EmoteOnComplete: 0, EmoteOnIncomplete: 0, CompletionText: '' }
 }
 
 export function createDefaultDetails(): DetailsForm {
@@ -117,7 +115,7 @@ function createDefaultForm(): QuestTemplate {
     RequiredFactionId1: 0, RequiredFactionId2: 0,
     RequiredFactionValue1: 0, RequiredFactionValue2: 0,
     RewardNextQuest: 0, RewardXPDifficulty: 0,
-    RewardMoney: 0, RewardBonusMoney: 0,
+    RewardMoney: 0, RewardMoneyDifficulty: 0,
     RewardDisplaySpell: 0, RewardSpell: 0,
     RewardHonor: 0, RewardKillHonor: 0,
     StartItem: 0, Flags: 0, RequiredPlayerKills: 0,
@@ -142,7 +140,6 @@ function createDefaultForm(): QuestTemplate {
     RewardFactionID3: 0, RewardFactionValue3: 0, RewardFactionOverride3: 0,
     RewardFactionID4: 0, RewardFactionValue4: 0, RewardFactionOverride4: 0,
     RewardFactionID5: 0, RewardFactionValue5: 0, RewardFactionOverride5: 0,
-    RewardFactionFlags: 0,
     TimeAllowed: 0, AllowableRaces: 0,
     LogTitle: undefined, LogDescription: undefined, QuestDescription: undefined,
     AreaDescription: undefined, QuestCompletionLog: undefined,
@@ -152,6 +149,7 @@ function createDefaultForm(): QuestTemplate {
     RequiredItemId4: 0, RequiredItemId5: 0, RequiredItemId6: 0,
     RequiredItemCount1: 0, RequiredItemCount2: 0, RequiredItemCount3: 0,
     RequiredItemCount4: 0, RequiredItemCount5: 0, RequiredItemCount6: 0,
+    Unknown0: 0,
     ObjectiveText1: undefined, ObjectiveText2: undefined, ObjectiveText3: undefined, ObjectiveText4: undefined,
     VerifiedBuild: undefined,
   }
@@ -187,24 +185,24 @@ const localeConfig: Omit<CompositeKeyConfig<LocaleEntry>, 'parentId'> = {
   table: 'quest_template_locale',
   parentKey: 'ID',
   childKey: 'locale',
-  columns: ['LogTitle', 'QuestDescription', 'LogDescription', 'AreaDescription', 'QuestCompletionLog',
+  columns: ['Title', 'Details', 'Objectives', 'EndText', 'CompletedText',
             'ObjectiveText1', 'ObjectiveText2', 'ObjectiveText3', 'ObjectiveText4', 'VerifiedBuild'],
   isEqual: (a, b) =>
-    a.LogTitle === b.LogTitle &&
-    a.QuestDescription === b.QuestDescription &&
-    a.LogDescription === b.LogDescription &&
-    a.AreaDescription === b.AreaDescription &&
-    a.QuestCompletionLog === b.QuestCompletionLog &&
+    a.Title === b.Title &&
+    a.Details === b.Details &&
+    a.Objectives === b.Objectives &&
+    a.EndText === b.EndText &&
+    a.CompletedText === b.CompletedText &&
     a.ObjectiveText1 === b.ObjectiveText1 &&
     a.ObjectiveText2 === b.ObjectiveText2 &&
     a.ObjectiveText3 === b.ObjectiveText3 &&
     a.ObjectiveText4 === b.ObjectiveText4,
   toSqlValues: (e) => [
-    e.LogTitle != null ? `'${escapeSQL(e.LogTitle)}'` : null,
-    e.QuestDescription != null ? `'${escapeSQL(e.QuestDescription)}'` : null,
-    e.LogDescription != null ? `'${escapeSQL(e.LogDescription)}'` : null,
-    e.AreaDescription != null ? `'${escapeSQL(e.AreaDescription)}'` : null,
-    e.QuestCompletionLog != null ? `'${escapeSQL(e.QuestCompletionLog)}'` : null,
+    e.Title != null ? `'${escapeSQL(e.Title)}'` : null,
+    e.Details != null ? `'${escapeSQL(e.Details)}'` : null,
+    e.Objectives != null ? `'${escapeSQL(e.Objectives)}'` : null,
+    e.EndText != null ? `'${escapeSQL(e.EndText)}'` : null,
+    e.CompletedText != null ? `'${escapeSQL(e.CompletedText)}'` : null,
     e.ObjectiveText1 != null ? `'${escapeSQL(e.ObjectiveText1)}'` : null,
     e.ObjectiveText2 != null ? `'${escapeSQL(e.ObjectiveText2)}'` : null,
     e.ObjectiveText3 != null ? `'${escapeSQL(e.ObjectiveText3)}'` : null,
@@ -309,7 +307,7 @@ export const useQuestModuleStore = defineStore('questModule', () => {
     tableName: 'quest_template_locale',
     compositeConfig: localeConfig,
     fieldPrefix: 'locale',
-    summarize: (e) => `${e.LogTitle ?? ''} / ${e.QuestDescription ?? ''}`,
+    summarize: (e) => `${e.Title ?? ''} / ${e.Details ?? ''}`,
   })
 
   const offerRewardLocales = new ArraySubTable<OfferRewardLocaleEntry>({
@@ -364,9 +362,7 @@ export const useQuestModuleStore = defineStore('questModule', () => {
           if (!data) return null
           return {
             EmoteOnComplete: data.EmoteOnComplete,
-            EmoteOnCompleteDelay: data.EmoteOnCompleteDelay,
             EmoteOnIncomplete: data.EmoteOnIncomplete,
-            EmoteOnIncompleteDelay: data.EmoteOnIncompleteDelay,
             CompletionText: data.CompletionText ?? '',
           } satisfies RequestItemsForm
         },
@@ -391,11 +387,11 @@ export const useQuestModuleStore = defineStore('questModule', () => {
           const rows = await questService.getQuestLocales(id).catch(() => [])
           return rows.map(row => ({
             locale: row.locale,
-            LogTitle: row.LogTitle ?? null,
-            QuestDescription: row.QuestDescription ?? null,
-            LogDescription: row.LogDescription ?? null,
-            AreaDescription: row.AreaDescription ?? null,
-            QuestCompletionLog: row.QuestCompletionLog ?? null,
+            Title: row.Title ?? null,
+            Details: row.Details ?? null,
+            Objectives: row.Objectives ?? null,
+            EndText: row.EndText ?? null,
+            CompletedText: row.CompletedText ?? null,
             ObjectiveText1: row.ObjectiveText1 ?? null,
             ObjectiveText2: row.ObjectiveText2 ?? null,
             ObjectiveText3: row.ObjectiveText3 ?? null,

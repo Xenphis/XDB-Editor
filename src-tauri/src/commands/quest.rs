@@ -24,7 +24,7 @@ pub struct QuestTemplate {
     #[sqlx(rename = "RewardNextQuest")] pub RewardNextQuest: u32,
     #[sqlx(rename = "RewardXPDifficulty")] pub RewardXPDifficulty: u8,
     #[sqlx(rename = "RewardMoney")] pub RewardMoney: i32,
-    #[sqlx(rename = "RewardBonusMoney")] pub RewardBonusMoney: u32,
+    #[sqlx(rename = "RewardMoneyDifficulty")] pub RewardMoneyDifficulty: u32,
     #[sqlx(rename = "RewardDisplaySpell")] pub RewardDisplaySpell: u32,
     #[sqlx(rename = "RewardSpell")] pub RewardSpell: i32,
     #[sqlx(rename = "RewardHonor")] pub RewardHonor: i32,
@@ -82,7 +82,6 @@ pub struct QuestTemplate {
     #[sqlx(rename = "RewardFactionID5")] pub RewardFactionID5: u32,
     #[sqlx(rename = "RewardFactionValue5")] pub RewardFactionValue5: i32,
     #[sqlx(rename = "RewardFactionOverride5")] pub RewardFactionOverride5: i32,
-    #[sqlx(rename = "RewardFactionFlags")] pub RewardFactionFlags: u32,
     #[sqlx(rename = "TimeAllowed")] pub TimeAllowed: u32,
     #[sqlx(rename = "AllowableRaces")] pub AllowableRaces: u32,
     #[sqlx(rename = "LogTitle")] pub LogTitle: Option<String>,
@@ -110,6 +109,7 @@ pub struct QuestTemplate {
     #[sqlx(rename = "RequiredItemCount4")] pub RequiredItemCount4: u16,
     #[sqlx(rename = "RequiredItemCount5")] pub RequiredItemCount5: u16,
     #[sqlx(rename = "RequiredItemCount6")] pub RequiredItemCount6: u16,
+    #[sqlx(rename = "Unknown0")] pub Unknown0: u8,
     #[sqlx(rename = "ObjectiveText1")] pub ObjectiveText1: Option<String>,
     #[sqlx(rename = "ObjectiveText2")] pub ObjectiveText2: Option<String>,
     #[sqlx(rename = "ObjectiveText3")] pub ObjectiveText3: Option<String>,
@@ -196,7 +196,7 @@ pub async fn save_quest(
     const SQL: &str = "INSERT INTO quest_template (
         ID,QuestType,QuestLevel,MinLevel,QuestSortID,QuestInfoID,SuggestedGroupNum,
         RequiredFactionId1,RequiredFactionId2,RequiredFactionValue1,RequiredFactionValue2,
-        RewardNextQuest,RewardXPDifficulty,RewardMoney,RewardBonusMoney,
+        RewardNextQuest,RewardXPDifficulty,RewardMoney,RewardMoneyDifficulty,
         RewardDisplaySpell,RewardSpell,RewardHonor,RewardKillHonor,StartItem,Flags,RequiredPlayerKills,
         RewardItem1,RewardAmount1,RewardItem2,RewardAmount2,RewardItem3,RewardAmount3,RewardItem4,RewardAmount4,
         ItemDrop1,ItemDropQuantity1,ItemDrop2,ItemDropQuantity2,ItemDrop3,ItemDropQuantity3,ItemDrop4,ItemDropQuantity4,
@@ -209,19 +209,22 @@ pub async fn save_quest(
         RewardFactionID3,RewardFactionValue3,RewardFactionOverride3,
         RewardFactionID4,RewardFactionValue4,RewardFactionOverride4,
         RewardFactionID5,RewardFactionValue5,RewardFactionOverride5,
-        RewardFactionFlags,TimeAllowed,AllowableRaces,
+        TimeAllowed,AllowableRaces,
         LogTitle,LogDescription,QuestDescription,AreaDescription,QuestCompletionLog,
         RequiredNpcOrGo1,RequiredNpcOrGo2,RequiredNpcOrGo3,RequiredNpcOrGo4,
         RequiredNpcOrGoCount1,RequiredNpcOrGoCount2,RequiredNpcOrGoCount3,RequiredNpcOrGoCount4,
         RequiredItemId1,RequiredItemId2,RequiredItemId3,RequiredItemId4,RequiredItemId5,RequiredItemId6,
         RequiredItemCount1,RequiredItemCount2,RequiredItemCount3,RequiredItemCount4,RequiredItemCount5,RequiredItemCount6,
+        Unknown0,
         ObjectiveText1,ObjectiveText2,ObjectiveText3,ObjectiveText4,VerifiedBuild
     ) VALUES (
-        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
-    ) ON DUPLICATE KEY UPDATE ID = VALUES(ID), QuestType = VALUES(QuestType), QuestLevel = VALUES(QuestLevel), MinLevel = VALUES(MinLevel), QuestSortID = VALUES(QuestSortID), QuestInfoID = VALUES(QuestInfoID), SuggestedGroupNum = VALUES(SuggestedGroupNum), RequiredFactionId1 = VALUES(RequiredFactionId1), RequiredFactionId2 = VALUES(RequiredFactionId2), RequiredFactionValue1 = VALUES(RequiredFactionValue1), RequiredFactionValue2 = VALUES(RequiredFactionValue2), RewardNextQuest = VALUES(RewardNextQuest), RewardXPDifficulty = VALUES(RewardXPDifficulty), RewardMoney = VALUES(RewardMoney), RewardBonusMoney = VALUES(RewardBonusMoney), RewardDisplaySpell = VALUES(RewardDisplaySpell), RewardSpell = VALUES(RewardSpell), RewardHonor = VALUES(RewardHonor), RewardKillHonor = VALUES(RewardKillHonor), StartItem = VALUES(StartItem), Flags = VALUES(Flags), RequiredPlayerKills = VALUES(RequiredPlayerKills), RewardItem1 = VALUES(RewardItem1), RewardAmount1 = VALUES(RewardAmount1), RewardItem2 = VALUES(RewardItem2), RewardAmount2 = VALUES(RewardAmount2), RewardItem3 = VALUES(RewardItem3), RewardAmount3 = VALUES(RewardAmount3), RewardItem4 = VALUES(RewardItem4), RewardAmount4 = VALUES(RewardAmount4), ItemDrop1 = VALUES(ItemDrop1), ItemDropQuantity1 = VALUES(ItemDropQuantity1), ItemDrop2 = VALUES(ItemDrop2), ItemDropQuantity2 = VALUES(ItemDropQuantity2), ItemDrop3 = VALUES(ItemDrop3), ItemDropQuantity3 = VALUES(ItemDropQuantity3), ItemDrop4 = VALUES(ItemDrop4), ItemDropQuantity4 = VALUES(ItemDropQuantity4), RewardChoiceItemID1 = VALUES(RewardChoiceItemID1), RewardChoiceItemQuantity1 = VALUES(RewardChoiceItemQuantity1), RewardChoiceItemID2 = VALUES(RewardChoiceItemID2), RewardChoiceItemQuantity2 = VALUES(RewardChoiceItemQuantity2), RewardChoiceItemID3 = VALUES(RewardChoiceItemID3), RewardChoiceItemQuantity3 = VALUES(RewardChoiceItemQuantity3), RewardChoiceItemID4 = VALUES(RewardChoiceItemID4), RewardChoiceItemQuantity4 = VALUES(RewardChoiceItemQuantity4), RewardChoiceItemID5 = VALUES(RewardChoiceItemID5), RewardChoiceItemQuantity5 = VALUES(RewardChoiceItemQuantity5), RewardChoiceItemID6 = VALUES(RewardChoiceItemID6), RewardChoiceItemQuantity6 = VALUES(RewardChoiceItemQuantity6), POIContinent = VALUES(POIContinent), POIx = VALUES(POIx), POIy = VALUES(POIy), POIPriority = VALUES(POIPriority), RewardTitle = VALUES(RewardTitle), RewardTalents = VALUES(RewardTalents), RewardArenaPoints = VALUES(RewardArenaPoints), RewardFactionID1 = VALUES(RewardFactionID1), RewardFactionValue1 = VALUES(RewardFactionValue1), RewardFactionOverride1 = VALUES(RewardFactionOverride1), RewardFactionID2 = VALUES(RewardFactionID2), RewardFactionValue2 = VALUES(RewardFactionValue2), RewardFactionOverride2 = VALUES(RewardFactionOverride2), RewardFactionID3 = VALUES(RewardFactionID3), RewardFactionValue3 = VALUES(RewardFactionValue3), RewardFactionOverride3 = VALUES(RewardFactionOverride3), RewardFactionID4 = VALUES(RewardFactionID4), RewardFactionValue4 = VALUES(RewardFactionValue4), RewardFactionOverride4 = VALUES(RewardFactionOverride4), RewardFactionID5 = VALUES(RewardFactionID5), RewardFactionValue5 = VALUES(RewardFactionValue5), RewardFactionOverride5 = VALUES(RewardFactionOverride5), RewardFactionFlags = VALUES(RewardFactionFlags), TimeAllowed = VALUES(TimeAllowed), AllowableRaces = VALUES(AllowableRaces), LogTitle = VALUES(LogTitle), LogDescription = VALUES(LogDescription), QuestDescription = VALUES(QuestDescription), AreaDescription = VALUES(AreaDescription), QuestCompletionLog = VALUES(QuestCompletionLog), RequiredNpcOrGo1 = VALUES(RequiredNpcOrGo1), RequiredNpcOrGo2 = VALUES(RequiredNpcOrGo2), RequiredNpcOrGo3 = VALUES(RequiredNpcOrGo3), RequiredNpcOrGo4 = VALUES(RequiredNpcOrGo4), RequiredNpcOrGoCount1 = VALUES(RequiredNpcOrGoCount1), RequiredNpcOrGoCount2 = VALUES(RequiredNpcOrGoCount2), RequiredNpcOrGoCount3 = VALUES(RequiredNpcOrGoCount3), RequiredNpcOrGoCount4 = VALUES(RequiredNpcOrGoCount4), RequiredItemId1 = VALUES(RequiredItemId1), RequiredItemId2 = VALUES(RequiredItemId2), RequiredItemId3 = VALUES(RequiredItemId3), RequiredItemId4 = VALUES(RequiredItemId4), RequiredItemId5 = VALUES(RequiredItemId5), RequiredItemId6 = VALUES(RequiredItemId6), RequiredItemCount1 = VALUES(RequiredItemCount1), RequiredItemCount2 = VALUES(RequiredItemCount2), RequiredItemCount3 = VALUES(RequiredItemCount3), RequiredItemCount4 = VALUES(RequiredItemCount4), RequiredItemCount5 = VALUES(RequiredItemCount5), RequiredItemCount6 = VALUES(RequiredItemCount6), ObjectiveText1 = VALUES(ObjectiveText1), ObjectiveText2 = VALUES(ObjectiveText2), ObjectiveText3 = VALUES(ObjectiveText3), ObjectiveText4 = VALUES(ObjectiveText4), VerifiedBuild = VALUES(VerifiedBuild)";
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        ?,?,?,?,?
+    ) ON DUPLICATE KEY UPDATE ID = VALUES(ID), QuestType = VALUES(QuestType), QuestLevel = VALUES(QuestLevel), MinLevel = VALUES(MinLevel), QuestSortID = VALUES(QuestSortID), QuestInfoID = VALUES(QuestInfoID), SuggestedGroupNum = VALUES(SuggestedGroupNum), RequiredFactionId1 = VALUES(RequiredFactionId1), RequiredFactionId2 = VALUES(RequiredFactionId2), RequiredFactionValue1 = VALUES(RequiredFactionValue1), RequiredFactionValue2 = VALUES(RequiredFactionValue2), RewardNextQuest = VALUES(RewardNextQuest), RewardXPDifficulty = VALUES(RewardXPDifficulty), RewardMoney = VALUES(RewardMoney), RewardMoneyDifficulty = VALUES(RewardMoneyDifficulty), RewardDisplaySpell = VALUES(RewardDisplaySpell), RewardSpell = VALUES(RewardSpell), RewardHonor = VALUES(RewardHonor), RewardKillHonor = VALUES(RewardKillHonor), StartItem = VALUES(StartItem), Flags = VALUES(Flags), RequiredPlayerKills = VALUES(RequiredPlayerKills), RewardItem1 = VALUES(RewardItem1), RewardAmount1 = VALUES(RewardAmount1), RewardItem2 = VALUES(RewardItem2), RewardAmount2 = VALUES(RewardAmount2), RewardItem3 = VALUES(RewardItem3), RewardAmount3 = VALUES(RewardAmount3), RewardItem4 = VALUES(RewardItem4), RewardAmount4 = VALUES(RewardAmount4), ItemDrop1 = VALUES(ItemDrop1), ItemDropQuantity1 = VALUES(ItemDropQuantity1), ItemDrop2 = VALUES(ItemDrop2), ItemDropQuantity2 = VALUES(ItemDropQuantity2), ItemDrop3 = VALUES(ItemDrop3), ItemDropQuantity3 = VALUES(ItemDropQuantity3), ItemDrop4 = VALUES(ItemDrop4), ItemDropQuantity4 = VALUES(ItemDropQuantity4), RewardChoiceItemID1 = VALUES(RewardChoiceItemID1), RewardChoiceItemQuantity1 = VALUES(RewardChoiceItemQuantity1), RewardChoiceItemID2 = VALUES(RewardChoiceItemID2), RewardChoiceItemQuantity2 = VALUES(RewardChoiceItemQuantity2), RewardChoiceItemID3 = VALUES(RewardChoiceItemID3), RewardChoiceItemQuantity3 = VALUES(RewardChoiceItemQuantity3), RewardChoiceItemID4 = VALUES(RewardChoiceItemID4), RewardChoiceItemQuantity4 = VALUES(RewardChoiceItemQuantity4), RewardChoiceItemID5 = VALUES(RewardChoiceItemID5), RewardChoiceItemQuantity5 = VALUES(RewardChoiceItemQuantity5), RewardChoiceItemID6 = VALUES(RewardChoiceItemID6), RewardChoiceItemQuantity6 = VALUES(RewardChoiceItemQuantity6), POIContinent = VALUES(POIContinent), POIx = VALUES(POIx), POIy = VALUES(POIy), POIPriority = VALUES(POIPriority), RewardTitle = VALUES(RewardTitle), RewardTalents = VALUES(RewardTalents), RewardArenaPoints = VALUES(RewardArenaPoints), RewardFactionID1 = VALUES(RewardFactionID1), RewardFactionValue1 = VALUES(RewardFactionValue1), RewardFactionOverride1 = VALUES(RewardFactionOverride1), RewardFactionID2 = VALUES(RewardFactionID2), RewardFactionValue2 = VALUES(RewardFactionValue2), RewardFactionOverride2 = VALUES(RewardFactionOverride2), RewardFactionID3 = VALUES(RewardFactionID3), RewardFactionValue3 = VALUES(RewardFactionValue3), RewardFactionOverride3 = VALUES(RewardFactionOverride3), RewardFactionID4 = VALUES(RewardFactionID4), RewardFactionValue4 = VALUES(RewardFactionValue4), RewardFactionOverride4 = VALUES(RewardFactionOverride4), RewardFactionID5 = VALUES(RewardFactionID5), RewardFactionValue5 = VALUES(RewardFactionValue5), RewardFactionOverride5 = VALUES(RewardFactionOverride5), TimeAllowed = VALUES(TimeAllowed), AllowableRaces = VALUES(AllowableRaces), LogTitle = VALUES(LogTitle), LogDescription = VALUES(LogDescription), QuestDescription = VALUES(QuestDescription), AreaDescription = VALUES(AreaDescription), QuestCompletionLog = VALUES(QuestCompletionLog), RequiredNpcOrGo1 = VALUES(RequiredNpcOrGo1), RequiredNpcOrGo2 = VALUES(RequiredNpcOrGo2), RequiredNpcOrGo3 = VALUES(RequiredNpcOrGo3), RequiredNpcOrGo4 = VALUES(RequiredNpcOrGo4), RequiredNpcOrGoCount1 = VALUES(RequiredNpcOrGoCount1), RequiredNpcOrGoCount2 = VALUES(RequiredNpcOrGoCount2), RequiredNpcOrGoCount3 = VALUES(RequiredNpcOrGoCount3), RequiredNpcOrGoCount4 = VALUES(RequiredNpcOrGoCount4), RequiredItemId1 = VALUES(RequiredItemId1), RequiredItemId2 = VALUES(RequiredItemId2), RequiredItemId3 = VALUES(RequiredItemId3), RequiredItemId4 = VALUES(RequiredItemId4), RequiredItemId5 = VALUES(RequiredItemId5), RequiredItemId6 = VALUES(RequiredItemId6), RequiredItemCount1 = VALUES(RequiredItemCount1), RequiredItemCount2 = VALUES(RequiredItemCount2), RequiredItemCount3 = VALUES(RequiredItemCount3), RequiredItemCount4 = VALUES(RequiredItemCount4), RequiredItemCount5 = VALUES(RequiredItemCount5), RequiredItemCount6 = VALUES(RequiredItemCount6), Unknown0 = VALUES(Unknown0), ObjectiveText1 = VALUES(ObjectiveText1), ObjectiveText2 = VALUES(ObjectiveText2), ObjectiveText3 = VALUES(ObjectiveText3), ObjectiveText4 = VALUES(ObjectiveText4), VerifiedBuild = VALUES(VerifiedBuild)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(data.ID).bind(data.QuestType).bind(data.QuestLevel).bind(data.MinLevel)
@@ -229,7 +232,7 @@ pub async fn save_quest(
         .bind(data.RequiredFactionId1).bind(data.RequiredFactionId2)
         .bind(data.RequiredFactionValue1).bind(data.RequiredFactionValue2)
         .bind(data.RewardNextQuest).bind(data.RewardXPDifficulty).bind(data.RewardMoney)
-        .bind(data.RewardBonusMoney).bind(data.RewardDisplaySpell).bind(data.RewardSpell)
+        .bind(data.RewardMoneyDifficulty).bind(data.RewardDisplaySpell).bind(data.RewardSpell)
         .bind(data.RewardHonor).bind(data.RewardKillHonor).bind(data.StartItem)
         .bind(data.Flags).bind(data.RequiredPlayerKills)
         .bind(data.RewardItem1).bind(data.RewardAmount1).bind(data.RewardItem2).bind(data.RewardAmount2)
@@ -249,7 +252,6 @@ pub async fn save_quest(
         .bind(data.RewardFactionID3).bind(data.RewardFactionValue3).bind(data.RewardFactionOverride3)
         .bind(data.RewardFactionID4).bind(data.RewardFactionValue4).bind(data.RewardFactionOverride4)
         .bind(data.RewardFactionID5).bind(data.RewardFactionValue5).bind(data.RewardFactionOverride5)
-        .bind(data.RewardFactionFlags)
         .bind(data.TimeAllowed).bind(data.AllowableRaces)
         .bind(&data.LogTitle).bind(&data.LogDescription).bind(&data.QuestDescription)
         .bind(&data.AreaDescription).bind(&data.QuestCompletionLog)
@@ -261,6 +263,7 @@ pub async fn save_quest(
         .bind(data.RequiredItemId4).bind(data.RequiredItemId5).bind(data.RequiredItemId6)
         .bind(data.RequiredItemCount1).bind(data.RequiredItemCount2).bind(data.RequiredItemCount3)
         .bind(data.RequiredItemCount4).bind(data.RequiredItemCount5).bind(data.RequiredItemCount6)
+        .bind(data.Unknown0)
         .bind(&data.ObjectiveText1).bind(&data.ObjectiveText2)
         .bind(&data.ObjectiveText3).bind(&data.ObjectiveText4)
         .bind(data.VerifiedBuild)
