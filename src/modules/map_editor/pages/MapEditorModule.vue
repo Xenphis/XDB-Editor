@@ -361,58 +361,6 @@ onMounted(async () => {
       </template>
 
       <template #editor>
-        <div class="editor-toolbar">
-          <SelectButton
-            v-if="selectedMap"
-            v-model="viewMode"
-            :options="viewModes"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
-          <Select
-            v-if="selectedMap && viewMode === '3d' && spawnsAvailable"
-            v-model="store.spawnPhase"
-            :options="phaseOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="t('mapEditor.spawns.phase.label')"
-            v-tooltip.bottom="t('mapEditor.spawns.phase.hint')"
-            class="phase-select"
-          />
-          <span v-if="cursor" class="cursor-coords">
-            X {{ cursor.x.toFixed(1) }} · Y {{ cursor.y.toFixed(1) }}
-          </span>
-          <span v-if="picked" class="picked-chip">
-            <i class="pi pi-map-marker"></i>
-            <span class="picked-value">{{ pickedText }}</span>
-            <Button
-              :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
-              text
-              size="small"
-              :aria-label="t('mapEditor.picked.copy')"
-              v-tooltip.bottom="t('mapEditor.picked.copy')"
-              @click="copyPicked"
-            />
-            <Button
-              icon="pi pi-plus"
-              text
-              size="small"
-              :disabled="dbMapId == null"
-              :aria-label="t('mapEditor.teleports.addHere')"
-              v-tooltip.bottom="dbMapId == null ? t('mapEditor.teleports.noMapId') : t('mapEditor.teleports.addHere')"
-              @click="openNewTeleport(picked)"
-            />
-            <Button
-              icon="pi pi-times"
-              text
-              size="small"
-              :aria-label="t('mapEditor.picked.clear')"
-              @click="picked = null"
-            />
-          </span>
-        </div>
-
         <p v-if="error" class="editor-error">{{ t('mapEditor.states.error', { message: error }) }}</p>
 
         <div class="map-stage">
@@ -456,17 +404,78 @@ onMounted(async () => {
             </p>
           </div>
 
-          <!-- Selected-spawn panel floats over the map so it never reflows the view. -->
-          <div v-if="viewMode === '3d' && selectedSpawn" class="spawn-overlay">
-            <SpawnInfoPanel
-              :spawn="selectedSpawn"
-              v-model:moveArmed="moveArmed"
-              :movedPosition="movedPosition"
-              :migrationSql="migrationSql"
-              :sqlCopied="sqlCopied"
-              @copy-sql="copyMigration"
-              @close="clearSelectedSpawn"
-            />
+          <!-- View controls float top-right, the same corner treatment as the
+               2D view's zoom control; the spawn panel stacks below them. -->
+          <div v-if="selectedMap" class="stage-top-right">
+            <div class="stage-controls">
+              <SelectButton
+                v-model="viewMode"
+                :options="viewModes"
+                optionLabel="label"
+                optionValue="value"
+                :allowEmpty="false"
+                size="small"
+              />
+              <Select
+                v-if="viewMode === '3d' && spawnsAvailable"
+                v-model="store.spawnPhase"
+                :options="phaseOptions"
+                optionLabel="label"
+                optionValue="value"
+                :placeholder="t('mapEditor.spawns.phase.label')"
+                v-tooltip.bottom="t('mapEditor.spawns.phase.hint')"
+                class="phase-select"
+                size="small"
+              />
+            </div>
+
+            <div v-if="viewMode === '3d' && selectedSpawn" class="spawn-overlay">
+              <SpawnInfoPanel
+                :spawn="selectedSpawn"
+                v-model:moveArmed="moveArmed"
+                :movedPosition="movedPosition"
+                :migrationSql="migrationSql"
+                :sqlCopied="sqlCopied"
+                @copy-sql="copyMigration"
+                @close="clearSelectedSpawn"
+              />
+            </div>
+          </div>
+
+          <!-- Coordinates float bottom-left: live cursor position, then the
+               right-clicked/picked point with its actions. -->
+          <div v-if="(cursor && viewMode === '2d') || picked" class="stage-bottom-left">
+            <span v-if="cursor && viewMode === '2d'" class="cursor-coords">
+              X {{ cursor.x.toFixed(1) }} · Y {{ cursor.y.toFixed(1) }}
+            </span>
+            <span v-if="picked" class="picked-chip">
+              <i class="pi pi-map-marker"></i>
+              <span class="picked-value">{{ pickedText }}</span>
+              <Button
+                :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
+                text
+                size="small"
+                :aria-label="t('mapEditor.picked.copy')"
+                v-tooltip.bottom="t('mapEditor.picked.copy')"
+                @click="copyPicked"
+              />
+              <Button
+                icon="pi pi-plus"
+                text
+                size="small"
+                :disabled="dbMapId == null"
+                :aria-label="t('mapEditor.teleports.addHere')"
+                v-tooltip.bottom="dbMapId == null ? t('mapEditor.teleports.noMapId') : t('mapEditor.teleports.addHere')"
+                @click="openNewTeleport(picked)"
+              />
+              <Button
+                icon="pi pi-times"
+                text
+                size="small"
+                :aria-label="t('mapEditor.picked.clear')"
+                @click="picked = null"
+              />
+            </span>
           </div>
         </div>
       </template>
@@ -526,41 +535,65 @@ onMounted(async () => {
   min-height: 0;
 }
 
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
+/* forms.css forces every .p-select to a fixed default height, which would
+   override the stretch below — height: auto hands sizing back to the
+   .stage-controls flex row, so this matches the toggle's height exactly
+   instead of guessing a number that drifts whenever the toggle is resized. */
 .phase-select {
   min-width: 11rem;
+  height: auto;
+}
+
+/* The label's height still needs to actually reach the stretched box: block
+   text sizes to line-height (forms.css sets one for the *default* height),
+   so flex-center the label instead of trusting a line-height to land right,
+   and reset line-height itself so it stops dictating the natural height. */
+.phase-select :deep(.p-select-label) {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem !important;
+  line-height: normal !important;
 }
 
 .cursor-coords {
-  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--surface-strong);
+  background: var(--surface-elevated);
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
   white-space: nowrap;
 }
 
 .picked-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0.3rem 0.15rem 0.75rem;
+  gap: 0.2rem;
+  padding: 0.1rem 0.15rem 0.1rem 0.5rem;
   border-radius: 999px;
   border: 1px solid var(--surface-strong);
   background: var(--surface-elevated);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .picked-chip .pi-map-marker {
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.7rem;
+}
+
+.picked-chip :deep(.p-button.p-button-icon-only) {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.picked-chip :deep(.p-button .p-button-icon) {
+  font-size: 0.7rem;
 }
 
 .editor-error {
@@ -575,27 +608,87 @@ onMounted(async () => {
   display: flex;
 }
 
+/* Isolates a stacking context: Leaflet always creates all four control
+   corners (even empty ones) at z-index 1000, which would otherwise outrank
+   the overlays below regardless of their own z-index — only the 2D view is
+   affected, since only Leaflet adds those phantom corners. */
 .editor-map {
+  position: relative;
+  z-index: 0;
   flex: 1;
   min-height: 0;
 }
 
-/* Top-right, clear of the "streaming" chip; capped to the map height so the
-   panel scrolls internally instead of pushing anything. */
-.spawn-overlay {
+/* View controls float over the map's top-right corner, the same treatment as
+   the 2D view's zoom control. The spawn panel stacks below them and scrolls
+   internally instead of pushing anything. */
+.stage-top-right {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
   bottom: 0.75rem;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
   pointer-events: none;
   z-index: 5;
 }
 
-.spawn-overlay > * {
+.stage-top-right > * {
   pointer-events: auto;
+}
+
+/* stretch (not center) so the select below can match the toggle's height by
+   filling it, rather than both hardcoding a height and hoping they agree;
+   nowrap because align-items: stretch silently no-ops in a wrapping flex
+   container whose own cross size isn't otherwise fixed. */
+.stage-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+/* No gap here: SelectButton's segments are meant to touch (each has its own
+   1px border and only the outer corners are rounded) — a gap leaves a
+   transparent strip between them with nothing behind it but the map. */
+
+/* ToggleButton nests a separate .p-togglebutton-content box (it carries its
+   own checked-state background, independent of the root's), so both need
+   the same shrink — resizing only the root leaves content at its original
+   padding, and the two mismatched boxes render as a visible split. */
+.stage-controls :deep(.p-togglebutton) {
+  padding: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.stage-controls :deep(.p-togglebutton-content) {
+  padding: 0.2rem 0.4rem;
+}
+
+.spawn-overlay {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+}
+
+.spawn-overlay > * {
   max-height: 100%;
+}
+
+/* Coordinates float over the map's bottom-left corner instead of a toolbar. */
+.stage-bottom-left {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  z-index: 5;
 }
 
 .editor-empty {
