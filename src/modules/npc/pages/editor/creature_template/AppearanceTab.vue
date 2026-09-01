@@ -19,17 +19,18 @@ const { isFieldModified, isAddonModified } = useNpcFieldModifiers()
 const form = store.formData
 const addonForm = store.addon.newEntry
 const equipEntries = computed(() => store.equips.getNewEntries())
+const modelEntries = computed(() => store.models.getNewEntries())
 
-// --- Model search (picker dialog for the modelid fields) ---
-type ModelIdField = 'modelid1' | 'modelid2' | 'modelid3' | 'modelid4'
+const MAX_MODELS = 4
+
+// --- Model search (picker dialog — adds a new creature_template_model row) ---
 const modelDialogVisible = ref(false)
-const modelTargetField = ref<ModelIdField>('modelid1')
-function openModelSearch(field: ModelIdField) {
-  modelTargetField.value = field
+function openModelSearch() {
+  if (modelEntries.value.length >= MAX_MODELS) return
   modelDialogVisible.value = true
 }
 function onModelSelect(displayId: number) {
-  form[modelTargetField.value] = displayId
+  addModel(displayId)
 }
 
 const { visFlagsOptions, standStateOptions, animTierOptions, visibilityDistanceOptions: visDistOptions } = useCreatureEnumOptions()
@@ -51,44 +52,55 @@ function addEquipSet() {
 function removeEquip(index: number) {
   store.equips.removeNewEntry(index)
 }
+
+const modelHasChanges = computed(() => store.models.getSqlDiff(form.entry).length > 0)
+
+const modelColumns: ColumnDef[] = [
+  { field: 'Idx', header: '#', type: 'readonly', width: '3rem' },
+  { field: 'CreatureDisplayID', header: t('creature_template.fields.model_displayid'), type: 'number' },
+  { field: 'DisplayScale', header: t('creature_template.fields.model_scale'), type: 'number', fractionDigits: { min: 1, max: 5 } },
+  { field: 'Probability', header: t('creature_template.fields.model_probability'), type: 'number', fractionDigits: { min: 0, max: 5 } },
+]
+
+function nextModelIdx(): number | null {
+  const used = new Set(modelEntries.value.map(e => e.Idx))
+  for (let idx = 0; idx < MAX_MODELS; idx++) {
+    if (!used.has(idx)) return idx
+  }
+  return null
+}
+
+function addModel(displayId = 0) {
+  const idx = nextModelIdx()
+  if (idx === null) return
+  store.models.pushNewEntry({ Idx: idx, CreatureDisplayID: displayId, DisplayScale: 1, Probability: 0 })
+}
+
+function removeModel(index: number) {
+  store.models.removeNewEntry(index)
+}
 </script>
 
 <template>
-  <!-- Model & Display -->
-  <div class="field-group">
-    <div class="field-group-header">
-      <h4>{{ t('creature_template.groups.modelDisplay') }}</h4>
-      <p>{{ t('creature_template.groups.modelDisplayDesc') }}</p>
-    </div>
-    <div class="field-grid">
-      <EditorField :label="t('creature_template.fields.modelid1')" :modified="isFieldModified('modelid1')">
-        <div class="model-field">
-          <InputNumber v-model="form.modelid1" :useGrouping="false" fluid />
-          <Button type="button" icon="pi pi-search" severity="secondary" class="model-search-btn" v-tooltip.bottom="t('modelSearch.searchTooltip')" @click="openModelSearch('modelid1')" />
-        </div>
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.modelid2')" :modified="isFieldModified('modelid2')">
-        <div class="model-field">
-          <InputNumber v-model="form.modelid2" :useGrouping="false" fluid />
-          <Button type="button" icon="pi pi-search" severity="secondary" class="model-search-btn" v-tooltip.bottom="t('modelSearch.searchTooltip')" @click="openModelSearch('modelid2')" />
-        </div>
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.modelid3')" :modified="isFieldModified('modelid3')">
-        <div class="model-field">
-          <InputNumber v-model="form.modelid3" :useGrouping="false" fluid />
-          <Button type="button" icon="pi pi-search" severity="secondary" class="model-search-btn" v-tooltip.bottom="t('modelSearch.searchTooltip')" @click="openModelSearch('modelid3')" />
-        </div>
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.modelid4')" :modified="isFieldModified('modelid4')">
-        <div class="model-field">
-          <InputNumber v-model="form.modelid4" :useGrouping="false" fluid />
-          <Button type="button" icon="pi pi-search" severity="secondary" class="model-search-btn" v-tooltip.bottom="t('modelSearch.searchTooltip')" @click="openModelSearch('modelid4')" />
-        </div>
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.scale')" :modified="isFieldModified('scale')">
-        <InputNumber v-model="form.scale" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
-      </EditorField>
-    </div>
+  <!-- Model & Display (creature_template_model) -->
+  <div class="field-group" :class="{ 'field-group-modified': modelHasChanges }">
+    <EditableDataTable
+      :entries="modelEntries"
+      :columns="modelColumns"
+      :hasChanges="modelHasChanges"
+      :maxRows="MAX_MODELS"
+      :title="t('creature_template.groups.modelDisplay')"
+      :description="t('creature_template.groups.modelDisplayDesc')"
+      dataKey="Idx"
+      embedded
+      @add="addModel()"
+      @remove="removeModel"
+    >
+      <template #add-row>
+        <Button icon="pi pi-plus" :label="t('creature_template.fields.model_add')" severity="secondary" size="small" :disabled="modelEntries.length >= MAX_MODELS" @click="addModel()" />
+        <Button icon="pi pi-search" :label="t('modelSearch.searchTooltip')" severity="secondary" size="small" :disabled="modelEntries.length >= MAX_MODELS" @click="openModelSearch" />
+      </template>
+    </EditableDataTable>
   </div>
 
   <!-- Animation -->
@@ -166,16 +178,4 @@ function removeEquip(index: number) {
 
 <style scoped>
 @import '../npc-editor.css';
-
-/* Model field: number input + "search a model" button on one row. */
-.model-field {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.model-field :deep(.p-inputnumber) {
-  flex: 1;
-  min-width: 0;
-}
 </style>

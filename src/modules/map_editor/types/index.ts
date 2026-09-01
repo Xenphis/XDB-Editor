@@ -122,12 +122,12 @@ export interface GameTele {
  */
 export interface CreatureSpawnMarker {
   guid: number
-  id: number
+  id1: number
   position_x: number
   position_y: number
   position_z: number
   orientation: number
-  /** Effective display id (spawn `modelid` override, else template `modelid1`); 0 if none. */
+  /** Effective display id, resolved from the template's primary `creature_template_model` row; 0 if none. */
   display_id: number
   /** creature_template name, for labels/selection ('' if the template is missing). */
   name: string

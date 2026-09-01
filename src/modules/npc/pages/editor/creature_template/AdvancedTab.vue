@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
@@ -76,9 +75,6 @@ const {
       <EditorField :label="t('creature_template.fields.PetSpellDataId')" :modified="isFieldModified('PetSpellDataId')">
         <InputNumber v-model="form.PetSpellDataId" :useGrouping="false" fluid />
       </EditorField>
-      <EditorField :label="t('creature_template.fields.StringId')" :modified="isFieldModified('StringId')">
-        <InputText v-model="form.StringId" fluid />
-      </EditorField>
       <EditorField :label="t('creature_template.fields.VerifiedBuild')" :modified="isFieldModified('VerifiedBuild')">
         <InputNumber v-model="form.VerifiedBuild" :useGrouping="false" fluid />
       </EditorField>
@@ -103,6 +99,15 @@ const {
       </EditorField>
       <EditorField :label="t('creature_template.fields.speed_run')" :modified="isFieldModified('speed_run')">
         <InputNumber v-model="form.speed_run" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
+      </EditorField>
+      <EditorField :label="t('creature_template.fields.speed_swim')" :modified="isFieldModified('speed_swim')">
+        <InputNumber v-model="form.speed_swim" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
+      </EditorField>
+      <EditorField :label="t('creature_template.fields.speed_flight')" :modified="isFieldModified('speed_flight')">
+        <InputNumber v-model="form.speed_flight" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
+      </EditorField>
+      <EditorField :label="t('creature_template.fields.detection_range')" :modified="isFieldModified('detection_range')">
+        <InputNumber v-model="form.detection_range" :minFractionDigits="1" :maxFractionDigits="5" :useGrouping="false" fluid />
       </EditorField>
       <EditorField :label="t('creature_template.fields.addon_path_id')" :modified="isAddonModified('path_id')">
         <InputNumber v-model="addonForm.path_id" :useGrouping="false" fluid />

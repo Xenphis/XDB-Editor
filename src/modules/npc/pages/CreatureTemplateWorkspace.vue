@@ -65,7 +65,14 @@ const spawnInspector = reactive<SpawnInspectorState>({
   fullQuery: '',
   hasChanges: false,
   changedFields: [],
-  modelid: 0,
+})
+
+// The template's primary display model (lowest Idx in creature_template_model),
+// used for the appearance preview — AzerothCore has no per-spawn display override.
+const primaryModel = computed(() => {
+  const entries = store.models.getNewEntries()
+  if (entries.length === 0) return null
+  return entries.reduce((min, e) => (e.Idx < min.Idx ? e : min))
 })
 
 async function loadSpawns(entry: number | null) {
@@ -359,7 +366,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         :hasChanges="spawnInspector.hasChanges"
       >
         <template #preview>
-          <ModelViewer kind="creature" :displayId="spawnInspector.modelid || form.modelid1" />
+          <ModelViewer kind="creature" :displayId="primaryModel?.CreatureDisplayID ?? 0" />
         </template>
       </InspectorPanel>
 
@@ -374,17 +381,17 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         :hasChanges="store.combinedHasChanges"
       >
         <template #preview>
-          <ModelViewer kind="creature" :displayId="form.modelid1" />
+          <ModelViewer kind="creature" :displayId="primaryModel?.CreatureDisplayID ?? 0" />
         </template>
         <template #facts>
           <dl class="npc-facts">
             <div class="npc-facts-row">
               <dt>{{ t('creature_template.modelPanel.displayId') }}</dt>
-              <dd>{{ form.modelid1 || t('creature_template.modelPanel.none') }}</dd>
+              <dd>{{ primaryModel?.CreatureDisplayID || t('creature_template.modelPanel.none') }}</dd>
             </div>
             <div class="npc-facts-row">
               <dt>{{ t('creature_template.modelPanel.scale') }}</dt>
-              <dd>{{ form.scale ?? t('creature_template.modelPanel.none') }}</dd>
+              <dd>{{ primaryModel?.DisplayScale ?? t('creature_template.modelPanel.none') }}</dd>
             </div>
             <div class="npc-facts-row">
               <dt>{{ t('creature_template.fields.faction') }}</dt>

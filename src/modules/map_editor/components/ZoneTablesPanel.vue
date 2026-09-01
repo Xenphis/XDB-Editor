@@ -140,7 +140,7 @@ function openInEditor(row: TableRow) {
   if (activeTable.value === 'teleports') {
     emit('edit-teleport', row as GameTele)
   } else {
-    void router.push(`/npc/creature-template/${(row as CreatureSpawnMarker).id}`)
+    void router.push(`/npc/creature-template/${(row as CreatureSpawnMarker).id1}`)
   }
 }
 

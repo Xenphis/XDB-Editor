@@ -6,7 +6,6 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { useCreatureEnumOptions } from '@/modules/npc/composables/useCreatureEnumOptions'
 import EditorField from '@core/components/EditorField.vue'
-import BitmaskField from '@core/components/BitmaskField.vue'
 import EditableDataTable, { type ColumnDef } from '@core/components/EditableDataTable.vue'
 import { useNpcModuleStore } from '@/modules/npc/store'
 import { useNpcFieldModifiers } from '@/modules/npc/pages/useNpcFieldModifiers'
@@ -28,8 +27,6 @@ const {
   dmgSchoolOptions: dmgschoolOptions,
   spellSchoolOptions,
   difficultyEntryOptions,
-  mechanicImmuneMaskOptions,
-  spellSchoolImmuneMaskOptions,
 } = useCreatureEnumOptions()
 
 const resistanceSchoolOptions = computed(() => spellSchoolOptions.value.map(o => ({ value: o.value, label: o.name })))
@@ -159,11 +156,8 @@ function removeResistance(index: number) {
       <EditorField :label="t('creature_template.fields.addon_auras')" :modified="isAddonModified('auras')">
         <InputText v-model="addonForm.auras" fluid />
       </EditorField>
-      <EditorField :label="t('creature_template.fields.mechanic_immune_mask')" :modified="isFieldModified('mechanic_immune_mask')">
-        <BitmaskField v-model="form.mechanic_immune_mask" :options="mechanicImmuneMaskOptions" :label="t('creature_template.fields.mechanic_immune_mask')" />
-      </EditorField>
-      <EditorField :label="t('creature_template.fields.spell_school_immune_mask')" :modified="isFieldModified('spell_school_immune_mask')">
-        <BitmaskField v-model="form.spell_school_immune_mask" :options="spellSchoolImmuneMaskOptions" :label="t('creature_template.fields.spell_school_immune_mask')" />
+      <EditorField :label="t('creature_template.fields.CreatureImmunitiesId')" :modified="isFieldModified('CreatureImmunitiesId')">
+        <InputNumber v-model="form.CreatureImmunitiesId" :useGrouping="false" fluid />
       </EditorField>
     </div>
   </div>

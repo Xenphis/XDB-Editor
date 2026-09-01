@@ -5,10 +5,6 @@ export interface CreatureTemplate {
   difficulty_entry_3: number
   KillCredit1: number
   KillCredit2: number
-  modelid1: number
-  modelid2: number
-  modelid3: number
-  modelid4: number
   name: string
   subname: string | null
   IconName: string | null
@@ -20,7 +16,9 @@ export interface CreatureTemplate {
   npcflag: number
   speed_walk: number
   speed_run: number
-  scale: number
+  speed_swim: number
+  speed_flight: number
+  detection_range: number
   rank: number
   dmgschool: number
   BaseAttackTime: number
@@ -52,11 +50,8 @@ export interface CreatureTemplate {
   RacialLeader: number
   movementId: number
   RegenHealth: number
-  mechanic_immune_mask: number
-  spell_school_immune_mask: number
+  CreatureImmunitiesId: number
   flags_extra: number
   ScriptName: string
-  StringId: string | null
   VerifiedBuild: number | null
 }
-

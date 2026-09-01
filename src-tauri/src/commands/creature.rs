@@ -10,13 +10,14 @@ use crate::debug_sql;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Creature {
     pub guid: u32,
-    pub id: u32,
+    pub id1: u32,
+    pub id2: u32,
+    pub id3: u32,
     pub map: u16,
     pub zoneId: u16,
     pub areaId: u16,
     pub spawnMask: u8,
     pub phaseMask: u32,
-    pub modelid: u32,
     pub equipment_id: i8,
     pub position_x: f32,
     pub position_y: f32,
@@ -34,10 +35,12 @@ pub struct Creature {
     pub dynamicflags: u32,
     #[sqlx(rename = "ScriptName")]
     pub ScriptName: String,
-    #[sqlx(rename = "StringId")]
-    pub StringId: Option<String>,
     #[sqlx(rename = "VerifiedBuild")]
     pub VerifiedBuild: Option<i32>,
+    #[sqlx(rename = "CreateObject")]
+    pub CreateObject: u8,
+    #[sqlx(rename = "Comment")]
+    pub Comment: Option<String>,
 }
 
 #[tauri::command]
@@ -50,7 +53,7 @@ pub async fn get_creature_spawns(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "SELECT * FROM creature WHERE id = ? ORDER BY guid";
+    const SQL: &str = "SELECT * FROM creature WHERE id1 = ? ORDER BY guid";
     debug_sql!(app, debug, SQL,
         sqlx::query_as::<_, Creature>(SQL)
         .bind(id)
@@ -62,13 +65,14 @@ pub async fn get_creature_spawns(
 
 /// A lightweight creature spawn for the 3D map view: only what's needed to
 /// place and identify a model, kept small because a camera region can pull
-/// thousands of rows. `display_id` is the effective display (the spawn's
-/// `modelid` override, else the template's `modelid1`); the client resolves it
-/// to an M2 path via `minimap_creature_models`.
+/// thousands of rows. `display_id` is resolved from the template's primary
+/// `creature_template_model` row (lowest `Idx`) — AzerothCore's `creature`
+/// table carries no per-spawn display override; the client resolves the
+/// display id to an M2 path via `minimap_creature_models`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatureSpawnMarker {
     pub guid: u32,
-    pub id: u32,
+    pub id1: u32,
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,
@@ -78,21 +82,19 @@ pub struct CreatureSpawnMarker {
     pub scale: f32,
 }
 
-/// Raw joined row. The effective display id / name / scale are computed in Rust
-/// rather than with SQL COALESCE/CASE: those change the column's wire type
-/// (e.g. to BIGINT) and make sqlx's strict decode into `u32`/`f32` fail. The
-/// individual columns decode exactly like the `Creature` struct already does.
+/// Raw joined row. `display_id`/`scale` come straight from the template's
+/// primary `creature_template_model` row (LEFT JOIN filtered to `MIN(Idx)`),
+/// `name` from `creature_template` — both nullable since the join can miss.
 #[derive(Debug, FromRow)]
 struct CreatureSpawnRow {
     guid: u32,
-    id: u32,
+    id1: u32,
     position_x: f32,
     position_y: f32,
     position_z: f32,
     orientation: f32,
-    modelid: u32,
-    template_modelid: Option<u32>,
     name: Option<String>,
+    display_id: Option<u32>,
     scale: Option<f32>,
 }
 
@@ -123,10 +125,12 @@ pub async fn get_creature_spawns_in_bounds(
     // The phase filter binds phase_mask twice: NULL disables it (every phase).
     // It is a bitmask test, not an equality — a spawn with phaseMask 3 lives in
     // phases 1 and 2 and has to show up under either.
-    const SQL: &str = "SELECT c.guid, c.id, c.position_x, c.position_y, c.position_z, c.orientation, \
-         c.modelid, ct.modelid1 AS template_modelid, ct.name, ct.scale \
+    const SQL: &str = "SELECT c.guid, c.id1, c.position_x, c.position_y, c.position_z, c.orientation, \
+         ct.name, ctm.CreatureDisplayID AS display_id, ctm.DisplayScale AS scale \
          FROM creature c \
-         LEFT JOIN creature_template ct ON ct.entry = c.id \
+         LEFT JOIN creature_template ct ON ct.entry = c.id1 \
+         LEFT JOIN creature_template_model ctm ON ctm.CreatureID = c.id1 \
+             AND ctm.Idx = (SELECT MIN(Idx) FROM creature_template_model WHERE CreatureID = c.id1) \
          WHERE c.map = ? AND c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ? \
          AND (? IS NULL OR (c.phaseMask & ?) <> 0) \
          LIMIT ?";
@@ -152,13 +156,12 @@ impl From<CreatureSpawnRow> for CreatureSpawnMarker {
     fn from(r: CreatureSpawnRow) -> Self {
         CreatureSpawnMarker {
             guid: r.guid,
-            id: r.id,
+            id1: r.id1,
             position_x: r.position_x,
             position_y: r.position_y,
             position_z: r.position_z,
             orientation: r.orientation,
-            // The spawn's modelid overrides the template's first display.
-            display_id: if r.modelid != 0 { r.modelid } else { r.template_modelid.unwrap_or(0) },
+            display_id: r.display_id.unwrap_or(0),
             name: r.name.unwrap_or_default(),
             scale: r.scale.unwrap_or(1.0),
         }
@@ -190,13 +193,15 @@ pub async fn get_creature_spawns_by_map(
     let rows = match &search {
         Some(q) if !q.is_empty() => {
             let pattern = format!("%{}%", q);
-            const SQL: &str = "SELECT c.guid, c.id, c.position_x, c.position_y, c.position_z, c.orientation, \
-                 c.modelid, ct.modelid1 AS template_modelid, ct.name, ct.scale \
+            const SQL: &str = "SELECT c.guid, c.id1, c.position_x, c.position_y, c.position_z, c.orientation, \
+                 ct.name, ctm.CreatureDisplayID AS display_id, ctm.DisplayScale AS scale \
                  FROM creature c \
-                 LEFT JOIN creature_template ct ON ct.entry = c.id \
+                 LEFT JOIN creature_template ct ON ct.entry = c.id1 \
+                 LEFT JOIN creature_template_model ctm ON ctm.CreatureID = c.id1 \
+                     AND ctm.Idx = (SELECT MIN(Idx) FROM creature_template_model WHERE CreatureID = c.id1) \
                  WHERE c.map = ? \
                  AND (? IS NULL OR (c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ?)) \
-                 AND (ct.name LIKE ? OR c.id LIKE ? OR c.guid LIKE ?) \
+                 AND (ct.name LIKE ? OR c.id1 LIKE ? OR c.guid LIKE ?) \
                  ORDER BY ct.name, c.guid LIMIT ?";
             debug_sql!(app, debug, SQL,
                 sqlx::query_as::<_, CreatureSpawnRow>(SQL)
@@ -216,10 +221,12 @@ pub async fn get_creature_spawns_by_map(
             ).map_err(|e| format!("Query failed: {}", e))?
         }
         _ => {
-            const SQL: &str = "SELECT c.guid, c.id, c.position_x, c.position_y, c.position_z, c.orientation, \
-                 c.modelid, ct.modelid1 AS template_modelid, ct.name, ct.scale \
+            const SQL: &str = "SELECT c.guid, c.id1, c.position_x, c.position_y, c.position_z, c.orientation, \
+                 ct.name, ctm.CreatureDisplayID AS display_id, ctm.DisplayScale AS scale \
                  FROM creature c \
-                 LEFT JOIN creature_template ct ON ct.entry = c.id \
+                 LEFT JOIN creature_template ct ON ct.entry = c.id1 \
+                 LEFT JOIN creature_template_model ctm ON ctm.CreatureID = c.id1 \
+                     AND ctm.Idx = (SELECT MIN(Idx) FROM creature_template_model WHERE CreatureID = c.id1) \
                  WHERE c.map = ? \
                  AND (? IS NULL OR (c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ?)) \
                  ORDER BY ct.name, c.guid LIMIT ?";
@@ -252,17 +259,18 @@ pub async fn save_creature_spawn(
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
 
-    const SQL: &str = "INSERT INTO creature (guid, id, map, zoneId, areaId, spawnMask, phaseMask, modelid, equipment_id, position_x, position_y, position_z, orientation, spawntimesecs, wander_distance, currentwaypoint, curhealth, curmana, MovementType, npcflag, unit_flags, dynamicflags, ScriptName, StringId, VerifiedBuild) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guid = VALUES(guid), id = VALUES(id), map = VALUES(map), zoneId = VALUES(zoneId), areaId = VALUES(areaId), spawnMask = VALUES(spawnMask), phaseMask = VALUES(phaseMask), modelid = VALUES(modelid), equipment_id = VALUES(equipment_id), position_x = VALUES(position_x), position_y = VALUES(position_y), position_z = VALUES(position_z), orientation = VALUES(orientation), spawntimesecs = VALUES(spawntimesecs), wander_distance = VALUES(wander_distance), currentwaypoint = VALUES(currentwaypoint), curhealth = VALUES(curhealth), curmana = VALUES(curmana), MovementType = VALUES(MovementType), npcflag = VALUES(npcflag), unit_flags = VALUES(unit_flags), dynamicflags = VALUES(dynamicflags), ScriptName = VALUES(ScriptName), StringId = VALUES(StringId), VerifiedBuild = VALUES(VerifiedBuild)";
+    const SQL: &str = "INSERT INTO creature (guid, id1, id2, id3, map, zoneId, areaId, spawnMask, phaseMask, equipment_id, position_x, position_y, position_z, orientation, spawntimesecs, wander_distance, currentwaypoint, curhealth, curmana, MovementType, npcflag, unit_flags, dynamicflags, ScriptName, VerifiedBuild, CreateObject, Comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guid = VALUES(guid), id1 = VALUES(id1), id2 = VALUES(id2), id3 = VALUES(id3), map = VALUES(map), zoneId = VALUES(zoneId), areaId = VALUES(areaId), spawnMask = VALUES(spawnMask), phaseMask = VALUES(phaseMask), equipment_id = VALUES(equipment_id), position_x = VALUES(position_x), position_y = VALUES(position_y), position_z = VALUES(position_z), orientation = VALUES(orientation), spawntimesecs = VALUES(spawntimesecs), wander_distance = VALUES(wander_distance), currentwaypoint = VALUES(currentwaypoint), curhealth = VALUES(curhealth), curmana = VALUES(curmana), MovementType = VALUES(MovementType), npcflag = VALUES(npcflag), unit_flags = VALUES(unit_flags), dynamicflags = VALUES(dynamicflags), ScriptName = VALUES(ScriptName), VerifiedBuild = VALUES(VerifiedBuild), CreateObject = VALUES(CreateObject), Comment = VALUES(Comment)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(creature.guid)
-        .bind(creature.id)
+        .bind(creature.id1)
+        .bind(creature.id2)
+        .bind(creature.id3)
         .bind(creature.map)
         .bind(creature.zoneId)
         .bind(creature.areaId)
         .bind(creature.spawnMask)
         .bind(creature.phaseMask)
-        .bind(creature.modelid)
         .bind(creature.equipment_id)
         .bind(creature.position_x)
         .bind(creature.position_y)
@@ -278,17 +286,18 @@ pub async fn save_creature_spawn(
         .bind(creature.unit_flags)
         .bind(creature.dynamicflags)
         .bind(&creature.ScriptName)
-        .bind(&creature.StringId)
         .bind(creature.VerifiedBuild)
+        .bind(creature.CreateObject)
+        .bind(&creature.Comment)
         .execute(pool)
         .await,
-        creature.guid, creature.id, creature.map, creature.zoneId, creature.areaId,
-        creature.spawnMask, creature.phaseMask, creature.modelid, creature.equipment_id,
+        creature.guid, creature.id1, creature.id2, creature.id3, creature.map, creature.zoneId, creature.areaId,
+        creature.spawnMask, creature.phaseMask, creature.equipment_id,
         creature.position_x, creature.position_y, creature.position_z, creature.orientation,
         creature.spawntimesecs, creature.wander_distance, creature.currentwaypoint,
         creature.curhealth, creature.curmana, creature.MovementType, creature.npcflag,
-        creature.unit_flags, creature.dynamicflags, &creature.ScriptName, &creature.StringId,
-        creature.VerifiedBuild
+        creature.unit_flags, creature.dynamicflags, &creature.ScriptName,
+        creature.VerifiedBuild, creature.CreateObject, &creature.Comment
     ).map_err(|e| format!("Save failed: {}", e))?;
 
     log::info!("Saved creature spawn guid {}", creature.guid);

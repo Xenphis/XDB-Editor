@@ -47,7 +47,7 @@ function formatPos(x: number, y: number, z: number): string {
 
 /** Opens the full creature_template editor for this spawn's template. */
 function openInNpcEditor() {
-  router.push(`/npc/creature-template/${props.spawn.id}`)
+  router.push(`/npc/creature-template/${props.spawn.id1}`)
 }
 </script>
 
@@ -64,7 +64,7 @@ function openInNpcEditor() {
     <dl class="spawn-meta">
       <div class="spawn-meta-row">
         <dt>{{ t('mapEditor.spawns.entry') }}</dt>
-        <dd>{{ spawn.id }}</dd>
+        <dd>{{ spawn.id1 }}</dd>
       </div>
       <div class="spawn-meta-row">
         <dt>{{ t('mapEditor.spawns.guid') }}</dt>

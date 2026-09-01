@@ -1,12 +1,13 @@
 export interface Creature {
   guid: number
-  id: number
+  id1: number
+  id2: number
+  id3: number
   map: number
   zoneId: number
   areaId: number
   spawnMask: number
   phaseMask: number
-  modelid: number
   equipment_id: number
   position_x: number
   position_y: number
@@ -22,6 +23,7 @@ export interface Creature {
   unit_flags: number
   dynamicflags: number
   ScriptName: string
-  StringId: string | null
   VerifiedBuild: number | null
+  CreateObject: number
+  Comment: string | null
 }

@@ -18,10 +18,6 @@ pub struct CreatureTemplate {
     pub KillCredit1: u32,
     #[sqlx(rename = "KillCredit2")]
     pub KillCredit2: u32,
-    pub modelid1: u32,
-    pub modelid2: u32,
-    pub modelid3: u32,
-    pub modelid4: u32,
     pub name: String,
     pub subname: Option<String>,
     #[sqlx(rename = "IconName")]
@@ -34,7 +30,9 @@ pub struct CreatureTemplate {
     pub npcflag: u32,
     pub speed_walk: f32,
     pub speed_run: f32,
-    pub scale: f32,
+    pub speed_swim: f32,
+    pub speed_flight: f32,
+    pub detection_range: f32,
     #[sqlx(rename = "rank")]
     pub rank: u8,
     pub dmgschool: i8,
@@ -84,13 +82,11 @@ pub struct CreatureTemplate {
     pub movementId: u32,
     #[sqlx(rename = "RegenHealth")]
     pub RegenHealth: u8,
-    pub mechanic_immune_mask: u32,
-    pub spell_school_immune_mask: u32,
+    #[sqlx(rename = "CreatureImmunitiesId")]
+    pub CreatureImmunitiesId: i32,
     pub flags_extra: u32,
     #[sqlx(rename = "ScriptName")]
     pub ScriptName: String,
-    #[sqlx(rename = "StringId")]
-    pub StringId: Option<String>,
     #[sqlx(rename = "VerifiedBuild")]
     pub VerifiedBuild: Option<i32>,
 }
@@ -252,29 +248,29 @@ pub async fn save_npc(
 
     const SQL: &str = "INSERT INTO creature_template (
             entry, difficulty_entry_1, difficulty_entry_2, difficulty_entry_3,
-            KillCredit1, KillCredit2, modelid1, modelid2, modelid3, modelid4,
+            KillCredit1, KillCredit2,
             name, subname, IconName, gossip_menu_id, minlevel, maxlevel,
-            exp, faction, npcflag, speed_walk, speed_run, scale, `rank`,
+            exp, faction, npcflag, speed_walk, speed_run, speed_swim, speed_flight, detection_range, `rank`,
             dmgschool, BaseAttackTime, RangeAttackTime, BaseVariance, RangeVariance,
             unit_class, unit_flags, unit_flags2, dynamicflags, family, `type`,
             type_flags, lootid, pickpocketloot, skinloot, PetSpellDataId, VehicleId,
             mingold, maxgold, AIName, MovementType, HoverHeight,
             HealthModifier, ManaModifier, ArmorModifier, DamageModifier,
             ExperienceModifier, RacialLeader, movementId, RegenHealth,
-            mechanic_immune_mask, spell_school_immune_mask, flags_extra,
-            ScriptName, StringId, VerifiedBuild
+            CreatureImmunitiesId, flags_extra,
+            ScriptName, VerifiedBuild
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?, ?,
-            ?, ?, ?
-        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), difficulty_entry_1 = VALUES(difficulty_entry_1), difficulty_entry_2 = VALUES(difficulty_entry_2), difficulty_entry_3 = VALUES(difficulty_entry_3), KillCredit1 = VALUES(KillCredit1), KillCredit2 = VALUES(KillCredit2), modelid1 = VALUES(modelid1), modelid2 = VALUES(modelid2), modelid3 = VALUES(modelid3), modelid4 = VALUES(modelid4), name = VALUES(name), subname = VALUES(subname), IconName = VALUES(IconName), gossip_menu_id = VALUES(gossip_menu_id), minlevel = VALUES(minlevel), maxlevel = VALUES(maxlevel), exp = VALUES(exp), faction = VALUES(faction), npcflag = VALUES(npcflag), speed_walk = VALUES(speed_walk), speed_run = VALUES(speed_run), scale = VALUES(scale), `rank` = VALUES(`rank`), dmgschool = VALUES(dmgschool), BaseAttackTime = VALUES(BaseAttackTime), RangeAttackTime = VALUES(RangeAttackTime), BaseVariance = VALUES(BaseVariance), RangeVariance = VALUES(RangeVariance), unit_class = VALUES(unit_class), unit_flags = VALUES(unit_flags), unit_flags2 = VALUES(unit_flags2), dynamicflags = VALUES(dynamicflags), family = VALUES(family), `type` = VALUES(`type`), type_flags = VALUES(type_flags), lootid = VALUES(lootid), pickpocketloot = VALUES(pickpocketloot), skinloot = VALUES(skinloot), PetSpellDataId = VALUES(PetSpellDataId), VehicleId = VALUES(VehicleId), mingold = VALUES(mingold), maxgold = VALUES(maxgold), AIName = VALUES(AIName), MovementType = VALUES(MovementType), HoverHeight = VALUES(HoverHeight), HealthModifier = VALUES(HealthModifier), ManaModifier = VALUES(ManaModifier), ArmorModifier = VALUES(ArmorModifier), DamageModifier = VALUES(DamageModifier), ExperienceModifier = VALUES(ExperienceModifier), RacialLeader = VALUES(RacialLeader), movementId = VALUES(movementId), RegenHealth = VALUES(RegenHealth), mechanic_immune_mask = VALUES(mechanic_immune_mask), spell_school_immune_mask = VALUES(spell_school_immune_mask), flags_extra = VALUES(flags_extra), ScriptName = VALUES(ScriptName), StringId = VALUES(StringId), VerifiedBuild = VALUES(VerifiedBuild)";
+            ?, ?,
+            ?, ?
+        ) ON DUPLICATE KEY UPDATE entry = VALUES(entry), difficulty_entry_1 = VALUES(difficulty_entry_1), difficulty_entry_2 = VALUES(difficulty_entry_2), difficulty_entry_3 = VALUES(difficulty_entry_3), KillCredit1 = VALUES(KillCredit1), KillCredit2 = VALUES(KillCredit2), name = VALUES(name), subname = VALUES(subname), IconName = VALUES(IconName), gossip_menu_id = VALUES(gossip_menu_id), minlevel = VALUES(minlevel), maxlevel = VALUES(maxlevel), exp = VALUES(exp), faction = VALUES(faction), npcflag = VALUES(npcflag), speed_walk = VALUES(speed_walk), speed_run = VALUES(speed_run), speed_swim = VALUES(speed_swim), speed_flight = VALUES(speed_flight), detection_range = VALUES(detection_range), `rank` = VALUES(`rank`), dmgschool = VALUES(dmgschool), BaseAttackTime = VALUES(BaseAttackTime), RangeAttackTime = VALUES(RangeAttackTime), BaseVariance = VALUES(BaseVariance), RangeVariance = VALUES(RangeVariance), unit_class = VALUES(unit_class), unit_flags = VALUES(unit_flags), unit_flags2 = VALUES(unit_flags2), dynamicflags = VALUES(dynamicflags), family = VALUES(family), `type` = VALUES(`type`), type_flags = VALUES(type_flags), lootid = VALUES(lootid), pickpocketloot = VALUES(pickpocketloot), skinloot = VALUES(skinloot), PetSpellDataId = VALUES(PetSpellDataId), VehicleId = VALUES(VehicleId), mingold = VALUES(mingold), maxgold = VALUES(maxgold), AIName = VALUES(AIName), MovementType = VALUES(MovementType), HoverHeight = VALUES(HoverHeight), HealthModifier = VALUES(HealthModifier), ManaModifier = VALUES(ManaModifier), ArmorModifier = VALUES(ArmorModifier), DamageModifier = VALUES(DamageModifier), ExperienceModifier = VALUES(ExperienceModifier), RacialLeader = VALUES(RacialLeader), movementId = VALUES(movementId), RegenHealth = VALUES(RegenHealth), CreatureImmunitiesId = VALUES(CreatureImmunitiesId), flags_extra = VALUES(flags_extra), ScriptName = VALUES(ScriptName), VerifiedBuild = VALUES(VerifiedBuild)";
     debug_sql!(app, debug, SQL,
         sqlx::query(SQL)
         .bind(data.entry)
@@ -283,10 +279,6 @@ pub async fn save_npc(
         .bind(data.difficulty_entry_3)
         .bind(data.KillCredit1)
         .bind(data.KillCredit2)
-        .bind(data.modelid1)
-        .bind(data.modelid2)
-        .bind(data.modelid3)
-        .bind(data.modelid4)
         .bind(&data.name)
         .bind(&data.subname)
         .bind(&data.IconName)
@@ -298,7 +290,9 @@ pub async fn save_npc(
         .bind(data.npcflag)
         .bind(data.speed_walk)
         .bind(data.speed_run)
-        .bind(data.scale)
+        .bind(data.speed_swim)
+        .bind(data.speed_flight)
+        .bind(data.detection_range)
         .bind(data.rank)
         .bind(data.dmgschool)
         .bind(data.BaseAttackTime)
@@ -330,26 +324,24 @@ pub async fn save_npc(
         .bind(data.RacialLeader)
         .bind(data.movementId)
         .bind(data.RegenHealth)
-        .bind(data.mechanic_immune_mask)
-        .bind(data.spell_school_immune_mask)
+        .bind(data.CreatureImmunitiesId)
         .bind(data.flags_extra)
         .bind(&data.ScriptName)
-        .bind(&data.StringId)
         .bind(data.VerifiedBuild)
         .execute(pool)
         .await,
         data.entry, data.difficulty_entry_1, data.difficulty_entry_2, data.difficulty_entry_3,
-        data.KillCredit1, data.KillCredit2, data.modelid1, data.modelid2, data.modelid3, data.modelid4,
+        data.KillCredit1, data.KillCredit2,
         &data.name, &data.subname, &data.IconName, data.gossip_menu_id, data.minlevel, data.maxlevel,
-        data.exp, data.faction, data.npcflag, data.speed_walk, data.speed_run, data.scale, data.rank,
+        data.exp, data.faction, data.npcflag, data.speed_walk, data.speed_run, data.speed_swim, data.speed_flight, data.detection_range, data.rank,
         data.dmgschool, data.BaseAttackTime, data.RangeAttackTime, data.BaseVariance, data.RangeVariance,
         data.unit_class, data.unit_flags, data.unit_flags2, data.dynamicflags, data.family, data.r#type,
         data.type_flags, data.lootid, data.pickpocketloot, data.skinloot, data.PetSpellDataId, data.VehicleId,
         data.mingold, data.maxgold, &data.AIName, data.MovementType, data.HoverHeight,
         data.HealthModifier, data.ManaModifier, data.ArmorModifier, data.DamageModifier,
         data.ExperienceModifier, data.RacialLeader, data.movementId, data.RegenHealth,
-        data.mechanic_immune_mask, data.spell_school_immune_mask, data.flags_extra,
-        &data.ScriptName, &data.StringId, data.VerifiedBuild
+        data.CreatureImmunitiesId, data.flags_extra,
+        &data.ScriptName, data.VerifiedBuild
     ).map_err(|e| format!("Save failed: {}", e))?;
 
     log::info!("Saved NPC entry {}", data.entry);

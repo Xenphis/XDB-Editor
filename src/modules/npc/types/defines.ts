@@ -115,49 +115,6 @@ export const type_flags_options: BitmaskOption[] = [
   { value: 0x80000000, hex: '0x80000000', name: 'Is Link All' },
 ];
 
-export const mechanic_immune_mask_options: BitmaskOption[] = [
-  { value: 0x00000001, hex: '0x00000001', name: 'Charm' },
-  { value: 0x00000002, hex: '0x00000002', name: 'Disoriented' },
-  { value: 0x00000004, hex: '0x00000004', name: 'Disarm' },
-  { value: 0x00000008, hex: '0x00000008', name: 'Distract' },
-  { value: 0x00000010, hex: '0x00000010', name: 'Fear' },
-  { value: 0x00000020, hex: '0x00000020', name: 'Grip' },
-  { value: 0x00000040, hex: '0x00000040', name: 'Root' },
-  { value: 0x00000080, hex: '0x00000080', name: 'Slow Attack' },
-  { value: 0x00000100, hex: '0x00000100', name: 'Silence' },
-  { value: 0x00000200, hex: '0x00000200', name: 'Sleep' },
-  { value: 0x00000400, hex: '0x00000400', name: 'Snare' },
-  { value: 0x00000800, hex: '0x00000800', name: 'Stun' },
-  { value: 0x00001000, hex: '0x00001000', name: 'Freeze' },
-  { value: 0x00002000, hex: '0x00002000', name: 'Knockout' },
-  { value: 0x00004000, hex: '0x00004000', name: 'Bleed' },
-  { value: 0x00008000, hex: '0x00008000', name: 'Bandage' },
-  { value: 0x00010000, hex: '0x00010000', name: 'Polymorph' },
-  { value: 0x00020000, hex: '0x00020000', name: 'Banish' },
-  { value: 0x00040000, hex: '0x00040000', name: 'Shield' },
-  { value: 0x00080000, hex: '0x00080000', name: 'Shackle' },
-  { value: 0x00100000, hex: '0x00100000', name: 'Mount' },
-  { value: 0x00200000, hex: '0x00200000', name: 'Infected' },
-  { value: 0x00400000, hex: '0x00400000', name: 'Turn' },
-  { value: 0x00800000, hex: '0x00800000', name: 'Horror' },
-  { value: 0x01000000, hex: '0x01000000', name: 'Invulnerability' },
-  { value: 0x02000000, hex: '0x02000000', name: 'Interrupt' },
-  { value: 0x04000000, hex: '0x04000000', name: 'Daze' },
-  { value: 0x08000000, hex: '0x08000000', name: 'Discovery' },
-  { value: 0x10000000, hex: '0x10000000', name: 'Immune Shield', comment: 'Divine Shield, Ice Block, Hand of Protection' },
-  { value: 0x20000000, hex: '0x20000000', name: 'Sapped' },
-  { value: 0x40000000, hex: '0x40000000', name: 'Enraged' },
-];
-
-export const spell_school_immune_mask_options: BitmaskOption[] = [
-  { value: 0x02, hex: '0x02', name: 'Holy' },
-  { value: 0x04, hex: '0x04', name: 'Fire' },
-  { value: 0x08, hex: '0x08', name: 'Nature' },
-  { value: 0x10, hex: '0x10', name: 'Frost' },
-  { value: 0x20, hex: '0x20', name: 'Shadow' },
-  { value: 0x40, hex: '0x40', name: 'Arcane' },
-];
-
 export const flags_extra_options: BitmaskOption[] = [
   { value: 0x00000001, hex: '0x00000001', name: 'Instance Bind', comment: 'Creature kill binds instance to killer and killer\'s group' },
   { value: 0x00000002, hex: '0x00000002', name: 'Civilian', comment: 'Not aggro (ignore faction/reputation hostility)' },

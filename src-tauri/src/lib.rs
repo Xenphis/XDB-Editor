@@ -18,6 +18,7 @@ use commands::connection::{connect_db, disconnect_db};
 use commands::creature::{get_creature_spawns, get_creature_spawns_in_bounds, get_creature_spawns_by_map, save_creature_spawn, delete_creature_spawn};
 use commands::creature_addon::{get_creature_addon, save_creature_addon};
 use commands::creature_movement_override::{get_creature_movement_override, save_creature_movement_override};
+use commands::creature_template_model::{get_npc_models, save_npc_models};
 use commands::creature_text::{get_creature_texts, save_creature_texts};
 use commands::creature_text_locale::{get_creature_text_locales, save_creature_text_locales};
 use commands::gameobject_template::{get_gameobjects, get_gameobject, save_gameobject, delete_gameobject};
@@ -142,6 +143,8 @@ pub fn run() {
       delete_creature_spawn,
       get_npc_equip,
       save_npc_equip,
+      get_npc_models,
+      save_npc_models,
       get_npc_spells,
       save_npc_spells,
       get_creature_texts,

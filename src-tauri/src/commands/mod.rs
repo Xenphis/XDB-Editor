@@ -13,6 +13,7 @@ pub mod creature;
 pub mod creature_addon;
 pub mod creature_model_tags;
 pub mod creature_movement_override;
+pub mod creature_template_model;
 pub mod creature_text;
 pub mod creature_text_locale;
 pub mod gameobject_addon;

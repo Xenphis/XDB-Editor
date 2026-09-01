@@ -48,6 +48,13 @@ export interface EquipEntry {
   ItemID3: number
 }
 
+export interface ModelEntry {
+  Idx: number
+  CreatureDisplayID: number
+  DisplayScale: number
+  Probability: number
+}
+
 export interface SpellEntry {
   Index: number
   Spell: number
@@ -192,10 +199,9 @@ function createDefaultForm(): CreatureTemplate {
   return {
     entry: 0, difficulty_entry_1: 0, difficulty_entry_2: 0, difficulty_entry_3: 0,
     KillCredit1: 0, KillCredit2: 0,
-    modelid1: 0, modelid2: 0, modelid3: 0, modelid4: 0,
     name: '', subname: null, IconName: null, gossip_menu_id: 0,
     minlevel: 1, maxlevel: 1, exp: 0, faction: 0, npcflag: 0,
-    speed_walk: 1, speed_run: 1.14286, scale: 1, rank: 0, dmgschool: 0,
+    speed_walk: 1, speed_run: 1.14286, speed_swim: 1, speed_flight: 1, detection_range: 20, rank: 0, dmgschool: 0,
     BaseAttackTime: 2000, RangeAttackTime: 2000, BaseVariance: 1, RangeVariance: 1,
     unit_class: 1, unit_flags: 0, unit_flags2: 0, dynamicflags: 0,
     family: 0, type: 0, type_flags: 0,
@@ -204,8 +210,8 @@ function createDefaultForm(): CreatureTemplate {
     AIName: '', MovementType: 0, HoverHeight: 1,
     HealthModifier: 1, ManaModifier: 1, ArmorModifier: 1, DamageModifier: 1, ExperienceModifier: 1,
     RacialLeader: 0, movementId: 0, RegenHealth: 1,
-    mechanic_immune_mask: 0, spell_school_immune_mask: 0, flags_extra: 0,
-    ScriptName: '', StringId: null, VerifiedBuild: null,
+    CreatureImmunitiesId: 0, flags_extra: 0,
+    ScriptName: '', VerifiedBuild: null,
   }
 }
 
@@ -301,6 +307,15 @@ const equipConfig: Omit<CompositeKeyConfig<EquipEntry>, 'parentId'> = {
   columns: ['ItemID1', 'ItemID2', 'ItemID3', 'VerifiedBuild'],
   isEqual: (a, b) => a.ItemID1 === b.ItemID1 && a.ItemID2 === b.ItemID2 && a.ItemID3 === b.ItemID3,
   toSqlValues: (e) => [e.ItemID1, e.ItemID2, e.ItemID3, 0],
+}
+
+const modelConfig: Omit<CompositeKeyConfig<ModelEntry>, 'parentId'> = {
+  table: 'creature_template_model',
+  parentKey: 'CreatureID',
+  childKey: 'Idx',
+  columns: ['CreatureDisplayID', 'DisplayScale', 'Probability', 'VerifiedBuild'],
+  isEqual: (a, b) => a.CreatureDisplayID === b.CreatureDisplayID && a.DisplayScale === b.DisplayScale && a.Probability === b.Probability,
+  toSqlValues: (e) => [e.CreatureDisplayID, e.DisplayScale, e.Probability, 0],
 }
 
 const questItemConfig: Omit<CompositeKeyConfig<QuestItemEntry>, 'parentId'> = {
@@ -483,6 +498,13 @@ export const useNpcModuleStore = defineStore('npcModule', () => {
     compositeConfig: equipConfig,
     fieldPrefix: 'equip_set',
     summarize: (e) => `${e.ItemID1}/${e.ItemID2}/${e.ItemID3}`,
+  })
+
+  const models = new ArraySubTable<ModelEntry>({
+    tableName: 'creature_template_model',
+    compositeConfig: modelConfig,
+    fieldPrefix: 'model_idx',
+    summarize: (e) => `#${e.CreatureDisplayID}`,
   })
 
   const spells = new ArraySubTable<SpellEntry>({
@@ -722,6 +744,13 @@ export const useNpcModuleStore = defineStore('npcModule', () => {
         },
       },
       {
+        manager: models,
+        load: async (entry) => {
+          const rows = await npcService.getNpcModels(entry).catch(() => [])
+          return rows.map(row => ({ Idx: row.Idx, CreatureDisplayID: row.CreatureDisplayID, DisplayScale: row.DisplayScale, Probability: row.Probability })) satisfies ModelEntry[]
+        },
+      },
+      {
         manager: spells,
         load: async (entry) => {
           const rows = await npcService.getNpcSpells(entry).catch(() => [])
@@ -866,7 +895,7 @@ export const useNpcModuleStore = defineStore('npcModule', () => {
     // List state
     npcs, loading, currentSearch, currentTypeFilter, listLoaded, gossipMenuIds, gossipMenuIdsLoading,
     // Sub-table managers
-    resistances, movement, addon, locales, equips, spells, texts, textLocales, questItems, questStarters, questEnders, onKillRep,
+    resistances, movement, addon, locales, equips, models, spells, texts, textLocales, questItems, questStarters, questEnders, onKillRep,
     gossipMenus, gossipOptions, gossipOptionLocales, npcTexts, npcTextLocales,
     ...editor,
     editingEntry: editor.editingId,

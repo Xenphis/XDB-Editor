@@ -3,6 +3,7 @@ import type { CreatureTemplate } from '@/modules/npc/types/creature_template/cre
 import type { CreatureTemplateAddon } from '@/modules/npc/types/creature_template/creature_template_addon'
 import type { Creature } from '@/modules/npc/types/creature/creature'
 import type { CreatureEquipTemplate } from '@/modules/npc/types/creature_template/creature_equip_template'
+import type { CreatureTemplateModel } from '@/modules/npc/types/creature_template/creature_template_model'
 import type { CreatureTemplateSpell } from '@/modules/npc/types/creature_template/creature_template_spell'
 import type { CreatureTemplateLocale } from '@/modules/npc/types/creature_template/creature_template_locale'
 import type { CreatureTemplateMovement } from '@/modules/npc/types/creature_template/creature_template_movement'
@@ -106,6 +107,14 @@ export async function getNpcEquip(entry: number): Promise<CreatureEquipTemplate[
 
 export async function saveNpcEquip(entry: number, equips: CreatureEquipTemplate[]): Promise<void> {
   return invoke('save_npc_equip', { entry, equips })
+}
+
+export async function getNpcModels(entry: number): Promise<CreatureTemplateModel[]> {
+  return invoke('get_npc_models', { entry })
+}
+
+export async function saveNpcModels(entry: number, models: CreatureTemplateModel[]): Promise<void> {
+  return invoke('save_npc_models', { entry, models })
 }
 
 export async function getNpcSpells(entry: number): Promise<CreatureTemplateSpell[]> {

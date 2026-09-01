@@ -25,7 +25,6 @@ export interface SpawnInspectorState {
   fullQuery: string
   hasChanges: boolean
   changedFields: FieldChange[]
-  modelid: number
 }
 
 const { t } = useI18n()
@@ -67,13 +66,14 @@ const loading = ref(false)
 
 const form = reactive<Creature>({
   guid: 0,
-  id: 0,
+  id1: 0,
+  id2: 0,
+  id3: 0,
   map: 0,
   zoneId: 0,
   areaId: 0,
   spawnMask: 1,
   phaseMask: 1,
-  modelid: 0,
   equipment_id: 0,
   position_x: 0,
   position_y: 0,
@@ -89,8 +89,9 @@ const form = reactive<Creature>({
   unit_flags: 0,
   dynamicflags: 0,
   ScriptName: '',
-  StringId: null,
   VerifiedBuild: null,
+  CreateObject: 0,
+  Comment: null,
 })
 
 const originalValue = ref<Creature | null>(null)
@@ -199,7 +200,6 @@ watchEffect(() => {
   props.inspector.fullQuery = fullQuery.value
   props.inspector.hasChanges = combinedHasChanges.value
   props.inspector.changedFields = combinedChangedFields.value
-  props.inspector.modelid = form.modelid
 })
 
 const mainTabs = computed<SectionTabItem[]>(() => [
@@ -309,11 +309,14 @@ onMounted(async () => {
               <EditorField :label="t('creature.fields.guid')" :tooltip="t('creature.tooltips.guid')" :modified="isFieldModified('guid')">
                 <InputNumber v-model="form.guid" :useGrouping="false" fluid disabled />
               </EditorField>
-              <EditorField :label="t('creature.fields.id')" :tooltip="t('creature.tooltips.id')" :modified="isFieldModified('id')">
-                <InputNumber v-model="form.id" :useGrouping="false" fluid />
+              <EditorField :label="t('creature.fields.id1')" :tooltip="t('creature.tooltips.id1')" :modified="isFieldModified('id1')">
+                <InputNumber v-model="form.id1" :useGrouping="false" fluid />
               </EditorField>
-              <EditorField :label="t('creature.fields.modelid')" :tooltip="t('creature.tooltips.modelid')" :modified="isFieldModified('modelid')">
-                <InputNumber v-model="form.modelid" :useGrouping="false" fluid />
+              <EditorField :label="t('creature.fields.id2')" :tooltip="t('creature.tooltips.id2')" :modified="isFieldModified('id2')">
+                <InputNumber v-model="form.id2" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField :label="t('creature.fields.id3')" :tooltip="t('creature.tooltips.id3')" :modified="isFieldModified('id3')">
+                <InputNumber v-model="form.id3" :useGrouping="false" fluid />
               </EditorField>
             </div>
           </div>
@@ -364,6 +367,9 @@ onMounted(async () => {
               </EditorField>
               <EditorField :label="t('creature.fields.spawntimesecs')" :tooltip="t('creature.tooltips.spawntimesecs')" :modified="isFieldModified('spawntimesecs')">
                 <InputNumber v-model="form.spawntimesecs" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField :label="t('creature.fields.CreateObject')" :tooltip="t('creature.tooltips.CreateObject')" :modified="isFieldModified('CreateObject')">
+                <InputNumber v-model="form.CreateObject" :useGrouping="false" fluid />
               </EditorField>
               <EditorField :label="t('creature.fields.addon_visdistance')" :modified="isAddonFieldModified('visibilityDistanceType')">
                 <Select v-model="addonForm.visibilityDistanceType" :options="visDistanceOptions" optionLabel="name" optionValue="value" fluid />
@@ -534,11 +540,11 @@ onMounted(async () => {
               <EditorField :label="t('creature.fields.ScriptName')" :tooltip="t('creature.tooltips.ScriptName')" :modified="isFieldModified('ScriptName')">
                 <InputText v-model="form.ScriptName" fluid />
               </EditorField>
-              <EditorField :label="t('creature.fields.StringId')" :tooltip="t('creature.tooltips.StringId')" :modified="isFieldModified('StringId')">
-                <InputText v-model="form.StringId" fluid />
-              </EditorField>
               <EditorField :label="t('creature.fields.VerifiedBuild')" :tooltip="t('creature.tooltips.VerifiedBuild')" :modified="isFieldModified('VerifiedBuild')">
                 <InputNumber v-model="form.VerifiedBuild" :useGrouping="false" fluid />
+              </EditorField>
+              <EditorField :label="t('creature.fields.Comment')" :tooltip="t('creature.tooltips.Comment')" :modified="isFieldModified('Comment')" fullWidth>
+                <InputText v-model="form.Comment" fluid />
               </EditorField>
             </div>
           </div>
