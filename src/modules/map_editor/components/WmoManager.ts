@@ -1,10 +1,11 @@
 import * as THREE from 'three'
 import type { MinimapMapInfo, WmoDoodadSet, WmoModel, WmoPlacement } from '../types'
-import { worldToTile } from '../service'
 import { loadAdtWmoPlacements, loadGlobalWmoPlacements, loadWmoModel } from '../service'
 import type { SceneAssets } from '@core/wow/SceneAssets'
 import { buildWmoTemplate } from '@core/wow/wmoGeometry'
 import { cullModel, type SceneModel } from './ModelCulling'
+import type { InstallQueue } from './InstallQueue'
+import { TileWindow, type TileCoord } from './TileWindow'
 
 /**
  * Streams WMO buildings/structures around the camera to complement
@@ -19,10 +20,17 @@ import { cullModel, type SceneModel } from './ModelCulling'
  * Textures and interior M2s come from the scene-wide `SceneAssets`, so a WMO
  * shares its decoded BLPs and model geometry with the terrain and the creature
  * spawns instead of keeping a private copy of each.
+ *
+ * Nothing here touches the scene graph directly. Building a template, cloning
+ * it per placement and adding the result are all main-thread work, and a city
+ * tile holds dozens of placements — doing them as they resolve put a whole
+ * tile's cost in one frame. They go through the shared `InstallQueue` instead.
  */
 
-/** ADT tiles kept loaded around the camera (Chebyshev radius). WMOs are big. */
-const RADIUS = 1
+/** ADT tiles loaded around the camera (Chebyshev radius). WMOs are big. */
+const LOAD_RADIUS = 1
+/** Tiles are only freed one ring further out; see `TileWindow`. */
+const KEEP_RADIUS = 2
 /** Half the map extent (34133.332 / 2), used to normalize MODF positions. */
 const MAP_CORNER = 34133.332 / 2
 
@@ -30,10 +38,6 @@ interface LoadedWmo {
   /** Batch geometry group; cloned per placement (geometry/materials shared). */
   template: THREE.Group
   doodadSets: WmoDoodadSet[]
-}
-
-function tileKey(col: number, row: number): string {
-  return `${col},${row}`
 }
 
 /** MODF/MDDF position [X,Y,Z] → world (== three) position. */
@@ -75,15 +79,17 @@ export class WmoManager {
   #globalObjects: THREE.Object3D[] = []
   #loading = new Set<string>()
   #disposed = false
-  #lastCol = Number.NaN
-  #lastRow = Number.NaN
   #ownedGeometries: THREE.BufferGeometry[] = []
   #ownedMaterials: THREE.Material[] = []
   readonly #map: MinimapMapInfo
+  readonly #queue: InstallQueue
+  readonly #window: TileWindow
 
-  constructor(map: MinimapMapInfo, assets: SceneAssets) {
+  constructor(map: MinimapMapInfo, assets: SceneAssets, queue: InstallQueue) {
     this.#map = map
     this.#assets = assets
+    this.#queue = queue
+    this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
     this.root.name = 'wmos'
 
     // Sun + ambient for exterior WMO surfaces (MeshLambert). Only lit
@@ -100,31 +106,18 @@ export class WmoManager {
     void this.#loadGlobal()
   }
 
-  /** Loads/unloads WMO placements for the camera position. */
-  update(cameraX: number, cameraY: number): void {
-    const { col, row } = worldToTile({ x: cameraX, y: cameraY })
-    if (col === this.#lastCol && row === this.#lastRow) return
-    this.#lastCol = col
-    this.#lastRow = row
+  /** Loads/unloads WMO placements for the window. */
+  update(camera: TileCoord, lead: TileCoord): void {
+    if (!this.#window.update(camera, lead)) return
 
-    const wanted = new Set<string>()
-    for (let dc = -RADIUS; dc <= RADIUS; dc++) {
-      for (let dr = -RADIUS; dr <= RADIUS; dr++) {
-        const c = col + dc
-        const r = row + dr
-        if (c < this.#map.minX || c > this.#map.maxX || r < this.#map.minY || r > this.#map.maxY) {
-          continue
-        }
-        const key = tileKey(c, r)
-        wanted.add(key)
-        if (!this.#tiles.has(key) && !this.#loading.has(key)) {
-          void this.#loadTile(c, r, key)
-        }
+    for (const [key, tile] of this.#window.load) {
+      if (!this.#tiles.has(key) && !this.#loading.has(key)) {
+        void this.#loadTile(tile.col, tile.row, key)
       }
     }
 
     for (const [key, objects] of this.#tiles) {
-      if (!wanted.has(key)) {
+      if (!this.#window.keeps(key)) {
         for (const obj of objects) this.root.remove(obj)
         this.#tiles.delete(key)
       }
@@ -141,11 +134,14 @@ export class WmoManager {
     if (this.#disposed || placements.length === 0) return
     await Promise.all(
       placements.map(async placement => {
-        const object = await this.#instance(placement)
-        if (object && !this.#disposed) {
+        const build = await this.#prepare(placement)
+        if (!build) return
+        await this.#queue.run(() => {
+          if (this.#disposed) return
+          const object = build()
           this.#globalObjects.push(object)
           this.root.add(object)
-        }
+        })
       }),
     )
   }
@@ -160,23 +156,34 @@ export class WmoManager {
     } finally {
       this.#loading.delete(key)
     }
-    if (this.#disposed || !this.#isWanted(col, row)) return
+    if (this.#disposed || !this.#window.keeps(key)) return
 
     const objects: THREE.Object3D[] = []
     // Register the (possibly empty) tile up front so panning doesn't refetch.
     this.#tiles.set(key, objects)
     await Promise.all(
       placements.map(async placement => {
-        const object = await this.#instance(placement)
-        if (!object || this.#disposed || !this.#tiles.has(key)) return
-        objects.push(object)
-        this.root.add(object)
+        const build = await this.#prepare(placement)
+        if (!build) return
+        await this.#queue.run(() => {
+          // Evicted — or evicted and reloaded, hence the identity test on the
+          // array — while this waited its turn. Tested before `build()` so a
+          // tile the camera has left costs nothing more than the fetch.
+          if (this.#disposed || this.#tiles.get(key) !== objects) return
+          const object = build()
+          objects.push(object)
+          this.root.add(object)
+        })
       }),
     )
   }
 
-  /** Instantiates one placement: cloned geometry + interior doodads, placed. */
-  async #instance(placement: WmoPlacement): Promise<THREE.Object3D | null> {
+  /**
+   * Loads one placement's assets, then hands back the synchronous step that
+   * builds it — clone, transform, attach the doodads — for the caller to run
+   * from the install queue. Null when the WMO itself could not be loaded.
+   */
+  async #prepare(placement: WmoPlacement): Promise<(() => THREE.Object3D) | null> {
     let loaded: LoadedWmo
     try {
       loaded = await this.#loadModel(placement.model)
@@ -185,18 +192,22 @@ export class WmoManager {
     }
     if (this.#disposed) return null
 
-    const group = loaded.template.clone()
-    group.position.copy(placementPosition(placement.position))
-    group.quaternion.copy(placementQuaternion(placement.rotation))
-
     // Set 0 is the always-shown default; the placement selects one more.
     const sets = new Set<number>([0, placement.doodadSet])
     const doodads = [...sets].flatMap(i => loaded.doodadSets?.[i]?.doodads ?? [])
-    if (doodads.length > 0) {
-      const models = await Promise.all(
-        doodads.map(d => this.#assets.modelManager.get(d.m2).catch(() => null)),
-      )
-      if (this.#disposed) return null
+    const models =
+      doodads.length > 0
+        ? await Promise.all(
+            doodads.map(d => this.#assets.modelManager.get(d.m2).catch(() => null)),
+          )
+        : []
+    if (this.#disposed) return null
+
+    return () => {
+      const group = loaded.template.clone()
+      group.position.copy(placementPosition(placement.position))
+      group.quaternion.copy(placementQuaternion(placement.rotation))
+
       const placed: SceneModel[] = []
       models.forEach((model, i) => {
         const d = doodads[i]
@@ -207,14 +218,16 @@ export class WmoManager {
         group.add(model)
         placed.push(model)
       })
-      // Culling walks these directly; they are buried under the batch meshes
-      // and re-traversing the group every frame to find them would undo the
-      // point. Seeding the world matrices also gives them a real
-      // `boundingSphereWorld` before the first cull pass reads it.
-      group.userData.doodads = placed
-      group.updateMatrixWorld(true)
+      if (placed.length > 0) {
+        // Culling walks these directly; they are buried under the batch meshes
+        // and re-traversing the group every frame to find them would undo the
+        // point. Seeding the world matrices also gives them a real
+        // `boundingSphereWorld` before the first cull pass reads it.
+        group.userData.doodads = placed
+        group.updateMatrixWorld(true)
+      }
+      return group
     }
-    return group
   }
 
   /**
@@ -245,18 +258,19 @@ export class WmoManager {
     const cached = this.#modelCache.get(filename)
     if (cached) return cached
 
-    const promise = loadWmoModel(filename).then((model: WmoModel) => {
-      const built = buildWmoTemplate(model.batches, this.#assets.textureManager)
-      this.#ownedGeometries.push(...built.geometries)
-      this.#ownedMaterials.push(...built.materials)
-      return { template: built.group, doodadSets: model.doodadSets }
-    })
+    // Turning the batches into GPU buffers is the same kind of main-thread
+    // work as the placements that clone the result, so it runs under the same
+    // budget rather than all at once when the fetch lands.
+    const promise = loadWmoModel(filename).then((model: WmoModel) =>
+      this.#queue.run(() => {
+        const built = buildWmoTemplate(model.batches, this.#assets.textureManager)
+        this.#ownedGeometries.push(...built.geometries)
+        this.#ownedMaterials.push(...built.materials)
+        return { template: built.group, doodadSets: model.doodadSets }
+      }),
+    )
     this.#modelCache.set(filename, promise)
     return promise
-  }
-
-  #isWanted(col: number, row: number): boolean {
-    return Math.abs(col - this.#lastCol) <= RADIUS && Math.abs(row - this.#lastRow) <= RADIUS
   }
 
   dispose(): void {

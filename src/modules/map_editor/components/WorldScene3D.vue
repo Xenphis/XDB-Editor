@@ -3,10 +3,11 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { MapManager } from '@wowserhq/scene'
 import type { CreatureSpawnMarker, FocusPosition, MinimapMapInfo, PickedPosition } from '../types'
-import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS } from '../service'
+import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
 import { LiquidManager } from './LiquidManager'
 import { WmoManager } from './WmoManager'
 import { CreatureSpawnManager } from './CreatureSpawnManager'
+import { InstallQueue } from './InstallQueue'
 import { SceneAssets } from '@core/wow/SceneAssets'
 
 /**
@@ -89,6 +90,27 @@ const MOVING_PIXEL_RATIO = 1
 const RESOLUTION_SETTLE_MS = 180
 
 /**
+ * Millisecond budget the install queue gets each frame. Small enough to fit
+ * inside a 60 Hz frame next to the render, large enough that a dense tile
+ * lands over a handful of frames rather than a hundred.
+ */
+const INSTALL_BUDGET_MS = 2
+
+/**
+ * How far ahead of the camera tiles are prefetched, in seconds of travel.
+ * Roughly what a tile costs to fetch, parse and build, so the ring ahead is
+ * requested about when it starts being needed rather than once it is in view.
+ */
+const PREFETCH_SECONDS = 1.5
+/**
+ * Cap on that lead. At full boost the camera crosses a tile a second, and a
+ * ring requested two tiles out would fall behind the camera before it landed.
+ */
+const MAX_PREFETCH_YARDS = TILE_YARDS
+/** Time constant of the velocity smoothing feeding the lead, in seconds. */
+const VELOCITY_TAU = 0.25
+
+/**
  * How often the frame-rate readout refreshes. Writing a reactive ref every
  * frame would re-render this component 60 times a second just to measure it,
  * so the counter accumulates locally and publishes once per window — long
@@ -144,12 +166,20 @@ const worstFrameMs = ref(0)
  * it is the number to watch when judging whether culling is doing its job.
  */
 const drawCalls = ref(0)
+/**
+ * Installs still waiting on the queue. Evidence, not a gate: a peak with a
+ * backlog behind it is streaming catching up, a peak on an empty queue is
+ * something else.
+ */
+const queued = ref(0)
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
 /** Texture/model caches shared by every layer; built once per mount. */
 let assets: SceneAssets | null = null
 let mapManager: MapManager | null = null
+/** Frame-budgeted queue every streaming layer installs through. */
+let installQueue: InstallQueue | null = null
 let liquidManager: LiquidManager | null = null
 let wmoManager: WmoManager | null = null
 let spawnManager: CreatureSpawnManager | null = null
@@ -168,8 +198,14 @@ const pressed = new Set<string>()
 /** Creates the spawn manager and adds it to the scene (idempotent). */
 function enableSpawns() {
   const mapId = props.map.mapId
-  if (spawnManager || !scene || !assets || mapId == null) return
-  spawnManager = new CreatureSpawnManager(props.map, mapId, assets, props.spawnPhase)
+  if (spawnManager || !scene || !assets || !installQueue || mapId == null) return
+  spawnManager = new CreatureSpawnManager(
+    props.map,
+    mapId,
+    assets,
+    installQueue,
+    props.spawnPhase,
+  )
   scene.add(spawnManager.root)
 }
 
@@ -255,6 +291,9 @@ onMounted(() => {
   // and creature spawns all draw from the same client assets, and a manager
   // per layer meant decoding and uploading each shared BLP once per layer.
   assets = new SceneAssets()
+  // Every layer installs through one queue, so the per-frame budget is shared
+  // rather than granted three times over.
+  installQueue = new InstallQueue()
 
   mapManager = new MapManager({
     host: { baseUrl: MPQ_ASSET_BASE_URL, normalizePath: true },
@@ -268,11 +307,11 @@ onMounted(() => {
   scene.add(mapManager.root)
 
   // Water isn't rendered by @wowserhq/scene; stream it from the ADT MH2O data.
-  liquidManager = new LiquidManager(props.map)
+  liquidManager = new LiquidManager(props.map, installQueue)
   scene.add(liquidManager.root)
 
   // WMOs (buildings/structures) aren't rendered either; stream them too.
-  wmoManager = new WmoManager(props.map, assets)
+  wmoManager = new WmoManager(props.map, assets, installQueue)
   scene.add(wmoManager.root)
 
   // Creature spawns (DB) stream as models around the camera when enabled.
@@ -313,6 +352,42 @@ onMounted(() => {
     )
   }
 
+  // ── Prefetch lead ─────────────────────────────────────────────────────
+  // The streaming layers load around a second, extrapolated centre as well as
+  // the camera's own tile (see TileWindow): where the camera will be in
+  // PREFETCH_SECONDS at its current speed. Standing still, the lead sits on
+  // the camera and the window is exactly what it always was.
+  const velocity = new THREE.Vector2()
+  const leadAnchor = new THREE.Vector2()
+  const frameVelocity = new THREE.Vector2()
+  const leadPoint = new THREE.Vector2()
+
+  /** Re-anchors the lead on the camera. Call after any teleport. */
+  const resetLead = () => {
+    velocity.set(0, 0)
+    leadAnchor.set(camera.position.x, camera.position.y)
+  }
+
+  /** The world point to prefetch around this frame. */
+  const updateLead = (dt: number) => {
+    frameVelocity
+      .set(camera.position.x - leadAnchor.x, camera.position.y - leadAnchor.y)
+      .divideScalar(Math.max(dt, 1e-4))
+    // A fly-to teleports the camera, and that frame reads as thousands of
+    // yards a second — a lead nowhere near where we actually land. The
+    // fly-cam's own top speed is the honest ceiling. (resetLead covers the
+    // teleports we know about; this covers the rest.)
+    frameVelocity.clampLength(0, MOVE_SPEED * MOVE_BOOST)
+    // Frame-rate independent smoothing, so the lead doesn't swing on a hitch.
+    velocity.lerp(frameVelocity, 1 - Math.exp(-dt / VELOCITY_TAU))
+    leadAnchor.set(camera.position.x, camera.position.y)
+    return leadPoint
+      .copy(velocity)
+      .multiplyScalar(PREFETCH_SECONDS)
+      .clampLength(0, MAX_PREFETCH_YARDS)
+      .add(leadAnchor)
+  }
+
   const start = startPosition()
   // A known height (zone origin, focused row) skips the ground probe entirely.
   if (start.z != null) {
@@ -322,6 +397,7 @@ onMounted(() => {
     camera.position.set(start.x, start.y, FALLBACK_HEIGHT)
   }
   applyOrientation()
+  resetLead()
 
   const raycaster = new THREE.Raycaster()
   if (start.z == null) {
@@ -355,6 +431,7 @@ onMounted(() => {
     }
     camera.position.set(focus.x, focus.y, (focus.z ?? FALLBACK_HEIGHT) + EYE_HEIGHT)
     applyOrientation()
+    resetLead()
     if (focus.z != null) grounded.value = true
   })
 
@@ -573,6 +650,7 @@ onMounted(() => {
     fps.value = Math.round((sampleFrames * 1000) / elapsed)
     worstFrameMs.value = Math.round(sampleWorstMs)
     drawCalls.value = calls
+    queued.value = installQueue?.pending ?? 0
     sampleStart = now
     sampleFrames = 0
     sampleWorstMs = 0
@@ -605,9 +683,17 @@ onMounted(() => {
       camera.far = mapManager.cameraFar
       camera.updateProjectionMatrix()
     }
-    liquidManager?.update(camera.position.x, camera.position.y)
-    wmoManager?.update(camera.position.x, camera.position.y)
-    spawnManager?.update(camera.position.x, camera.position.y)
+    // Streaming window: the camera's own tile, plus the one it is heading for.
+    const lead = updateLead(dt)
+    const cameraTile = worldToTile({ x: camera.position.x, y: camera.position.y })
+    const leadTile = worldToTile({ x: lead.x, y: lead.y })
+    liquidManager?.update(cameraTile, leadTile)
+    wmoManager?.update(cameraTile, leadTile)
+    spawnManager?.update(cameraTile, leadTile)
+    // Give the frame's share of the budget to whatever those loads made ready.
+    // Ahead of the cull pass, so anything installed this frame is culled this
+    // frame instead of drawing once unconditionally.
+    installQueue?.drain(INSTALL_BUDGET_MS)
     // Cull before the animation pass, not after: the animator skins every
     // model still marked visible, so hiding them first is what saves the
     // work — the draw calls are the smaller half of the win.
@@ -645,6 +731,9 @@ onBeforeUnmount(() => {
   if (probeTimer !== undefined) clearInterval(probeTimer)
   resizeObserver?.disconnect()
   removeInputListeners?.()
+  // Drop pending installs before the managers go: a queued task would only
+  // build into a scene that is being torn down.
+  installQueue?.clear()
   liquidManager?.dispose()
   wmoManager?.dispose()
   spawnManager?.dispose()
@@ -661,6 +750,7 @@ onBeforeUnmount(() => {
   scene = null
   assets = null
   mapManager = null
+  installQueue = null
   liquidManager = null
   wmoManager = null
   spawnManager = null
@@ -679,7 +769,7 @@ onBeforeUnmount(() => {
     <!-- Debug readout: hidden from assistive tech, which would otherwise
          announce it twice a second for as long as the view is open. -->
     <div class="scene-fps" aria-hidden="true">
-      {{ $t('mapEditor.scene.fps', { fps, worst: worstFrameMs, calls: drawCalls }) }}
+      {{ $t('mapEditor.scene.fps', { fps, worst: worstFrameMs, calls: drawCalls, queued }) }}
     </div>
     <div class="scene-controls-hint">{{ $t('mapEditor.scene.controls') }}</div>
   </div>

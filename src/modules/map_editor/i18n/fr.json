@@ -119,7 +119,7 @@
     "scene": {
       "streaming": "Chargement du terrain…",
       "controls": "ZQSD/flèches : déplacer · Espace/C : monter/descendre · Maj : rapide · Glisser gauche : panoramique · Glisser droit : regarder · Clic droit : position",
-      "fps": "{fps} FPS · pic {worst} ms · {calls} draws"
+      "fps": "{fps} FPS · pic {worst} ms · {calls} draws · {queued} en file"
     },
     "picked": {
       "copy": "Copier la position",

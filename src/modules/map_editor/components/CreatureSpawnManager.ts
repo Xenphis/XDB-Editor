@@ -1,10 +1,11 @@
 import * as THREE from 'three'
 import type { CreatureModelInfo, CreatureSpawnMarker, MinimapMapInfo } from '../types'
-import { worldToTile } from '../service'
 import { loadCreatureSpawnsInBounds, resolveCreatureModels, tileWorldBounds } from '../service'
 import type { SceneAssets } from '@core/wow/SceneAssets'
 import { applyModelSkins } from '@core/wow/modelSkins'
 import { cullModel, type SceneModel } from './ModelCulling'
+import type { InstallQueue } from './InstallQueue'
+import { TileWindow, type TileCoord } from './TileWindow'
 
 /**
  * Streams creature spawns from the world DB as real M2 models around the camera,
@@ -22,14 +23,17 @@ import { cullModel, type SceneModel } from './ModelCulling'
  * across instances, so N copies of one creature share GPU buffers.
  *
  * Each placed object carries `userData.spawn` so the view can raycast-select it.
+ *
+ * Placing a model and adding it to the scene runs from the shared
+ * `InstallQueue`: a dense tile resolves dozens of spawns at once, and adding
+ * them as they landed spent the whole batch — placement, skins, and the
+ * first-draw buffer upload — inside a single frame.
  */
 
-/** ADT tiles kept loaded around the camera (Chebyshev radius). Models are heavy. */
-const RADIUS = 1
-
-function tileKey(col: number, row: number): string {
-  return `${col},${row}`
-}
+/** ADT tiles loaded around the camera (Chebyshev radius). Models are heavy. */
+const LOAD_RADIUS = 1
+/** Tiles are only freed one ring further out; see `TileWindow`. */
+const KEEP_RADIUS = 2
 
 export class CreatureSpawnManager {
   readonly root = new THREE.Group()
@@ -40,10 +44,9 @@ export class CreatureSpawnManager {
   /** display id -> resolved model (null once we know it can't be resolved). */
   #models = new Map<number, CreatureModelInfo | null>()
   #disposed = false
-  #lastCol = Number.NaN
-  #lastRow = Number.NaN
-  readonly #map: MinimapMapInfo
   readonly #mapId: number
+  readonly #queue: InstallQueue
+  readonly #window: TileWindow
   /** Phase filter passed to the query; null streams every phase. */
   #phaseMask: number | null
   /**
@@ -57,11 +60,13 @@ export class CreatureSpawnManager {
     map: MinimapMapInfo,
     mapId: number,
     assets: SceneAssets,
+    queue: InstallQueue,
     phaseMask: number | null = null,
   ) {
-    this.#map = map
     this.#mapId = mapId
     this.#assets = assets
+    this.#queue = queue
+    this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
     this.#phaseMask = phaseMask
     this.root.name = 'creature-spawns'
   }
@@ -79,37 +84,23 @@ export class CreatureSpawnManager {
       for (const obj of objects) this.root.remove(obj)
     }
     this.#tiles.clear()
-    // Forget the tracked tile so update() rebuilds the ring from scratch
+    // Forget the tracked window so update() rebuilds the ring from scratch
     // instead of short-circuiting on an unchanged camera position.
-    this.#lastCol = Number.NaN
-    this.#lastRow = Number.NaN
+    this.#window.invalidate()
   }
 
-  /** Loads/unloads spawn models for the camera position. */
-  update(cameraX: number, cameraY: number): void {
-    const { col, row } = worldToTile({ x: cameraX, y: cameraY })
-    if (col === this.#lastCol && row === this.#lastRow) return
-    this.#lastCol = col
-    this.#lastRow = row
+  /** Loads/unloads spawn models for the window. */
+  update(camera: TileCoord, lead: TileCoord): void {
+    if (!this.#window.update(camera, lead)) return
 
-    const wanted = new Set<string>()
-    for (let dc = -RADIUS; dc <= RADIUS; dc++) {
-      for (let dr = -RADIUS; dr <= RADIUS; dr++) {
-        const c = col + dc
-        const r = row + dr
-        if (c < this.#map.minX || c > this.#map.maxX || r < this.#map.minY || r > this.#map.maxY) {
-          continue
-        }
-        const key = tileKey(c, r)
-        wanted.add(key)
-        if (!this.#tiles.has(key) && !this.#loading.has(key)) {
-          void this.#loadTile(c, r, key)
-        }
+    for (const [key, tile] of this.#window.load) {
+      if (!this.#tiles.has(key) && !this.#loading.has(key)) {
+        void this.#loadTile(tile.col, tile.row, key)
       }
     }
 
     for (const [key, objects] of this.#tiles) {
-      if (!wanted.has(key)) {
+      if (!this.#window.keeps(key)) {
         for (const obj of objects) this.root.remove(obj)
         this.#tiles.delete(key)
       }
@@ -133,7 +124,7 @@ export class CreatureSpawnManager {
     } finally {
       this.#loading.delete(key)
     }
-    if (this.#disposed || generation !== this.#generation || !this.#isWanted(col, row)) return
+    if (this.#disposed || generation !== this.#generation || !this.#window.keeps(key)) return
 
     const objects: SceneModel[] = []
     // Register the (possibly empty) tile up front so panning doesn't refetch.
@@ -147,18 +138,30 @@ export class CreatureSpawnManager {
       spawns.map(async spawn => {
         const info = this.#models.get(spawn.display_id)
         if (!info) return
-        const object = await this.#instance(spawn, info)
-        if (!object || this.#disposed || generation !== this.#generation) return
-        if (!this.#tiles.has(key)) return
-        object.userData.spawn = spawn
-        objects.push(object)
-        this.root.add(object)
+        const build = await this.#prepare(info)
+        if (!build) return
+        await this.#queue.run(() => {
+          // Disposed, re-phased, or the tile evicted — or evicted and
+          // reloaded, hence the identity test on the array — while this
+          // waited its turn.
+          if (this.#disposed || generation !== this.#generation) return
+          if (this.#tiles.get(key) !== objects) return
+          const object = build(spawn)
+          object.userData.spawn = spawn
+          objects.push(object)
+          this.root.add(object)
+        })
       }),
     )
   }
 
-  /** Instantiates one spawn: a ModelManager model placed in world space. */
-  async #instance(spawn: CreatureSpawnMarker, info: CreatureModelInfo): Promise<SceneModel | null> {
+  /**
+   * Loads one spawn's model, then hands back the synchronous step that places
+   * it in world space — for the caller to run from the install queue.
+   */
+  async #prepare(
+    info: CreatureModelInfo,
+  ): Promise<((spawn: CreatureSpawnMarker) => SceneModel) | null> {
     let model: SceneModel
     try {
       model = await this.#assets.modelManager.get(info.model)
@@ -167,17 +170,19 @@ export class CreatureSpawnManager {
     }
     if (this.#disposed) return null
 
-    model.position.set(spawn.position_x, spawn.position_y, spawn.position_z)
-    // WoW orientation is a yaw about world +Z (radians); a facing offset can be
-    // added here if models come out rotated, as WMO placements add +180.
-    model.rotation.set(0, 0, spawn.orientation)
-    model.scale.setScalar(info.scale * (spawn.scale || 1))
-    // Seed the world matrix now: culling reads `boundingSphereWorld`, which is
-    // derived from it, and the renderer would not refresh it until after this
-    // frame's cull pass — leaving a model at the origin for one frame.
-    model.updateMatrixWorld()
-    applyModelSkins(model, info.textures, this.#assets.textureManager)
-    return model
+    return spawn => {
+      model.position.set(spawn.position_x, spawn.position_y, spawn.position_z)
+      // WoW orientation is a yaw about world +Z (radians); a facing offset can
+      // be added here if models come out rotated, as WMO placements add +180.
+      model.rotation.set(0, 0, spawn.orientation)
+      model.scale.setScalar(info.scale * (spawn.scale || 1))
+      // Seed the world matrix now: culling reads `boundingSphereWorld`, which
+      // is derived from it, and the renderer would not refresh it until after
+      // this frame's cull pass — leaving a model at the origin for one frame.
+      model.updateMatrixWorld()
+      applyModelSkins(model, info.textures, this.#assets.textureManager)
+      return model
+    }
   }
 
   /**
@@ -206,10 +211,6 @@ export class CreatureSpawnManager {
     for (const id of missing) {
       this.#models.set(id, resolved[id] ?? null)
     }
-  }
-
-  #isWanted(col: number, row: number): boolean {
-    return Math.abs(col - this.#lastCol) <= RADIUS && Math.abs(row - this.#lastRow) <= RADIUS
   }
 
   dispose(): void {

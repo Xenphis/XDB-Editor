@@ -25,6 +25,17 @@ logger.warnOnce = (msg: string, options?: LogOptions) => {
 export default defineConfig({
   customLogger: logger,
   plugins: [vue()],
+  // `tauri.conf.json` points `devUrl` at a fixed http://localhost:5173, so the
+  // port is part of a contract rather than a preference. Left to itself Vite
+  // treats a busy port as a hint and quietly moves to 5174 — and the app window
+  // then loads whatever *is* on 5173, which has meant a stale dev server from
+  // another checkout of this project serving its own index.html, errors and
+  // all, with nothing on screen to say the page isn't ours. Fail loudly
+  // instead: a port clash here is a leftover process to kill, not a fallback.
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   resolve: {
     alias: {
       '@core': resolve(__dirname, 'src/core'),

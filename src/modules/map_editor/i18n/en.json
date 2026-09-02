@@ -119,7 +119,7 @@
     "scene": {
       "streaming": "Streaming terrain…",
       "controls": "WASD/arrows: move · Space/C: up/down · Shift: fast · Left-drag: pan · Right-drag: look · Right-click: position",
-      "fps": "{fps} FPS · {worst} ms peak · {calls} draws"
+      "fps": "{fps} FPS · {worst} ms peak · {calls} draws · {queued} queued"
     },
     "picked": {
       "copy": "Copy position",
