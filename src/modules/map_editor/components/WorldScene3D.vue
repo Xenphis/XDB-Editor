@@ -14,6 +14,7 @@ import { LiquidManager } from './LiquidManager'
 import { WmoManager } from './WmoManager'
 import { CreatureSpawnManager } from './CreatureSpawnManager'
 import { InstallQueue } from './InstallQueue'
+import { SkyDome } from './SkyDome'
 import { SceneAssets } from '@core/wow/SceneAssets'
 
 /**
@@ -157,6 +158,17 @@ const MAX_PREFETCH_YARDS = TILE_YARDS
 /** Time constant of the velocity smoothing feeding the lead, in seconds. */
 const VELOCITY_TAU = 0.25
 
+/** How far you see with your head under a liquid surface. */
+const UNDERWATER_FOG_YARDS = 40
+/** The colour that fog takes on under each liquid. */
+const UNDERWATER_TINT: Record<string, number> = {
+  water: 0x1e4f73,
+  ocean: 0x16405f,
+  magma: 0x8c2c05,
+  slime: 0x3f6b1e,
+}
+const UNDERWATER_TINT_DEFAULT = 0x1e4f73
+
 /**
  * How often the frame-rate readout refreshes. Writing a reactive ref every
  * frame would re-render this component 60 times a second just to measure it,
@@ -256,6 +268,8 @@ let mapManager: MapManager | null = null
 /** Frame-budgeted queue every streaming layer installs through. */
 let installQueue: InstallQueue | null = null
 let liquidManager: LiquidManager | null = null
+/** Gradient sky behind the world; one draw call, no depth. */
+let skyDome: SkyDome | null = null
 let wmoManager: WmoManager | null = null
 let spawnManager: CreatureSpawnManager | null = null
 let animationFrame = 0
@@ -390,8 +404,13 @@ onMounted(() => {
   scene.add(mapManager.root)
 
   // Water isn't rendered by @wowserhq/scene; stream it from the ADT MH2O data.
-  liquidManager = new LiquidManager(props.map, installQueue)
+  liquidManager = new LiquidManager(props.map, installQueue, assets)
   scene.add(liquidManager.root)
+
+  // Behind everything: the view used to clear to a flat fog colour, which read
+  // as a wall at the horizon rather than as sky.
+  skyDome = new SkyDome()
+  scene.add(skyDome.mesh)
 
   // WMOs (buildings/structures) aren't rendered either; stream them too.
   wmoManager = new WmoManager(props.map, assets, installQueue)
@@ -792,6 +811,25 @@ onMounted(() => {
     return Math.min(manager.cameraFar, limit + TILE_YARDS / 16)
   }
 
+  /**
+   * Tints the world for a camera under a liquid surface, and returns the far
+   * plane that goes with it.
+   *
+   * There is no underwater pass to write: the fog already colours every
+   * surface in the scene, `clearColor` is that same colour, and the sky dome
+   * reads it too — so pulling the fog hard onto the liquid's own colour turns
+   * the entire view into the inside of that liquid. Runs after
+   * `applyDrawDistance` and, like it, on every frame, because `MapLight`
+   * rewrites both from the DBC bands in its own update.
+   */
+  const applyUnderwater = (manager: MapManager, category: string): number => {
+    manager.mapLight.fogColor.setHex(UNDERWATER_TINT[category] ?? UNDERWATER_TINT_DEFAULT)
+    const fog = manager.mapLight.fogParams
+    fog.x = 1 / UNDERWATER_FOG_YARDS
+    fog.y = UNDERWATER_FOG_YARDS
+    return UNDERWATER_FOG_YARDS + TILE_YARDS / 16
+  }
+
   // Reused across frames; the managers cull their own M2s against this.
   const cullFrustum = new THREE.Frustum()
   const cullMatrix = new THREE.Matrix4()
@@ -815,7 +853,13 @@ onMounted(() => {
     mapManager.update(dt, camera)
     // The map light's fog decides how far we can see, so settle the projection
     // here: the culling frustum below is derived from it.
-    const far = applyDrawDistance(mapManager)
+    let far = applyDrawDistance(mapManager)
+    // Head under a liquid surface: the fog becomes that liquid.
+    const submerged = liquidManager?.submergedIn(camera.position) ?? null
+    if (submerged) far = Math.min(far, applyUnderwater(mapManager, submerged))
+    // After the fog is settled, so the horizon matches it — including
+    // underwater, where the dome turns the colour of the water.
+    skyDome?.update(camera.position, mapManager.mapLight.fogColor)
     if (camera.far !== far) {
       camera.far = far
       camera.updateProjectionMatrix()
@@ -824,6 +868,7 @@ onMounted(() => {
     const lead = updateLead(dt)
     const cameraTile = worldToTile({ x: camera.position.x, y: camera.position.y })
     const leadTile = worldToTile({ x: lead.x, y: lead.y })
+    liquidManager?.advance(dt)
     liquidManager?.update(cameraTile, leadTile)
     wmoManager?.update(cameraTile, leadTile)
     spawnManager?.update(cameraTile, leadTile)
@@ -871,6 +916,7 @@ onBeforeUnmount(() => {
   // Drop pending installs before the managers go: a queued task would only
   // build into a scene that is being torn down.
   installQueue?.clear()
+  skyDome?.dispose()
   liquidManager?.dispose()
   wmoManager?.dispose()
   spawnManager?.dispose()
@@ -888,6 +934,7 @@ onBeforeUnmount(() => {
   assets = null
   mapManager = null
   installQueue = null
+  skyDome = null
   liquidManager = null
   wmoManager = null
   spawnManager = null
