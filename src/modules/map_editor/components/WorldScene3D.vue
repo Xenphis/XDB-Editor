@@ -15,6 +15,7 @@ import { WmoManager } from './WmoManager'
 import { CreatureSpawnManager } from './CreatureSpawnManager'
 import { InstallQueue } from './InstallQueue'
 import { SkyDome } from './SkyDome'
+import { SelectionRing } from './SelectionRing'
 import { SceneAssets } from '@core/wow/SceneAssets'
 
 /**
@@ -280,7 +281,7 @@ let removeInputListeners: (() => void) | undefined
 // Spawn selection state (a picked model + its ground ring highlight).
 let selectedObject: THREE.Object3D | null = null
 let selectedSpawn: CreatureSpawnMarker | null = null
-let selectionRing: THREE.Mesh | null = null
+let selectionRing: SelectionRing | null = null
 
 const pressed = new Set<string>()
 
@@ -319,14 +320,15 @@ function spawnObjectFrom(obj: THREE.Object3D | null): THREE.Object3D | null {
 
 function positionSelectionRing() {
   if (!selectionRing || !selectedObject) return
-  selectionRing.position.copy(selectedObject.position)
-  selectionRing.visible = true
+  // The terrain is what the ring lies against; without it loaded yet the ring
+  // falls back to the spawn's own position, level.
+  selectionRing.place(selectedObject, mapManager?.root ?? null)
 }
 
 function clearSelection() {
   selectedObject = null
   selectedSpawn = null
-  if (selectionRing) selectionRing.visible = false
+  selectionRing?.hide()
   emit('select-spawn', null)
 }
 
@@ -417,22 +419,10 @@ onMounted(() => {
   scene.add(wmoManager.root)
 
   // Creature spawns (DB) stream as models around the camera when enabled.
-  // Ground ring that highlights the currently selected spawn (Z is up, so a
-  // default XY-plane torus lies flat on the terrain).
-  const ringMaterial = new THREE.MeshBasicMaterial({
-    color: 0xf87171,
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
-    // Never let the terrain occlude the ring: on a slope a flat ring would
-    // otherwise clip under the higher ground. Draw it on top of the scene.
-    depthTest: false,
-  })
-  selectionRing = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.12, 12, 48), ringMaterial)
-  selectionRing.frustumCulled = false
-  selectionRing.renderOrder = 999
-  selectionRing.visible = false
-  scene.add(selectionRing)
+  // Ground ring highlighting the selected spawn: sized to the model and laid
+  // against the slope under it.
+  selectionRing = new SelectionRing()
+  scene.add(selectionRing.mesh)
   if (props.showSpawns) enableSpawns()
 
   // ── Camera orientation (yaw about world +Z, pitch toward ±Z) ─────────
@@ -921,10 +911,7 @@ onBeforeUnmount(() => {
   wmoManager?.dispose()
   spawnManager?.dispose()
   mapManager?.dispose()
-  if (selectionRing) {
-    selectionRing.geometry.dispose()
-    ;(selectionRing.material as THREE.Material).dispose()
-  }
+  selectionRing?.dispose()
   if (renderer) {
     renderer.dispose()
     renderer.domElement.remove()
