@@ -74,6 +74,10 @@ export interface WmoBatch {
   /** Baked MOCV vertex colors (RGB, 0..1); white where a group has none. */
   colors: number[]
   indices: number[]
+  /** MOMT two-sided flag (0x04); everything else is front-facing only. */
+  twoSided: boolean
+  /** MOMT blend mode: 0 opaque, 1 alpha-key (cutout), 2 and up blended. */
+  blendMode: number
 }
 
 /** An M2 placed inside a WMO, in WMO-local space. */

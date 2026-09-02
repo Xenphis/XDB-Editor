@@ -24,6 +24,7 @@ use wow_wmo::{parse_wmo, ParsedWmo};
 /// lighting mode). `exterior` groups are lit by dynamic light on the JS side
 /// (normal shading); interior groups keep their baked MOCV lighting.
 #[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct WmoBatch {
     pub texture: String,
     /// SMOGroup_EXTERIOR (MOGP flag 0x8): outdoor surface, sun-lit in game.
@@ -37,6 +38,13 @@ pub struct WmoBatch {
     /// those.
     pub colors: Vec<f32>,
     pub indices: Vec<u32>,
+    /// MOMT two-sided flag (0x04). Everything else is front-facing only: a
+    /// wall drawn from both sides shades every one of its fragments twice, on
+    /// a view that is fill-bound well before it is detail-bound.
+    pub two_sided: bool,
+    /// MOMT blend mode: 0 opaque, 1 alpha-key (cutout), 2 and up blended.
+    /// Without it, windows, grilles and WMO foliage drew as opaque squares.
+    pub blend_mode: u32,
 }
 
 /// An M2 placed inside a WMO (WMO-local transform).
@@ -141,11 +149,14 @@ pub fn build_model(
             .unwrap_or_default()
     };
 
-    // Merge every group's batches into one buffer per (texture, lighting
-    // mode). The extension is stripped case-insensitively: MWMO paths are
+    // Merge every group's batches into one buffer per (texture, lighting mode,
+    // render state). Two-sidedness and blend mode join the key because they are
+    // per-material and cannot be expressed inside a merged draw — materials
+    // sharing a texture usually share both, so this splits few batches.
+    // The extension is stripped case-insensitively: MWMO paths are
     // often upper-case (`...WALL.WMO`), and a lower-case-only strip would
     // leave `.WMO` in the base, so `<base>_000.wmo` would never resolve.
-    let mut buffers: HashMap<(String, bool), WmoBatch> = HashMap::new();
+    let mut buffers: HashMap<(String, bool, bool, u32), WmoBatch> = HashMap::new();
     let base = match root_path.get(root_path.len().saturating_sub(4)..) {
         Some(ext) if ext.eq_ignore_ascii_case(".wmo") => &root_path[..root_path.len() - 4],
         _ => root_path,
@@ -210,8 +221,11 @@ pub fn build_model(
                 .collect()
         };
 
-        // Vertex de-dup is per group file (indices are group-local).
-        let mut remaps: HashMap<String, HashMap<u16, u32>> = HashMap::new();
+        // Vertex de-dup is per group file (indices are group-local), and per
+        // destination buffer: one texture can now land in several buffers
+        // within a group (different blend mode or facing), and a remap shared
+        // between them would hand out indices into the wrong one.
+        let mut remaps: HashMap<(String, bool, bool, u32), HashMap<u16, u32>> = HashMap::new();
         for batch in &group.render_batches {
             let Some(material) = root.materials.get(batch.material_id as usize) else {
                 continue;
@@ -220,12 +234,19 @@ pub fn build_model(
             if texture.is_empty() {
                 continue; // phase 1 renders textured surfaces only
             }
-            let buffer = buffers.entry((texture.clone(), exterior)).or_insert_with(|| WmoBatch {
-                texture: texture.clone(),
+            // MOMT flag 0x04 (F_UNCULLED). `root.materials` are raw MomtEntry
+            // records here, so the bit is tested by hand.
+            let two_sided = material.flags & 0x04 != 0;
+            let blend_mode = material.blend_mode;
+            let key = (texture.clone(), exterior, two_sided, blend_mode);
+            let buffer = buffers.entry(key.clone()).or_insert_with(|| WmoBatch {
+                texture,
                 exterior,
+                two_sided,
+                blend_mode,
                 ..Default::default()
             });
-            let remap = remaps.entry(texture).or_default();
+            let remap = remaps.entry(key).or_default();
 
             let start = batch.start_index as usize;
             for k in 0..batch.count as usize {
