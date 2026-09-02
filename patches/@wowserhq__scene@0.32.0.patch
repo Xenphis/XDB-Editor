@@ -12,6 +12,60 @@ index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce733
      load(mapName, mapId) {
          this.#mapName = mapName;
          this.#mapDir = `world/maps/${mapName}`;
+diff --git a/dist/esm/map/terrain/TerrainManager.js b/dist/esm/map/terrain/TerrainManager.js
+index e6532f687a2ccebda70aaa82ffeb3fc0821380e0..fcf860ec96152d4ce850f4fe6cafda6478ac2118 100644
+--- a/dist/esm/map/terrain/TerrainManager.js
++++ b/dist/esm/map/terrain/TerrainManager.js
+@@ -3,6 +3,10 @@ import TextureManager from '../../texture/TextureManager.js';
+ import TerrainMaterial from './TerrainMaterial.js';
+ import TerrainMesh from './TerrainMesh.js';
+ const SPLAT_TEXTURE_PLACEHOLDER = new THREE.Texture();
++// One instance stands in for the splat of every 0/1-layer chunk in the scene, so
++// it has to outlive any single material that references it. TerrainMaterial's
++// dispose() reads this flag rather than freeing it with the rest.
++SPLAT_TEXTURE_PLACEHOLDER.userData.shared = true;
+ class TerrainManager {
+     #textureManager;
+     #mapLight;
+diff --git a/dist/esm/map/terrain/TerrainMaterial.js b/dist/esm/map/terrain/TerrainMaterial.js
+index e80215811f3b665f89677cf2032dbdab696d6786..5ef898fc2e134386020bc752afc60847d5a6bf68 100644
+--- a/dist/esm/map/terrain/TerrainMaterial.js
++++ b/dist/esm/map/terrain/TerrainMaterial.js
+@@ -21,8 +21,13 @@ class TerrainMaterial extends THREE.RawShaderMaterial {
+         for (const texture of this.uniforms.layers.value) {
+             texture.dispose();
+         }
+-        // Splat texture
+-        this.uniforms.splat.value.dispose();
++        // Splat texture. The 0/1-layer placeholder is shared scene-wide (see
++        // TerrainManager), and disposing it here destroyed a texture still bound
++        // by every other such chunk.
++        const splat = this.uniforms.splat.value;
++        if (!splat.userData?.shared) {
++            splat.dispose();
++        }
+         super.dispose();
+     }
+ }
+diff --git a/dist/esm/model/Model.js b/dist/esm/model/Model.js
+index 74b0a5efebd0b21d500a12d834ed31a7e9da59eb..6e432870a635e6632fef006df904946268542d67 100644
+--- a/dist/esm/model/Model.js
++++ b/dist/esm/model/Model.js
+@@ -53,6 +53,14 @@ class Model extends THREE.Mesh {
+     }
+     dispose() {
+         this.animation.dispose();
++        // Materials are built per model instance (see ModelManager#createMaterials,
++        // and the per-instance skeleton assigned to them above), so they die with
++        // the instance. Without this every streamed-out doodad left its materials
++        // pinned in the renderer's program/state bookkeeping.
++        const materials = Array.isArray(this.material) ? this.material : [this.material];
++        for (const material of materials) {
++            material.dispose();
++        }
+     }
+     show() {
+         if (this.visible) {
 diff --git a/dist/types/map/MapManager.d.ts b/dist/types/map/MapManager.d.ts
 index 639faf1cb74696335f0d0b93a4938c69726a9a92..0267cb0bfbebb88ada3ce4076fc64abe03e4b116 100644
 --- a/dist/types/map/MapManager.d.ts

@@ -25,6 +25,12 @@ export interface PickedPosition extends WorldPosition {
   z: number | null
 }
 
+/**
+ * How much the 3D view asks of the GPU. Persisted per user: what a machine can
+ * hold at 60 FPS is a property of the machine, not of the data being edited.
+ */
+export type RenderQuality = 'low' | 'medium' | 'high'
+
 /** A world position with optional height, used to focus/fly the views. */
 export interface FocusPosition extends WorldPosition {
   z?: number | null

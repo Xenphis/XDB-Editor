@@ -118,8 +118,15 @@
     },
     "scene": {
       "streaming": "Streaming terrain…",
-      "controls": "WASD/arrows: move · Space/C: up/down · Shift: fast · Left-drag: pan · Right-drag: look · Right-click: position",
-      "fps": "{fps} FPS · {worst} ms peak · {calls} draws · {queued} queued"
+      "controls": "WASD/arrows: move · Space/C: up/down · Shift: fast · Left-drag: pan · Right-drag: look · Right-click: position · 1-4: toggle terrain/buildings/water/spawns",
+      "fps": "{fps} FPS · {worst} ms peak · {calls} draws · {tris}k tris · {queued} queued",
+      "hidden": "hidden: {layers}"
+    },
+    "quality": {
+      "low": "Quality: low",
+      "medium": "Quality: medium",
+      "high": "Quality: high",
+      "hint": "Streaming radius and antialiasing. Lower it for frame rate, raise it for a longer horizon; the view reloads on change."
     },
     "picked": {
       "copy": "Copy position",

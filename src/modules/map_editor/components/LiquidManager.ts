@@ -84,7 +84,12 @@ export class LiquidManager {
       if (!this.#window.keeps(key)) {
         this.#disposeTile(group)
         this.#tiles.delete(key)
+        continue
       }
+      // Resident but outside the camera's own ring: held in memory, kept out
+      // of the frame. Prefetching and hysteresis widen what we hold, and must
+      // not widen what we draw.
+      group.visible = this.#window.shows(key)
     }
   }
 
@@ -107,6 +112,7 @@ export class LiquidManager {
     // empty group doubles as the record of a waterless tile, which is what
     // stops panning from re-requesting it.
     const group = new THREE.Group()
+    group.visible = this.#window.shows(key)
     this.#tiles.set(key, group)
 
     await this.#queue.run(() => {

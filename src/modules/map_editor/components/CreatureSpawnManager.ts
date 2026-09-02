@@ -191,8 +191,16 @@ export class CreatureSpawnManager {
    * which costs far more than its draw call.
    */
   cull(frustum: THREE.Frustum, cameraPosition: THREE.Vector3): void {
-    for (const objects of this.#tiles.values()) {
-      for (const object of objects) cullModel(object, frustum, cameraPosition)
+    for (const [key, objects] of this.#tiles) {
+      // Tiles held for prefetch or hysteresis are resident, not visible: hide
+      // them outright rather than frustum-testing them. `hide()` is what drops
+      // a model from the skinning pass too, so this is also where the saving
+      // is — the draw call is the smaller half.
+      const shown = this.#window.shows(key)
+      for (const object of objects) {
+        if (shown) cullModel(object, frustum, cameraPosition)
+        else object.hide()
+      }
     }
   }
 

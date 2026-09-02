@@ -241,6 +241,19 @@ const phaseOptions = computed(() => [
   }),
 ])
 
+/**
+ * Render quality for the 3D view. Mostly the streaming radius, which is very
+ * nearly the draw-call count in this renderer (see `QUALITY_PRESETS` in
+ * `WorldScene3D.vue`), so it is the one control that trades horizon for frame
+ * rate. Persisted per user: what a machine sustains at 60 FPS is a property of
+ * the machine, not of the data being edited.
+ */
+const qualityOptions = computed(() => [
+  { label: t('mapEditor.quality.low'), value: 'low' as const },
+  { label: t('mapEditor.quality.medium'), value: 'medium' as const },
+  { label: t('mapEditor.quality.high'), value: 'high' as const },
+])
+
 /** Spawn clicked in the 3D view; its repositioning drives the migration output. */
 const selectedSpawn = ref<CreatureSpawnMarker | null>(null)
 /** When armed, the next terrain right-click relocates the selected spawn. */
@@ -375,15 +388,19 @@ onMounted(async () => {
             @pick="picked = $event"
             @context="onMapContext"
           />
+          <!-- Keyed on the quality too: `MapManager` reads its view distance
+               once in the constructor and the renderer's MSAA is fixed at
+               context creation, so switching preset has to remount. -->
           <WorldScene3D
             v-else-if="selectedMap"
-            :key="selectedMap.id"
+            :key="`${selectedMap.id}:${store.renderQuality}`"
             :map="selectedMap"
             :initialPosition="focusTarget ?? viewCenter"
             :focus="focusTarget"
             :showSpawns="spawnsAvailable"
             :spawnPhase="store.spawnPhase"
             :moveArmed="moveArmed"
+            :quality="store.renderQuality"
             class="editor-map"
             @pick="picked = $event"
             @select-spawn="onSelectSpawn"
@@ -425,6 +442,16 @@ onMounted(async () => {
                 :placeholder="t('mapEditor.spawns.phase.label')"
                 v-tooltip.bottom="t('mapEditor.spawns.phase.hint')"
                 class="phase-select"
+                size="small"
+              />
+              <Select
+                v-if="viewMode === '3d'"
+                v-model="store.renderQuality"
+                :options="qualityOptions"
+                optionLabel="label"
+                optionValue="value"
+                v-tooltip.bottom="t('mapEditor.quality.hint')"
+                class="quality-select"
                 size="small"
               />
             </div>
@@ -544,11 +571,17 @@ onMounted(async () => {
   height: auto;
 }
 
+.quality-select {
+  min-width: 8rem;
+  height: auto;
+}
+
 /* The label's height still needs to actually reach the stretched box: block
    text sizes to line-height (forms.css sets one for the *default* height),
    so flex-center the label instead of trusting a line-height to land right,
    and reset line-height itself so it stops dictating the natural height. */
-.phase-select :deep(.p-select-label) {
+.phase-select :deep(.p-select-label),
+.quality-select :deep(.p-select-label) {
   display: flex;
   align-items: center;
   padding: 0 0.75rem !important;

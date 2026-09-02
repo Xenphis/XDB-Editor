@@ -74,7 +74,8 @@ export class WmoManager {
 
   readonly #assets: SceneAssets
   #modelCache = new Map<string, Promise<LoadedWmo>>()
-  #tiles = new Map<string, THREE.Object3D[]>()
+  /** One group per tile, so residency and visibility can be toggled as a unit. */
+  #tiles = new Map<string, THREE.Group>()
   /** Placements from the WDT (WMO-only maps): loaded once, never evicted. */
   #globalObjects: THREE.Object3D[] = []
   #loading = new Set<string>()
@@ -116,11 +117,17 @@ export class WmoManager {
       }
     }
 
-    for (const [key, objects] of this.#tiles) {
+    for (const [key, group] of this.#tiles) {
       if (!this.#window.keeps(key)) {
-        for (const obj of objects) this.root.remove(obj)
+        this.root.remove(group)
         this.#tiles.delete(key)
+        continue
       }
+      // Resident but outside the camera's own ring: held in memory, kept out
+      // of the frame. This covers the batch meshes; the interior M2s need
+      // hiding of their own in `cull` so they also drop out of the skinning
+      // pass, which a hidden ancestor does not do for them.
+      group.visible = this.#window.shows(key)
     }
   }
 
@@ -158,21 +165,22 @@ export class WmoManager {
     }
     if (this.#disposed || !this.#window.keeps(key)) return
 
-    const objects: THREE.Object3D[] = []
     // Register the (possibly empty) tile up front so panning doesn't refetch.
-    this.#tiles.set(key, objects)
+    const group = new THREE.Group()
+    group.name = `wmo-tile-${key}`
+    group.visible = this.#window.shows(key)
+    this.#tiles.set(key, group)
+    this.root.add(group)
     await Promise.all(
       placements.map(async placement => {
         const build = await this.#prepare(placement)
         if (!build) return
         await this.#queue.run(() => {
           // Evicted — or evicted and reloaded, hence the identity test on the
-          // array — while this waited its turn. Tested before `build()` so a
+          // group — while this waited its turn. Tested before `build()` so a
           // tile the camera has left costs nothing more than the fetch.
-          if (this.#disposed || this.#tiles.get(key) !== objects) return
-          const object = build()
-          objects.push(object)
-          this.root.add(object)
+          if (this.#disposed || this.#tiles.get(key) !== group) return
+          group.add(build())
         })
       }),
     )
@@ -238,9 +246,22 @@ export class WmoManager {
    */
   cull(frustum: THREE.Frustum, cameraPosition: THREE.Vector3): void {
     for (const object of this.#globalObjects) this.#cullGroup(object, frustum, cameraPosition)
-    for (const objects of this.#tiles.values()) {
-      for (const object of objects) this.#cullGroup(object, frustum, cameraPosition)
+    for (const group of this.#tiles.values()) {
+      // A hidden tile's doodads still have to be hidden one by one: the
+      // animator walks models by their own `visible` flag, so an invisible
+      // ancestor would stop them drawing but not stop them being skinned.
+      for (const placement of group.children) {
+        if (group.visible) this.#cullGroup(placement, frustum, cameraPosition)
+        else this.#hideGroup(placement)
+      }
     }
+  }
+
+  /** Drops a placement's interior doodads out of the draw and skinning passes. */
+  #hideGroup(group: THREE.Object3D): void {
+    const doodads = group.userData.doodads as SceneModel[] | undefined
+    if (!doodads) return
+    for (const model of doodads) model.hide()
   }
 
   #cullGroup(
@@ -275,9 +296,7 @@ export class WmoManager {
 
   dispose(): void {
     this.#disposed = true
-    for (const objects of this.#tiles.values()) {
-      for (const obj of objects) this.root.remove(obj)
-    }
+    for (const group of this.#tiles.values()) this.root.remove(group)
     this.#tiles.clear()
     for (const obj of this.#globalObjects) this.root.remove(obj)
     this.#globalObjects = []

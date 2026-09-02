@@ -2,7 +2,13 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { MapManager } from '@wowserhq/scene'
-import type { CreatureSpawnMarker, FocusPosition, MinimapMapInfo, PickedPosition } from '../types'
+import type {
+  CreatureSpawnMarker,
+  FocusPosition,
+  MinimapMapInfo,
+  PickedPosition,
+  RenderQuality,
+} from '../types'
 import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
 import { LiquidManager } from './LiquidManager'
 import { WmoManager } from './WmoManager'
@@ -46,6 +52,8 @@ const props = defineProps<{
   spawnPhase: number | null
   /** When true, the next terrain right-click relocates the selected spawn. */
   moveArmed: boolean
+  /** How much to ask of the GPU; read once, the parent remounts on change. */
+  quality: RenderQuality
 }>()
 
 const emit = defineEmits<{
@@ -88,6 +96,34 @@ const MAX_PIXEL_RATIO = 1.5
 const MOVING_PIXEL_RATIO = 1
 /** How long the camera must sit still before full resolution comes back. */
 const RESOLUTION_SETTLE_MS = 180
+
+/**
+ * What each quality preset asks of the renderer.
+ *
+ * `viewDistance` is the one that moves the needle. @wowserhq/scene builds one
+ * mesh, one material and one 64×64 splat texture per MCNK chunk — up to 256
+ * draw calls per ADT tile, never merged, never instanced — so the number of
+ * resident tiles is very nearly the draw-call count. Its own default is 1277
+ * yards, which keeps 25 to 36 tiles alive; the cost grows with the square of
+ * the distance, so 900 yards is about half the draw calls and 600 about a
+ * quarter.
+ *
+ * `antialias` rides along because MSAA is the other cost that scales with the
+ * window rather than with the scene. Turning it off is not free of visual
+ * consequence: the library's `ModelMaterial` sets `alphaToCoverage` on
+ * alpha-key M2 materials, which does nothing without MSAA, so foliage and
+ * fence cutouts go hard-edged at `low`.
+ *
+ * Read once at mount — `MapManager` only looks at `viewDistance` in its
+ * constructor, and the renderer's MSAA is fixed at context creation — so the
+ * parent keys this component on the quality and remounts when it changes.
+ */
+const QUALITY_PRESETS: Record<RenderQuality, { viewDistance: number; antialias: boolean }> = {
+  low: { viewDistance: 600, antialias: false },
+  medium: { viewDistance: 900, antialias: true },
+  // The library's own default, so `high` renders exactly as it always did.
+  high: { viewDistance: 1277, antialias: true },
+}
 
 /**
  * Millisecond budget the install queue gets each frame. Small enough to fit
@@ -150,6 +186,25 @@ const MOVE_KEYS = new Set([
  * but it has to reach `pressed` for the speed test to ever see it held. */
 const TRACKED_KEYS = new Set([...MOVE_KEYS, ...KEY_BOOST])
 
+/**
+ * Layer toggles, for attributing the draw-call count.
+ *
+ * `renderer.info.render.calls` is one number for the whole scene, which says
+ * nothing about which layer is spending it — and the layers are wildly uneven:
+ * @wowserhq/scene draws terrain as one mesh per MCNK chunk, up to 256 per ADT
+ * tile, where a WMO is a handful of batches and a creature one or two. Hiding a
+ * root and reading the difference attributes it exactly, with no measurement
+ * machinery and no second render pass.
+ *
+ * Physical key codes, like the movement keys, so they land the same on AZERTY.
+ */
+const LAYER_KEYS: Record<string, 'terrain' | 'buildings' | 'water' | 'spawns'> = {
+  Digit1: 'terrain',
+  Digit2: 'buildings',
+  Digit3: 'water',
+  Digit4: 'spawns',
+}
+
 const container = ref<HTMLDivElement>()
 const grounded = ref(false)
 
@@ -167,11 +222,20 @@ const worstFrameMs = ref(0)
  */
 const drawCalls = ref(0)
 /**
+ * Triangles in the last rendered frame, in thousands. Read next to the draw
+ * calls because it is the ratio that identifies the bottleneck: a few hundred
+ * triangles per call is a renderer spending its time on state changes rather
+ * than on geometry, which is exactly what per-chunk terrain meshes produce.
+ */
+const kTriangles = ref(0)
+/**
  * Installs still waiting on the queue. Evidence, not a gate: a peak with a
  * backlog behind it is streaming catching up, a peak on an empty queue is
  * something else.
  */
 const queued = ref(0)
+/** Layers switched off with the number keys; shown so a blank view is explained. */
+const hiddenLayers = ref<string[]>([])
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
@@ -259,7 +323,12 @@ onMounted(() => {
   const el = container.value
   if (!el) return
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+  const preset = QUALITY_PRESETS[props.quality]
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: preset.antialias,
+    powerPreference: 'high-performance',
+  })
   // Resolution is driven in two steps (see the animate loop): a ceiling that
   // applies at all times, and a lower ratio held while the camera moves.
   const basePixelRatio = Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO)
@@ -299,6 +368,9 @@ onMounted(() => {
     host: { baseUrl: MPQ_ASSET_BASE_URL, normalizePath: true },
     soundManager: silentSound,
     textureManager: assets.textureManager,
+    // Left unset the library streams 1277 yards in every direction, which is
+    // where most of the draw calls come from. See QUALITY_PRESETS.
+    viewDistance: preset.viewDistance,
   })
   // Pin the sun before loading, so the first frames are already lit the way
   // every later one will be rather than starting at whatever time it is now.
@@ -437,6 +509,25 @@ onMounted(() => {
 
   // ── Fly-cam keyboard movement ─────────────────────────────────────────
   const onKeyDown = (event: KeyboardEvent) => {
+    const layer = LAYER_KEYS[event.code]
+    if (layer && isSceneKeyTarget(event.target)) {
+      event.preventDefault()
+      const root =
+        layer === 'terrain'
+          ? mapManager?.root
+          : layer === 'buildings'
+            ? wmoManager?.root
+            : layer === 'water'
+              ? liquidManager?.root
+              : spawnManager?.root
+      if (root) {
+        root.visible = !root.visible
+        hiddenLayers.value = root.visible
+          ? hiddenLayers.value.filter(name => name !== layer)
+          : [...hiddenLayers.value, layer]
+      }
+      return
+    }
     if (!TRACKED_KEYS.has(event.code) || !isSceneKeyTarget(event.target)) return
     pressed.add(event.code)
     // Space/arrows/PageDown would scroll the page. The boost modifier is
@@ -642,7 +733,7 @@ onMounted(() => {
 
   // Called at the end of the frame: the renderer resets its counters when
   // render() starts, so `calls` is only meaningful once it has returned.
-  const updateFpsCounter = (dt: number, now: number, calls: number) => {
+  const updateFpsCounter = (dt: number, now: number, calls: number, triangles: number) => {
     sampleFrames += 1
     sampleWorstMs = Math.max(sampleWorstMs, dt * 1000)
     const elapsed = now - sampleStart
@@ -650,6 +741,7 @@ onMounted(() => {
     fps.value = Math.round((sampleFrames * 1000) / elapsed)
     worstFrameMs.value = Math.round(sampleWorstMs)
     drawCalls.value = calls
+    kTriangles.value = Math.round(triangles / 1000)
     queued.value = installQueue?.pending ?? 0
     sampleStart = now
     sampleFrames = 0
@@ -707,7 +799,7 @@ onMounted(() => {
     assets?.update(dt, camera)
     renderer.setClearColor(mapManager.clearColor)
     renderer.render(scene, camera)
-    updateFpsCounter(dt, now, renderer.info.render.calls)
+    updateFpsCounter(dt, now, renderer.info.render.calls, renderer.info.render.triangles)
   }
   animate()
 
@@ -769,7 +861,18 @@ onBeforeUnmount(() => {
     <!-- Debug readout: hidden from assistive tech, which would otherwise
          announce it twice a second for as long as the view is open. -->
     <div class="scene-fps" aria-hidden="true">
-      {{ $t('mapEditor.scene.fps', { fps, worst: worstFrameMs, calls: drawCalls, queued }) }}
+      {{
+        $t('mapEditor.scene.fps', {
+          fps,
+          worst: worstFrameMs,
+          calls: drawCalls,
+          tris: kTriangles,
+          queued,
+        })
+      }}
+    </div>
+    <div v-if="hiddenLayers.length" class="scene-hidden-layers" aria-hidden="true">
+      {{ $t('mapEditor.scene.hidden', { layers: hiddenLayers.join(', ') }) }}
     </div>
     <div class="scene-controls-hint">{{ $t('mapEditor.scene.controls') }}</div>
   </div>
@@ -816,6 +919,16 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   /* Fixed-width digits: the readout changes twice a second and would jitter. */
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.scene-hidden-layers {
+  position: absolute;
+  top: 1.75rem;
+  left: 0.75rem;
+  color: rgba(248, 113, 113, 0.95);
+  font-size: 0.75rem;
   pointer-events: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
