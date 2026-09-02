@@ -100,13 +100,21 @@ const RESOLUTION_SETTLE_MS = 180
 /**
  * What each quality preset asks of the renderer.
  *
- * `viewDistance` is the one that moves the needle. @wowserhq/scene builds one
- * mesh, one material and one 64×64 splat texture per MCNK chunk — up to 256
- * draw calls per ADT tile, never merged, never instanced — so the number of
- * resident tiles is very nearly the draw-call count. Its own default is 1277
- * yards, which keeps 25 to 36 tiles alive; the cost grows with the square of
- * the distance, so 900 yards is about half the draw calls and 600 about a
- * quarter.
+ * `drawDistance` is the one that moves the needle, and it is not the same
+ * thing as `viewDistance`. @wowserhq/scene builds one mesh, one material and
+ * one 64×64 splat texture per MCNK chunk — up to 256 draw calls per ADT tile,
+ * never merged, never instanced — so what costs draw calls is the *area* of
+ * terrain inside the frustum, and the far plane is what bounds that.
+ *
+ * `viewDistance` only bounds what is *streamed*: measured on a dense zone,
+ * cutting it from 1277 to 600 yards barely moved the draw count, because the
+ * zone's own fog already ended well inside 600 and the far plane followed the
+ * fog, not the streaming radius. It still governs memory and streaming work,
+ * which is why it is here — but it is not the frame-rate lever.
+ *
+ * `drawDistance` is that lever: it pulls the fog, and with it the far plane,
+ * in below whatever the zone asks for. `null` leaves the zone's own fog alone,
+ * which is what the view has always done.
  *
  * `antialias` rides along because MSAA is the other cost that scales with the
  * window rather than with the scene. Turning it off is not free of visual
@@ -118,11 +126,14 @@ const RESOLUTION_SETTLE_MS = 180
  * constructor, and the renderer's MSAA is fixed at context creation — so the
  * parent keys this component on the quality and remounts when it changes.
  */
-const QUALITY_PRESETS: Record<RenderQuality, { viewDistance: number; antialias: boolean }> = {
-  low: { viewDistance: 600, antialias: false },
-  medium: { viewDistance: 900, antialias: true },
-  // The library's own default, so `high` renders exactly as it always did.
-  high: { viewDistance: 1277, antialias: true },
+const QUALITY_PRESETS: Record<
+  RenderQuality,
+  { viewDistance: number; drawDistance: number | null; antialias: boolean }
+> = {
+  low: { viewDistance: 600, drawDistance: 250, antialias: false },
+  medium: { viewDistance: 900, drawDistance: 400, antialias: true },
+  // The library's own defaults, so `high` renders exactly as it always did.
+  high: { viewDistance: 1277, drawDistance: null, antialias: true },
 }
 
 /**
@@ -748,6 +759,39 @@ onMounted(() => {
     sampleWorstMs = 0
   }
 
+  /**
+   * Pulls the horizon in to the preset's draw distance and returns the far
+   * plane to use. Returns the library's own far plane when the preset asks for
+   * no limit.
+   *
+   * The fog has to come in with the far plane, not after it: clipping alone
+   * would make terrain vanish at a hard edge, where fogging it out first is
+   * what the game client does for the same setting.
+   *
+   * `MapLight` rewrites `fogParams` from the DBC bands on every `update()`, so
+   * this has to run after it and on every frame. Writing the Vector4 in place
+   * is deliberate — it is shared by reference with every material's uniform,
+   * which is exactly how the library propagates its own light changes.
+   *
+   * `x` is 1/(end - start) and `y` is the end (see `SceneLight.fogStart`). The
+   * band is scaled rather than clipped, so a zone with thick fog keeps thick
+   * fog and a clear one stays clear.
+   */
+  const applyDrawDistance = (manager: MapManager): number => {
+    const limit = preset.drawDistance
+    if (limit === null) return manager.cameraFar
+    const fog = manager.mapLight.fogParams
+    if (fog.y > limit) {
+      const start = fog.y - 1 / fog.x
+      const scaledStart = Math.max(start * (limit / fog.y), 1)
+      fog.x = 1 / Math.max(limit - scaledStart, 1)
+      fog.y = limit
+    }
+    // The same margin the library leaves between its fog end and its far plane
+    // (one MCNK chunk), so nothing pops at the plane itself.
+    return Math.min(manager.cameraFar, limit + TILE_YARDS / 16)
+  }
+
   // Reused across frames; the managers cull their own M2s against this.
   const cullFrustum = new THREE.Frustum()
   const cullMatrix = new THREE.Matrix4()
@@ -771,8 +815,9 @@ onMounted(() => {
     mapManager.update(dt, camera)
     // The map light's fog decides how far we can see, so settle the projection
     // here: the culling frustum below is derived from it.
-    if (camera.far !== mapManager.cameraFar) {
-      camera.far = mapManager.cameraFar
+    const far = applyDrawDistance(mapManager)
+    if (camera.far !== far) {
+      camera.far = far
       camera.updateProjectionMatrix()
     }
     // Streaming window: the camera's own tile, plus the one it is heading for.

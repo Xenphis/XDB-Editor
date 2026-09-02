@@ -126,7 +126,7 @@
       "low": "Quality: low",
       "medium": "Quality: medium",
       "high": "Quality: high",
-      "hint": "Streaming radius and antialiasing. Lower it for frame rate, raise it for a longer horizon; the view reloads on change."
+      "hint": "Draw distance, fog and antialiasing. Lowering it pulls the horizon in and cuts draw calls sharply; the view reloads on change."
     },
     "picked": {
       "copy": "Copy position",
