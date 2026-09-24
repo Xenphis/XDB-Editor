@@ -10,9 +10,18 @@ interface PersistedState {
   lastZoneId: string
   spawnPhase: number | null
   renderQuality: RenderQuality
+  showMinimap: boolean
+  minimapYards: number
 }
 
 const RENDER_QUALITIES: readonly RenderQuality[] = ['low', 'medium', 'high']
+
+/**
+ * The client's own default minimap zoom: 466⅔ yards across, the widest of its
+ * six outdoor levels. The 3D minimap snaps whatever is stored to its nearest
+ * level, so this only needs to be a sensible distance.
+ */
+const DEFAULT_MINIMAP_YARDS = 1400 / 3
 
 /**
  * An editor needs a responsive view more than a distant horizon, so a first
@@ -33,6 +42,11 @@ function readInitial(): PersistedState {
         lastZoneId: typeof parsed.lastZoneId === 'string' ? parsed.lastZoneId : '',
         spawnPhase: typeof parsed.spawnPhase === 'number' ? parsed.spawnPhase : null,
         renderQuality: readQuality(parsed.renderQuality),
+        showMinimap: typeof parsed.showMinimap === 'boolean' ? parsed.showMinimap : true,
+        minimapYards:
+          typeof parsed.minimapYards === 'number' && parsed.minimapYards > 0
+            ? parsed.minimapYards
+            : DEFAULT_MINIMAP_YARDS,
       }
     }
   } catch {
@@ -44,6 +58,8 @@ function readInitial(): PersistedState {
     lastZoneId: '',
     spawnPhase: null,
     renderQuality: readQuality(undefined),
+    showMinimap: true,
+    minimapYards: DEFAULT_MINIMAP_YARDS,
   }
 }
 
@@ -66,25 +82,50 @@ export const useMapEditorStore = defineStore('mapEditor', () => {
    * existing install renders exactly as it did.
    */
   const renderQuality = ref<RenderQuality>(initial.renderQuality)
+  /** Minimap overlay of the 3D view: shown, and its diameter in yards. */
+  const showMinimap = ref(initial.showMinimap)
+  const minimapYards = ref(initial.minimapYards)
   /** Maps returned by the last successful minimap_load_client call. */
   const maps = ref<MinimapMapInfo[]>([])
 
-  watch([clientPath, lastMapId, lastZoneId, spawnPhase, renderQuality], () => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          clientPath: clientPath.value,
-          lastMapId: lastMapId.value,
-          lastZoneId: lastZoneId.value,
-          spawnPhase: spawnPhase.value,
-          renderQuality: renderQuality.value,
-        }),
-      )
-    } catch {
-      /* ignore storage quota errors */
-    }
-  })
+  watch(
+    [
+      clientPath,
+      lastMapId,
+      lastZoneId,
+      spawnPhase,
+      renderQuality,
+      showMinimap,
+      minimapYards,
+    ],
+    () => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            clientPath: clientPath.value,
+            lastMapId: lastMapId.value,
+            lastZoneId: lastZoneId.value,
+            spawnPhase: spawnPhase.value,
+            renderQuality: renderQuality.value,
+            showMinimap: showMinimap.value,
+            minimapYards: minimapYards.value,
+          }),
+        )
+      } catch {
+        /* ignore storage quota errors */
+      }
+    },
+  )
 
-  return { clientPath, lastMapId, lastZoneId, spawnPhase, renderQuality, maps }
+  return {
+    clientPath,
+    lastMapId,
+    lastZoneId,
+    spawnPhase,
+    renderQuality,
+    showMinimap,
+    minimapYards,
+    maps,
+  }
 })

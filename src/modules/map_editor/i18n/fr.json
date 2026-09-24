@@ -118,15 +118,23 @@
     },
     "scene": {
       "streaming": "Chargement du terrain…",
-      "controls": "ZQSD/flèches : déplacer · Espace/C : monter/descendre · Maj : rapide · Glisser gauche : panoramique · Glisser droit : regarder · Clic droit : position · 1-4 : masquer terrain/bâtiments/eau/spawns",
       "fps": "{fps} FPS · pic {worst} ms · {calls} draws · {tris}k tris · {queued} en file",
       "hidden": "masqué : {layers}"
     },
+    "viewSettings": {
+      "title": "Réglages de la vue"
+    },
     "quality": {
-      "low": "Qualité : basse",
-      "medium": "Qualité : moyenne",
-      "high": "Qualité : haute",
+      "label": "Qualité",
+      "low": "Basse",
+      "medium": "Moyenne",
+      "high": "Haute",
       "hint": "Portée d'affichage, brouillard et antialiasing. Baisser rapproche l'horizon et réduit fortement les draw calls ; la vue se recharge au changement."
+    },
+    "minimap": {
+      "toggle": "Minimap",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière"
     },
     "picked": {
       "copy": "Copier la position",

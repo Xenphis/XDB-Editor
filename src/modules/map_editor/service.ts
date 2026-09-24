@@ -39,6 +39,11 @@ export function tileUrlTemplate(mapId: string): string {
   return `${TILE_HOST}${encodeURIComponent(mapId)}/{z}/{x}/{y}.png`
 }
 
+/** One pyramid tile, for callers that fetch tiles themselves (3D minimap). */
+export function tileUrl(mapId: string, z: number, x: number, y: number): string {
+  return `${TILE_HOST}${encodeURIComponent(mapId)}/${z}/${x}/${y}.png`
+}
+
 /** Raw client files served from the MPQ patch chain (3D asset streaming). */
 export { MPQ_ASSET_BASE_URL }
 

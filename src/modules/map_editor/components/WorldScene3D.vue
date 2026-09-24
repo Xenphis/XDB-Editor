@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { MapManager, scaleFadeDist } from '@wowserhq/scene'
 import type {
+  CameraPose,
   CreatureSpawnMarker,
   FocusPosition,
   MinimapMapInfo,
@@ -319,6 +320,21 @@ let selectedSpawn: CreatureSpawnMarker | null = null
 let selectionRing: SelectionRing | null = null
 
 const pressed = new Set<string>()
+
+/**
+ * Where the camera is and where it looks, refreshed every frame for the
+ * minimap. Deliberately not reactive: the minimap polls it from its own frame
+ * loop, where a ref would re-render this component on every camera move.
+ */
+const pose: CameraPose = { x: 0, y: 0, yaw: 0, fov: 0 }
+let poseReady = false
+
+/** The camera pose, or null until the view has placed its camera. */
+function cameraPose(): Readonly<CameraPose> | null {
+  return poseReady ? pose : null
+}
+
+defineExpose({ cameraPose })
 
 /** Creates the spawn manager and adds it to the scene (idempotent). */
 function enableSpawns() {
@@ -887,6 +903,13 @@ onMounted(() => {
     // while moving and visibly snap back into place on stop.
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
+    pose.x = camera.position.x
+    pose.y = camera.position.y
+    pose.yaw = yaw
+    // `camera.fov` is vertical, in degrees; the minimap's view cone is the
+    // horizontal spread, which widens with the aspect ratio.
+    pose.fov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect)
+    poseReady = true
     mapManager.setTarget(camera.position.x, camera.position.y)
     mapManager.update(dt, camera)
     // The map light's fog decides how far we can see, so settle the projection
@@ -958,6 +981,7 @@ watch(() => props.spawnPhase, phase => spawnManager?.setPhase(phase))
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationFrame)
+  poseReady = false
   if (probeTimer !== undefined) clearInterval(probeTimer)
   resizeObserver?.disconnect()
   removeInputListeners?.()
@@ -1013,7 +1037,6 @@ onBeforeUnmount(() => {
     <div v-if="hiddenLayers.length" class="scene-hidden-layers" aria-hidden="true">
       {{ $t('mapEditor.scene.hidden', { layers: hiddenLayers.join(', ') }) }}
     </div>
-    <div class="scene-controls-hint">{{ $t('mapEditor.scene.controls') }}</div>
   </div>
 </template>
 
@@ -1049,7 +1072,7 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-/* Top-left, clear of the centred streaming chip and the controls hint. */
+/* Top-left, clear of the centred streaming chip and the view controls. */
 .scene-fps {
   position: absolute;
   top: 0.5rem;
@@ -1067,16 +1090,6 @@ onBeforeUnmount(() => {
   top: 1.75rem;
   left: 0.75rem;
   color: rgba(248, 113, 113, 0.95);
-  font-size: 0.75rem;
-  pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.scene-controls-hint {
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.75rem;
-  color: rgba(148, 163, 184, 0.8);
   font-size: 0.75rem;
   pointer-events: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);

@@ -4,8 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
+import Popover from 'primevue/popover'
 import SelectButton from 'primevue/selectbutton'
 import Select from 'primevue/select'
+import ToggleButton from 'primevue/togglebutton'
+import ToggleSwitch from 'primevue/toggleswitch'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import { useMapEditorStore } from '../store'
@@ -16,12 +19,14 @@ import type {
   FocusPosition,
   GameTele,
   MinimapMapInfo,
+  MinimapMarker,
   PickedPosition,
   WorldPosition,
   ZoneDefinition,
 } from '../types'
 import WorldMap from '../components/WorldMap.vue'
 import WorldScene3D from '../components/WorldScene3D.vue'
+import SceneMinimap from '../components/SceneMinimap.vue'
 import SpawnInfoPanel from '../components/SpawnInfoPanel.vue'
 import TeleportEditorDialog from '../components/TeleportEditorDialog.vue'
 import ZoneTablesPanel from '../components/ZoneTablesPanel.vue'
@@ -254,6 +259,14 @@ const qualityOptions = computed(() => [
   { label: t('mapEditor.quality.high'), value: 'high' as const },
 ])
 
+/**
+ * Phase, quality and the minimap sit behind one settings button rather than
+ * on the toolbar: they are set once in a while, and the toolbar floats over
+ * the 3D view, where every control hides a piece of the world.
+ */
+const viewSettings = ref<InstanceType<typeof Popover> | null>(null)
+const viewSettingsOpen = ref(false)
+
 /** Spawn clicked in the 3D view; its repositioning drives the migration output. */
 const selectedSpawn = ref<CreatureSpawnMarker | null>(null)
 /** When armed, the next terrain right-click relocates the selected spawn. */
@@ -296,6 +309,40 @@ async function copyMigration() {
   }
 }
 
+// ── 3D minimap ─────────────────────────────────────────────────────────
+// The minimap sits with the view controls (top right, as in the client) so
+// the spawn panel stacks under it; the camera pose is read off the 3D view.
+const scene3d = ref<InstanceType<typeof WorldScene3D> | null>(null)
+
+function cameraPose() {
+  return scene3d.value?.cameraPose() ?? null
+}
+
+/** Dot colours match what marks the same thing elsewhere: the 2D row dot,
+ * the green selection ring under a spawn, the picked chip's pin. */
+const MARKER_COLORS = {
+  row: '#60a5fa',
+  spawn: '#4ade80',
+  picked: '#f59e0b',
+}
+
+const minimapMarkers = computed<MinimapMarker[]>(() => {
+  const markers: MinimapMarker[] = []
+  if (rowMarker.value) {
+    markers.push({ x: rowMarker.value.x, y: rowMarker.value.y, color: MARKER_COLORS.row })
+  }
+  if (picked.value) {
+    markers.push({ x: picked.value.x, y: picked.value.y, color: MARKER_COLORS.picked })
+  }
+  const spawn = selectedSpawn.value
+  if (spawn) {
+    // A moved spawn is drawn where it was dropped, like its model.
+    const at = movedPosition.value ?? { x: spawn.position_x, y: spawn.position_y }
+    markers.push({ x: at.x, y: at.y, color: MARKER_COLORS.spawn })
+  }
+  return markers
+})
+
 // A center from another map would teleport the 3D camera into the void.
 watch(() => store.lastMapId, () => {
   viewCenter.value = null
@@ -305,9 +352,12 @@ watch(() => store.lastMapId, () => {
   clearSelectedSpawn()
 })
 
-// Leaving 3D invalidates any current spawn selection.
+// Leaving 3D invalidates any current spawn selection, and takes away the
+// settings button the popover is anchored to.
 watch(viewMode, () => {
-  if (viewMode.value !== '3d') clearSelectedSpawn()
+  if (viewMode.value === '3d') return
+  clearSelectedSpawn()
+  viewSettings.value?.hide()
 })
 
 async function load() {
@@ -393,6 +443,7 @@ onMounted(async () => {
                context creation, so switching preset has to remount. -->
           <WorldScene3D
             v-else-if="selectedMap"
+            ref="scene3d"
             :key="`${selectedMap.id}:${store.renderQuality}`"
             :map="selectedMap"
             :initialPosition="focusTarget ?? viewCenter"
@@ -421,40 +472,18 @@ onMounted(async () => {
             </p>
           </div>
 
-          <!-- View controls float top-right, the same corner treatment as the
-               2D view's zoom control; the spawn panel stacks below them. -->
-          <div v-if="selectedMap" class="stage-top-right">
-            <div class="stage-controls">
-              <SelectButton
-                v-model="viewMode"
-                :options="viewModes"
-                optionLabel="label"
-                optionValue="value"
-                :allowEmpty="false"
-                size="small"
-              />
-              <Select
-                v-if="viewMode === '3d' && spawnsAvailable"
-                v-model="store.spawnPhase"
-                :options="phaseOptions"
-                optionLabel="label"
-                optionValue="value"
-                :placeholder="t('mapEditor.spawns.phase.label')"
-                v-tooltip.bottom="t('mapEditor.spawns.phase.hint')"
-                class="phase-select"
-                size="small"
-              />
-              <Select
-                v-if="viewMode === '3d'"
-                v-model="store.renderQuality"
-                :options="qualityOptions"
-                optionLabel="label"
-                optionValue="value"
-                v-tooltip.bottom="t('mapEditor.quality.hint')"
-                class="quality-select"
-                size="small"
-              />
-            </div>
+          <!-- Right edge, as in the client: the minimap in the top corner,
+               the selected spawn's panel under it, and the view controls
+               pushed to the bottom corner, out of the way of both. -->
+          <div v-if="selectedMap" class="stage-right">
+            <SceneMinimap
+              v-if="viewMode === '3d' && store.showMinimap"
+              :key="selectedMap.id"
+              :map="selectedMap"
+              :pose="cameraPose"
+              v-model:yards="store.minimapYards"
+              :markers="minimapMarkers"
+            />
 
             <div v-if="viewMode === '3d' && selectedSpawn" class="spawn-overlay">
               <SpawnInfoPanel
@@ -467,6 +496,79 @@ onMounted(async () => {
                 @close="clearSelectedSpawn"
               />
             </div>
+
+            <div class="stage-controls">
+              <SelectButton
+                v-model="viewMode"
+                :options="viewModes"
+                optionLabel="label"
+                optionValue="value"
+                :allowEmpty="false"
+                size="small"
+              />
+              <!-- A ToggleButton rather than a Button: it shares the 2D/3D
+                   segments' sizing rules, so it lands square and at their
+                   height, and it stays pressed while the popover is open. Its
+                   own click flip is overridden by @show/@hide below. -->
+              <ToggleButton
+                v-if="viewMode === '3d'"
+                :modelValue="viewSettingsOpen"
+                size="small"
+                class="stage-icon-toggle"
+                aria-haspopup="dialog"
+                :aria-expanded="viewSettingsOpen"
+                :ariaLabel="t('mapEditor.viewSettings.title')"
+                v-tooltip.top="t('mapEditor.viewSettings.title')"
+                @click="viewSettings?.toggle($event)"
+              >
+                <i class="pi pi-cog"></i>
+              </ToggleButton>
+            </div>
+
+            <Popover
+              ref="viewSettings"
+              @show="viewSettingsOpen = true"
+              @hide="viewSettingsOpen = false"
+            >
+              <div class="view-settings">
+                <p class="view-settings-title">{{ t('mapEditor.viewSettings.title') }}</p>
+                <div v-if="spawnsAvailable" class="view-settings-field">
+                  <label for="view-settings-phase" class="view-settings-label">
+                    {{ t('mapEditor.spawns.phase.label') }}
+                  </label>
+                  <Select
+                    v-model="store.spawnPhase"
+                    inputId="view-settings-phase"
+                    :options="phaseOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    :placeholder="t('mapEditor.spawns.phase.all')"
+                    class="view-settings-select"
+                  />
+                  <p class="view-settings-hint">{{ t('mapEditor.spawns.phase.hint') }}</p>
+                </div>
+                <div class="view-settings-field">
+                  <label for="view-settings-quality" class="view-settings-label">
+                    {{ t('mapEditor.quality.label') }}
+                  </label>
+                  <Select
+                    v-model="store.renderQuality"
+                    inputId="view-settings-quality"
+                    :options="qualityOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="view-settings-select"
+                  />
+                  <p class="view-settings-hint">{{ t('mapEditor.quality.hint') }}</p>
+                </div>
+                <div class="view-settings-row">
+                  <label for="view-settings-minimap" class="view-settings-label">
+                    {{ t('mapEditor.minimap.toggle') }}
+                  </label>
+                  <ToggleSwitch v-model="store.showMinimap" inputId="view-settings-minimap" />
+                </div>
+              </div>
+            </Popover>
           </div>
 
           <!-- Coordinates float bottom-left: live cursor position, then the
@@ -562,30 +664,63 @@ onMounted(async () => {
   min-height: 0;
 }
 
-/* forms.css forces every .p-select to a fixed default height, which would
-   override the stretch below — height: auto hands sizing back to the
-   .stage-controls flex row, so this matches the toggle's height exactly
-   instead of guessing a number that drifts whenever the toggle is resized. */
-.phase-select {
-  min-width: 11rem;
-  height: auto;
+/* The settings toggle comes out square at the 2D/3D segments' exact height:
+   its icon gets a box one line tall — the labels' line — and one line wide,
+   and the padding around it is the same on all four sides. */
+.stage-controls :deep(.stage-icon-toggle .p-togglebutton-content) {
+  padding: 0.2rem;
 }
 
-.quality-select {
-  min-width: 8rem;
-  height: auto;
+.stage-icon-toggle .pi {
+  line-height: inherit;
+  width: 1lh;
+  text-align: center;
 }
 
-/* The label's height still needs to actually reach the stretched box: block
-   text sizes to line-height (forms.css sets one for the *default* height),
-   so flex-center the label instead of trusting a line-height to land right,
-   and reset line-height itself so it stops dictating the natural height. */
-.phase-select :deep(.p-select-label),
-.quality-select :deep(.p-select-label) {
+/* Popover content: the popover itself is teleported to <body>, but slot
+   content keeps this component's scope, so these rules still reach it. */
+.view-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: 17rem;
+}
+
+.view-settings-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
+}
+
+.view-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.view-settings-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.view-settings-select {
+  width: 100%;
+}
+
+.view-settings-hint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.view-settings-row {
   display: flex;
   align-items: center;
-  padding: 0 0.75rem !important;
-  line-height: normal !important;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .cursor-coords {
@@ -652,10 +787,10 @@ onMounted(async () => {
   min-height: 0;
 }
 
-/* View controls float over the map's top-right corner, the same treatment as
-   the 2D view's zoom control. The spawn panel stacks below them and scrolls
-   internally instead of pushing anything. */
-.stage-top-right {
+/* Right-edge column over the map: minimap at the top, view controls at the
+   bottom, and the spawn panel in between, scrolling internally instead of
+   pushing anything. */
+.stage-right {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
@@ -668,11 +803,11 @@ onMounted(async () => {
   z-index: 5;
 }
 
-.stage-top-right > * {
+.stage-right > * {
   pointer-events: auto;
 }
 
-/* stretch (not center) so the select below can match the toggle's height by
+/* stretch (not center) so the settings button matches the toggle's height by
    filling it, rather than both hardcoding a height and hoping they agree;
    nowrap because align-items: stretch silently no-ops in a wrapping flex
    container whose own cross size isn't otherwise fixed. */
@@ -682,6 +817,8 @@ onMounted(async () => {
   gap: 0.5rem;
   flex-wrap: nowrap;
   justify-content: flex-end;
+  /* Bottom of the column whether or not a spawn panel sits above. */
+  margin-top: auto;
 }
 
 /* No gap here: SelectButton's segments are meant to touch (each has its own
@@ -708,8 +845,15 @@ onMounted(async () => {
   min-height: 0;
 }
 
+/* The overlay box fills the column down to the controls; only the panel in
+   it should catch the pointer, not the empty strip of 3D view under it. */
+.stage-right > .spawn-overlay {
+  pointer-events: none;
+}
+
 .spawn-overlay > * {
   max-height: 100%;
+  pointer-events: auto;
 }
 
 /* Coordinates float over the map's bottom-left corner instead of a toolbar. */

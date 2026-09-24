@@ -33,6 +33,20 @@ export interface PickedPosition extends WorldPosition {
  */
 export type RenderQuality = 'low' | 'medium' | 'high'
 
+/** Where the 3D camera stands and looks, as the minimap draws it. */
+export interface CameraPose extends WorldPosition {
+  /** Heading in radians, counter-clockwise from north (+X) toward west (+Y). */
+  yaw: number
+  /** Horizontal field of view in radians. */
+  fov: number
+}
+
+/** A spot drawn on the minimap (spawn, picked position, table row). */
+export interface MinimapMarker extends WorldPosition {
+  /** CSS colour of the dot. */
+  color: string
+}
+
 /** A world position with optional height, used to focus/fly the views. */
 export interface FocusPosition extends WorldPosition {
   z?: number | null

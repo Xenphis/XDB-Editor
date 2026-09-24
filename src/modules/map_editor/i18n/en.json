@@ -118,15 +118,23 @@
     },
     "scene": {
       "streaming": "Streaming terrain…",
-      "controls": "WASD/arrows: move · Space/C: up/down · Shift: fast · Left-drag: pan · Right-drag: look · Right-click: position · 1-4: toggle terrain/buildings/water/spawns",
       "fps": "{fps} FPS · {worst} ms peak · {calls} draws · {tris}k tris · {queued} queued",
       "hidden": "hidden: {layers}"
     },
+    "viewSettings": {
+      "title": "View settings"
+    },
     "quality": {
-      "low": "Quality: low",
-      "medium": "Quality: medium",
-      "high": "Quality: high",
+      "label": "Quality",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
       "hint": "Draw distance, fog and antialiasing. Lowering it pulls the horizon in and cuts draw calls sharply; the view reloads on change."
+    },
+    "minimap": {
+      "toggle": "Minimap",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
     },
     "picked": {
       "copy": "Copy position",
