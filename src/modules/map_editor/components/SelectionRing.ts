@@ -61,6 +61,10 @@ export class SelectionRing {
   readonly #raycaster = new THREE.Raycaster()
   readonly #box = new THREE.Box3()
   readonly #size = new THREE.Vector3()
+  readonly #point = new THREE.Vector3()
+  readonly #scale = new THREE.Vector3()
+  readonly #toTarget = new THREE.Matrix4()
+  readonly #inverse = new THREE.Matrix4()
   readonly #origin = new THREE.Vector3()
   readonly #down = new THREE.Vector3(0, 0, -1)
   readonly #normal = new THREE.Vector3()
@@ -121,14 +125,8 @@ export class SelectionRing {
    * than not showing at all.
    */
   place(target: THREE.Object3D, terrain: THREE.Object3D | null): void {
-    // World-space bounds, so the model's own scale is already in them. The
-    // footprint is the horizontal extent: a tall thin model should not get a
-    // wide ring just for being tall, which a bounding sphere would give it.
-    this.#box.setFromObject(target)
-    this.#box.getSize(this.#size)
-    const footprint = Math.max(this.#size.x, this.#size.y) / 2
     const radius = THREE.MathUtils.clamp(
-      footprint * FOOTPRINT_MARGIN,
+      this.#footprint(target) * FOOTPRINT_MARGIN,
       MIN_RADIUS,
       MAX_RADIUS,
     )
@@ -157,6 +155,48 @@ export class SelectionRing {
     this.mesh.quaternion.setFromUnitVectors(LOCAL_UP, this.#normal)
     this.mesh.position.addScaledVector(this.#normal, GROUND_OFFSET)
     this.mesh.visible = true
+  }
+
+  /**
+   * Half the larger horizontal side of what `target` draws, in yards. The
+   * horizontal extent, not a bounding sphere: a tall thin model should not
+   * get a wide ring just for being tall.
+   *
+   * Measured on the vertices rather than with `Box3.setFromObject`: an M2's
+   * bounding box from @wowserhq/scene spans every animation it has — a
+   * flight, a death throw, a spell wind-up — so culling never drops it
+   * mid-sequence, and that made the ring 1.5 to 3 times the model (a roach
+   * got 1.5 yd for a 0.5 yd body). This takes the bind pose, through the
+   * geosets actually drawn (see `showCharacterGeosets`), in the target's own
+   * frame so its facing does not widen the box, then applies its scale.
+   */
+  #footprint(target: THREE.Object3D): number {
+    this.#box.makeEmpty()
+    this.#inverse.copy(target.matrixWorld).invert()
+    target.traverse(object => {
+      const mesh = object as THREE.Mesh
+      const position = mesh.isMesh ? mesh.geometry.getAttribute('position') : undefined
+      if (!position) return
+      this.#toTarget.multiplyMatrices(this.#inverse, mesh.matrixWorld)
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      const index = mesh.geometry.index
+      const count = index ? index.count : position.count
+      const groups =
+        mesh.geometry.groups.length > 0 ? mesh.geometry.groups : [{ start: 0, count }]
+      for (const group of groups) {
+        const material = materials['materialIndex' in group ? group.materialIndex ?? 0 : 0]
+        if (!material?.visible) continue
+        const end = Math.min(group.start + group.count, count)
+        for (let i = group.start; i < end; i++) {
+          this.#point.fromBufferAttribute(position, index ? index.getX(i) : i)
+          this.#box.expandByPoint(this.#point.applyMatrix4(this.#toTarget))
+        }
+      }
+    })
+    if (this.#box.isEmpty()) return 0
+    this.#box.getSize(this.#size)
+    this.#scale.setFromMatrixScale(target.matrixWorld)
+    return Math.max(this.#size.x * this.#scale.x, this.#size.y * this.#scale.y) / 2
   }
 
   hide(): void {
