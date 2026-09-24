@@ -583,6 +583,22 @@ fn parse_item_display_info(bytes: &[u8]) -> HashMap<u32, ItemDisplay> {
         .collect()
 }
 
+/// ItemDisplayInfo.dbc: 5 = InventoryIcon (bare icon name, e.g.
+/// `INV_Sword_04`), turned into the MPQ path of its BLP under
+/// `Interface\Icons`. Only here rather than in its own module because this
+/// file already owns the DBC reader; the quest preview is the consumer.
+pub fn parse_item_icons(bytes: &[u8]) -> HashMap<u32, String> {
+    let Some(dbc) = Dbc::open(bytes, 6) else {
+        return HashMap::new();
+    };
+    dbc.rows()
+        .filter_map(|row| {
+            let icon = row.string(5);
+            (!icon.is_empty()).then(|| (row.u32(0), format!("Interface\\Icons\\{icon}.blp")))
+        })
+        .collect()
+}
+
 /// HelmetGeosetVisData.dbc: 1-5 = race bitmasks hiding the hair, facial hair
 /// 1-3 and ears (the last two columns are not used by 3.3.5 models).
 fn parse_helmet_vis(bytes: &[u8]) -> HashMap<u32, [u32; 5]> {
@@ -884,6 +900,17 @@ mod tests {
             vec![5, 102, 202, 301, 401, 501, 601, 702, 803, 1001, 1101, 1201, 1302, 1401, 1504, 1601, 1701, 1801]
         );
         assert!(look.attachments.is_empty());
+    }
+
+    #[test]
+    fn maps_item_displays_to_their_inventory_icon() {
+        let mut s = Strings::new();
+        let sword = s.push("INV_Sword_04");
+        let dbc = wdbc(25, &[record(25, &[(0, 1542), (5, sword)]), record(25, &[(0, 7)])], &s);
+        let icons = parse_item_icons(&dbc);
+        assert_eq!(icons.get(&1542).map(String::as_str), Some("Interface\\Icons\\INV_Sword_04.blp"));
+        // A display without an icon is left out rather than mapped to a bogus path.
+        assert!(!icons.contains_key(&7));
     }
 
     #[test]

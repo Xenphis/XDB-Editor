@@ -244,5 +244,64 @@
       "16": { "name": "MONTHLY", "comment": "Monthly reset quest" },
       "32": { "name": "CAST", "comment": "Requires spell cast for killcredit" }
     }
+  },
+  "quest_preview": {
+    "modes": {
+      "log": "Log",
+      "offer": "Offer",
+      "progress": "Progress",
+      "reward": "Reward"
+    },
+    "defaultLocale": "Default",
+    "locale": "Text language",
+    "untitled": "(untitled quest)",
+    "empty": "— {field} is empty —",
+    "player": {
+      "name": "Arthas",
+      "race": "Human",
+      "class": "Paladin"
+    },
+    "frame": {
+      "questLog": "Quest Log",
+      "noGiver": "(no quest giver)",
+      "noEnder": "(no quest ender)"
+    },
+    "headers": {
+      "objectives": "Quest Objectives",
+      "description": "Description",
+      "rewards": "Rewards",
+      "requiredItems": "Required items:"
+    },
+    "objectives": {
+      "slain": "{name} slain",
+      "players": "Players slain",
+      "progress": "{label}: 0/{count}"
+    },
+    "rewards": {
+      "choices": "You will be able to choose one of these rewards:",
+      "choose": "Choose your reward:",
+      "receive": "You will receive:",
+      "alsoReceive": "You will also receive:",
+      "spell": "You will learn:",
+      "aura": "The following spell will be cast on you:",
+      "honor": "Honor: {n}",
+      "arena": "Arena points: {n}",
+      "talents": "Talent points: {n}",
+      "title": "You shall be granted the title:",
+      "titleId": "Title #{id}"
+    },
+    "requiredMoney": "Required Money:",
+    "suggestedPlayers": "Suggested Players: [{n}]",
+    "timeLeft": "Time limit: {time}",
+    "progressSkipped": "No required items: in game, the server skips this panel and goes straight to the reward.",
+    "buttons": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "continue": "Continue",
+      "cancel": "Cancel",
+      "complete": "Complete Quest",
+      "abandon": "Abandon",
+      "share": "Share"
+    }
   }
 }

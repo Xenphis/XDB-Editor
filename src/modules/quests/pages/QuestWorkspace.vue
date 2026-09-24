@@ -13,6 +13,7 @@ import { getQuests, type QuestZoneFilter } from '@/modules/quests/service'
 import { loadZoneWorldBounds } from '@/modules/map_editor/service'
 import { ZONE_BY_ID } from '@/modules/map_editor/data/zones'
 import QuestZoneSelect from '../components/QuestZoneSelect.vue'
+import QuestPreview from '../components/QuestPreview.vue'
 import { useQuestModuleStore } from '@/modules/quests/store'
 import QuestTabGeneral from './editor/quest_template/GeneralTab.vue'
 import QuestTabObjectives from './editor/quest_template/ObjectivesTab.vue'
@@ -221,26 +222,14 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         :title="t('workspace.inspector')"
         :subtitle="form.LogTitle || undefined"
         storageKey="quests"
+        width="340px"
         :changedFields="store.combinedChangedFields"
         :diffQuery="store.combinedDiffQuery"
         :fullQuery="store.combinedFullQuery"
         :hasChanges="store.combinedHasChanges"
       >
-        <template #facts>
-          <dl class="quest-facts">
-            <div class="quest-facts-row">
-              <dt>{{ t('quest.columns.level') }}</dt>
-              <dd>{{ form.QuestLevel === -1 ? 'Scaling' : form.QuestLevel }}</dd>
-            </div>
-            <div class="quest-facts-row">
-              <dt>{{ t('quest.columns.type') }}</dt>
-              <dd>{{ typeLabel(form.QuestType) }}</dd>
-            </div>
-            <div class="quest-facts-row">
-              <dt>MinLevel</dt>
-              <dd>{{ form.MinLevel ?? '—' }}</dd>
-            </div>
-          </dl>
+        <template #preview>
+          <QuestPreview />
         </template>
       </InspectorPanel>
     </template>
@@ -256,29 +245,4 @@ const mainTabs = computed<SectionTabItem[]>(() => [
   font-size: 1.5rem;
 }
 
-.quest-facts {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.quest-facts-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.78rem;
-}
-
-.quest-facts-row dt {
-  color: var(--text-muted);
-}
-
-.quest-facts-row dd {
-  margin: 0;
-  color: var(--text);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
 </style>

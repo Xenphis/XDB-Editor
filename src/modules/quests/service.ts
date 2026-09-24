@@ -115,3 +115,31 @@ export interface QuestRelations {
 export async function getQuestRelations(quest: number): Promise<QuestRelations> {
   return invoke('get_quest_relations', { quest })
 }
+
+// ─── in-game preview (read-only name lookups) ─────────────────────────────────
+
+export interface QuestPreviewItem {
+  entry: number
+  name: string
+  quality: number
+  displayId: number
+}
+
+export interface QuestPreviewName {
+  entry: number
+  name: string
+}
+
+export interface QuestPreviewRefs {
+  items: QuestPreviewItem[]
+  creatures: QuestPreviewName[]
+  gameobjects: QuestPreviewName[]
+}
+
+export async function getQuestPreviewRefs(
+  items: number[],
+  creatures: number[],
+  gameobjects: number[],
+): Promise<QuestPreviewRefs> {
+  return invoke('get_quest_preview_refs', { items, creatures, gameobjects })
+}

@@ -244,5 +244,64 @@
       "16": { "name": "MONTHLY", "comment": "Quête à réinitialisation mensuelle" },
       "32": { "name": "CAST", "comment": "Nécessite de lancer un sort pour le crédit de kill" }
     }
+  },
+  "quest_preview": {
+    "modes": {
+      "log": "Journal",
+      "offer": "Offre",
+      "progress": "Progression",
+      "reward": "Récompense"
+    },
+    "defaultLocale": "Défaut",
+    "locale": "Langue des textes",
+    "untitled": "(quête sans titre)",
+    "empty": "— {field} est vide —",
+    "player": {
+      "name": "Arthas",
+      "race": "Humain",
+      "class": "Paladin"
+    },
+    "frame": {
+      "questLog": "Journal de quêtes",
+      "noGiver": "(aucun donneur de quête)",
+      "noEnder": "(aucun PNJ de fin)"
+    },
+    "headers": {
+      "objectives": "Objectifs de la quête",
+      "description": "Description",
+      "rewards": "Récompenses",
+      "requiredItems": "Objets requis :"
+    },
+    "objectives": {
+      "slain": "{name} tué(s)",
+      "players": "Joueurs tués",
+      "progress": "{label} : 0/{count}"
+    },
+    "rewards": {
+      "choices": "Vous pourrez choisir l'une de ces récompenses :",
+      "choose": "Choisissez votre récompense :",
+      "receive": "Vous recevrez :",
+      "alsoReceive": "Vous recevrez également :",
+      "spell": "Vous apprendrez :",
+      "aura": "Le sort suivant sera lancé sur vous :",
+      "honor": "Honneur : {n}",
+      "arena": "Points d'arène : {n}",
+      "talents": "Points de talent : {n}",
+      "title": "Vous obtiendrez le titre :",
+      "titleId": "Titre n°{id}"
+    },
+    "requiredMoney": "Argent requis :",
+    "suggestedPlayers": "Joueurs suggérés : [{n}]",
+    "timeLeft": "Temps imparti : {time}",
+    "progressSkipped": "Aucun objet requis : en jeu, le serveur saute ce panneau et passe directement à la récompense.",
+    "buttons": {
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "continue": "Continuer",
+      "cancel": "Annuler",
+      "complete": "Terminer la quête",
+      "abandon": "Abandonner",
+      "share": "Partager"
+    }
   }
 }

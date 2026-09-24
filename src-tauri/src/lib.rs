@@ -11,7 +11,7 @@ mod wmo;
 use db::DbState;
 use debug::{DebugState, set_debug_mode, get_debug_mode};
 use minimap::{MinimapState, minimap_load_client, minimap_adt_liquids};
-use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds, minimap_map_records};
+use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds, minimap_map_records, client_item_icons};
 use spell_dbc::{client_spell_search, client_spell_names, client_spell_detail};
 use commands::addon::{get_npc_addon, save_npc_addon};
 use commands::batch::execute_batch;
@@ -66,6 +66,7 @@ use commands::quest_request_items::get_quest_request_items;
 use commands::quest_request_items_locale::{get_quest_request_items_locales, save_quest_request_items_locales};
 use commands::quest_details::get_quest_details;
 use commands::quest_relations::{get_quest_relations, get_creature_quest_relations, get_gameobject_quest_relations};
+use commands::quest_preview::get_quest_preview_refs;
 use commands::creature_questitem::{get_creature_questitem, save_creature_questitem};
 use commands::trainer::{get_trainers, get_trainer, save_trainer, delete_trainer, get_trainer_spells, save_trainer_spells, get_creature_default_trainers, save_creature_default_trainers};
 use commands::creature_onkill_reputation::{get_creature_onkill_reputation, save_creature_onkill_reputation};
@@ -239,6 +240,7 @@ pub fn run() {
       get_quest_relations,
       get_creature_quest_relations,
       get_gameobject_quest_relations,
+      get_quest_preview_refs,
       get_creature_classlevelstats,
       get_creature_classlevelstat,
       save_creature_classlevelstat,
@@ -277,6 +279,7 @@ pub fn run() {
       minimap_gameobject_models,
       minimap_zone_bounds,
       minimap_map_records,
+      client_item_icons,
       client_spell_search,
       client_spell_names,
       client_spell_detail,

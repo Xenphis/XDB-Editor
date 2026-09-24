@@ -14,7 +14,8 @@ use tauri::Manager;
 use wow_mpq::PatchChain;
 
 use crate::creature_display::{
-    build_creature_models, parse_m2_attachments, AttachmentPoint, CreatureDbcs, CreatureModelInfo,
+    build_creature_models, parse_item_icons, parse_m2_attachments, AttachmentPoint, CreatureDbcs,
+    CreatureModelInfo,
 };
 use crate::liquids::{build_tile_liquids, LiquidMesh};
 use crate::spell_dbc::{build_index, SpellIndex};
@@ -126,6 +127,10 @@ impl MinimapState {
         self.with_data(|data| data.zone_bounds())
     }
 
+    fn item_icons(&self) -> Result<Arc<HashMap<u32, String>>, String> {
+        self.with_data(|data| data.item_icons())
+    }
+
     /// Spell.dbc name/icon index, built on first use (see `spell_dbc.rs`).
     ///
     /// Unlike the small DBCs above this one is NOT parsed inside `with_data`.
@@ -193,6 +198,9 @@ pub struct MinimapData {
     /// WorldMapArea.dbc: AreaTable zone id -> world bounds, parsed lazily on
     /// the first zone-bounds request (empty if the DBC is gone).
     zone_bounds: Option<Arc<HashMap<u32, ZoneWorldBounds>>>,
+    /// ItemDisplayInfo.dbc: display id -> icon BLP path, parsed lazily on the
+    /// first item-icon request (empty if the DBC is gone).
+    item_icons: Option<Arc<HashMap<u32, String>>>,
     /// Spell.dbc (+ SpellIcon.dbc): searchable spell name/icon index, built
     /// lazily on the first spell lookup (empty if the DBCs are gone). Built by
     /// `MinimapState::spell_index`, which parses outside the state lock.
@@ -322,6 +330,22 @@ impl MinimapData {
             self.zone_bounds = Some(Arc::new(bounds));
         }
         self.zone_bounds.clone().unwrap()
+    }
+
+    /// Item display id -> icon BLP path, parsed from ItemDisplayInfo.dbc on
+    /// first use (empty if the DBC is missing — items then show no icon).
+    fn item_icons(&mut self) -> Arc<HashMap<u32, String>> {
+        if self.item_icons.is_none() {
+            let icons = match self.chain.read_file("DBFilesClient\\ItemDisplayInfo.dbc") {
+                Ok(bytes) => parse_item_icons(&bytes),
+                Err(e) => {
+                    log::warn!("minimap: ItemDisplayInfo.dbc unavailable, items have no icon: {e}");
+                    HashMap::new()
+                }
+            };
+            self.item_icons = Some(Arc::new(icons));
+        }
+        self.item_icons.clone().unwrap()
     }
 }
 
@@ -770,6 +794,7 @@ fn build_data(archives: Vec<(PathBuf, i32)>, cache_dir: PathBuf) -> Result<Minim
         creature_models: None,
         gameobject_models: None,
         zone_bounds: None,
+        item_icons: None,
         spell_index: None,
     })
 }
@@ -830,6 +855,26 @@ pub async fn minimap_zone_bounds(
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<MinimapState>();
         Ok(state.zone_bounds()?.get(&zone_id).copied())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Resolves item display ids (`item_template.displayid`) to the MPQ path of
+/// their inventory icon, servable over the `blp://` scheme. Unknown ids are
+/// omitted from the result.
+#[tauri::command]
+pub async fn client_item_icons(
+    app: tauri::AppHandle,
+    display_ids: Vec<u32>,
+) -> Result<HashMap<u32, String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<MinimapState>();
+        let icons = state.item_icons()?;
+        Ok(display_ids
+            .iter()
+            .filter_map(|id| icons.get(id).map(|path| (*id, path.clone())))
+            .collect())
     })
     .await
     .map_err(|e| e.to_string())?
