@@ -55,6 +55,17 @@ const TEXTURE_YARDS = TILE_YARDS / 128
  * than this almost everywhere.
  */
 const SUBMERGED_MAX_DEPTH = 60
+/**
+ * Depth (0..1, MH2O's depth byte over 255) at which a surface reaches its full
+ * opacity; shallower, it fades out to nothing at zero.
+ *
+ * An MH2O cell covers its whole square whatever lies under it, so a lake's
+ * edge cells, and the thin sheets some zones carry just under the grass, also
+ * stretch over dry ground. Drawn at the liquid's flat opacity, those showed as
+ * flat blue squares on the terrain wherever the ground dipped below the water
+ * line (outside Goldshire, for one); the client fades them out by depth.
+ */
+const DEPTH_FADE = 0.1
 
 /**
  * The flat colour each category shows until (or unless) its frames load, and
@@ -89,14 +100,17 @@ uniform vec4 fogParams;
 
 in vec3 position;
 in vec2 uv;
+in float depth;
 
 out vec2 vUv;
+out float vDepth;
 out float vFogFactor;
 
 ${FOG_FACTOR_GLSL}
 
 void main() {
   vUv = uv;
+  vDepth = depth;
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vFogFactor = calculateFogFactor(fogParams, distance(cameraPosition, worldPosition.xyz));
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -112,14 +126,16 @@ uniform float alpha;
 uniform vec3 fogColor;
 
 in vec2 vUv;
+in float vDepth;
 in float vFogFactor;
 
 out vec4 color;
 
 void main() {
   // The frame contributes colour only: its alpha channel is not coverage in
-  // the client, the liquid's own opacity is (see #loadFrames).
-  color = vec4(texture(map, vUv).rgb * tint, alpha);
+  // the client, the liquid's own opacity is (see #loadFrames) — faded out
+  // where the liquid is too shallow to show (see DEPTH_FADE).
+  color = vec4(texture(map, vUv).rgb * tint, alpha * smoothstep(0.0, ${DEPTH_FADE.toFixed(3)}, vDepth));
   color.rgb = mix(color.rgb, fogColor, vFogFactor);
 }
 `
@@ -145,6 +161,9 @@ interface LiquidSurface {
  * camera moves, and free to avoid. The offset costs no seam because a tile is
  * exactly 128 repeats across, so neighbouring tiles stay in phase. WMO-local
  * water is small enough to start from its own origin.
+ *
+ * The per-vertex depth goes in as its own attribute; a layer without one (WMO
+ * liquid) is deep everywhere.
  */
 export function buildLiquidGeometry(
   layer: LiquidLayer,
@@ -159,6 +178,12 @@ export function buildLiquidGeometry(
     uvs[uv + 1] = ((layer.positions[i + 1] ?? 0) - originY) / TEXTURE_YARDS
   }
   geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+  const vertexCount = layer.positions.length / 3
+  const depths =
+    layer.depths.length === vertexCount
+      ? new Float32Array(layer.depths)
+      : new Float32Array(vertexCount).fill(1)
+  geometry.setAttribute('depth', new THREE.BufferAttribute(depths, 1))
   geometry.setIndex(layer.indices)
   return geometry
 }

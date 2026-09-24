@@ -515,7 +515,7 @@ pub(crate) fn to_m2_path(path: &str) -> String {
 /// Sequentially walks the IFF chunks and returns the data slice of the first
 /// chunk whose (little-endian, reversed) magic matches. WMO/ADT store magics
 /// reversed, e.g. MODN is `NDOM` on disk.
-fn find_chunk(bytes: &[u8], magic: [u8; 4]) -> Option<&[u8]> {
+pub(crate) fn find_chunk(bytes: &[u8], magic: [u8; 4]) -> Option<&[u8]> {
     let mut pos = 0usize;
     while pos + 8 <= bytes.len() {
         let size = u32::from_le_bytes(bytes[pos + 4..pos + 8].try_into().ok()?) as usize;

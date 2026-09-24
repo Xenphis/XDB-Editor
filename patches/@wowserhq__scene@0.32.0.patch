@@ -1,3 +1,16 @@
+diff --git a/dist/esm/index.js b/dist/esm/index.js
+index 46f46dcdd76a4ac6c6e5d7df1505087b50ed6ac7..589a5c6e300be6cabc5fc9cde1d1965e42dba713 100644
+--- a/dist/esm/index.js
++++ b/dist/esm/index.js
+@@ -8,4 +8,7 @@ export * from './model/ModelManager.js';
+ export * from './sound/SoundManager.js';
+ export * from './texture/TextureManager.js';
+ export * from './util.js';
++// The doodad fade table, so a caller can set its scale and cull its own models
++// by the same distances.
++export * from './world.js';
+ //# sourceMappingURL=index.js.map
+\ No newline at end of file
 diff --git a/dist/esm/map/MapManager.js b/dist/esm/map/MapManager.js
 index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce7334847897e 100644
 --- a/dist/esm/map/MapManager.js
@@ -196,6 +209,45 @@ index 74b0a5efebd0b21d500a12d834ed31a7e9da59eb..6e432870a635e6632fef006df9049462
      }
      show() {
          if (this.visible) {
+diff --git a/dist/esm/model/ModelManager.js b/dist/esm/model/ModelManager.js
+index 1f298194f1216101e78e8e8823bdaa2497af74ad..9339230c706acb48e27813399bbc345b187143fa 100644
+--- a/dist/esm/model/ModelManager.js
++++ b/dist/esm/model/ModelManager.js
+@@ -82,6 +82,9 @@ class ModelManager {
+         geometry.setIndex(index);
+         for (const group of spec.geometry.groups) {
+             geometry.addGroup(group.start, group.count, group.materialIndex);
++            // Carried on the three group so a caller can drop the variants a
++            // model should not show (see ModelLoaderWorker#createGeometrySpec).
++            geometry.groups[geometry.groups.length - 1].geosetId = group.geosetId;
+         }
+         // Bounds
+         geometry.boundingBox = new THREE.Box3().setFromArray(spec.bounds.extent);
+diff --git a/dist/esm/model/loader/ModelLoaderWorker.js b/dist/esm/model/loader/ModelLoaderWorker.js
+index 849ef35d18a61d48701d785526d291fd3509fd2c..bf641cefb2edd57ddbb93cc0a5fb74fb050058f7 100644
+--- a/dist/esm/model/loader/ModelLoaderWorker.js
++++ b/dist/esm/model/loader/ModelLoaderWorker.js
+@@ -73,6 +73,11 @@ class ModelLoaderWorker extends SceneWorker {
+                 start: batch.skinSection.indexStart,
+                 count: batch.skinSection.indexCount,
+                 materialIndex: i,
++                // The skin section's geoset (submesh) id: which body part,
++                // hairstyle or clothing variant this batch draws. Character
++                // models ship every variant, and only the caller knows which
++                // ones a given model should show.
++                geosetId: batch.skinSection.id,
+             });
+         }
+         return {
+diff --git a/dist/types/index.d.ts b/dist/types/index.d.ts
+index 58da06e0780ea784757365b678ca38a1e0c46ec9..91b60f60430224267c76ce04515a2459d8f0aec6 100644
+--- a/dist/types/index.d.ts
++++ b/dist/types/index.d.ts
+@@ -8,3 +8,4 @@ export * from './model/ModelManager.js';
+ export * from './sound/SoundManager.js';
+ export * from './texture/TextureManager.js';
+ export * from './util.js';
++export * from './world.js';
 diff --git a/dist/types/map/MapManager.d.ts b/dist/types/map/MapManager.d.ts
 index 639faf1cb74696335f0d0b93a4938c69726a9a92..0267cb0bfbebb88ada3ce4076fc64abe03e4b116 100644
 --- a/dist/types/map/MapManager.d.ts

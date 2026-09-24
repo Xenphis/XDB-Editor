@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::io::Cursor;
 
 use serde::{Deserialize, Serialize};
-use wow_adt::{
-    parse_adt, HeightDepthVertex, HeightUvDepthVertex, HeightUvVertex, Mh2oInstance, ParsedAdt,
-};
+use wow_adt::{parse_adt, Mh2oInstance, ParsedAdt};
+
+use crate::wmo::find_chunk;
 
 /// ADT liquid (MH2O) extraction for the 3D water layer.
 ///
@@ -27,6 +27,13 @@ pub struct LiquidLayer {
     /// Flat XYZ triplets in world (== three) space.
     pub positions: Vec<f32>,
     pub indices: Vec<u32>,
+    /// How deep the liquid is under each vertex, 0..1 (MH2O's depth byte over
+    /// 255), one per position. The client fades a surface out where it is
+    /// shallow, which is what hides the liquid an MH2O cell carries over dry
+    /// ground at its edges. Empty when the source has no depth (WMO MLIQ),
+    /// which reads as deep everywhere.
+    #[serde(default)]
+    pub depths: Vec<f32>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -50,6 +57,8 @@ pub fn build_tile_liquids(
     let Some(water) = &root.water_data else {
         return Ok(LiquidMesh::default());
     };
+    // The raw chunk, for the vertex data (see `instance_vertices`).
+    let mh2o = find_chunk(adt_bytes, *b"O2HM").unwrap_or(&[]);
 
     // World coords of the tile's local (0,0) corner (north-west: max X and Y).
     // Matches the 2D minimap mapping (TrinityCore convention): col == tile_x
@@ -69,28 +78,15 @@ pub fn build_tile_liquids(
             .unwrap_or(((entry_idx % 16) as u32, (entry_idx / 16) as u32));
 
         for (i, instance) in entry.instances.iter().enumerate() {
-            let vertices = entry.vertex_data.get(i).and_then(|v| v.as_ref());
             let exists = entry.exists_bitmaps.get(i).copied().flatten();
-            // Per-vertex height at MCNK grid coord (x, z); None → flat level.
-            let height_at = |x: usize, z: usize| -> Option<f32> {
-                let any = vertices?.get(x, z)?;
-                if let Some(v) = any.downcast_ref::<HeightDepthVertex>() {
-                    Some(v.height)
-                } else if let Some(v) = any.downcast_ref::<HeightUvVertex>() {
-                    Some(v.height)
-                } else if let Some(v) = any.downcast_ref::<HeightUvDepthVertex>() {
-                    Some(v.height)
-                } else {
-                    None // DepthOnly: no surface height, use the flat level
-                }
-            };
-
+            let (heights, depths) = instance_vertices(mh2o, instance);
             append_instance(
                 instance,
                 mcnk_col,
                 mcnk_row,
                 exists,
-                height_at,
+                &heights,
+                &depths,
                 tile_world_x0,
                 tile_world_y0,
                 liquid_types,
@@ -105,13 +101,48 @@ pub fn build_tile_liquids(
     Ok(LiquidMesh { layers })
 }
 
+/// Heights and depths (0..1) of an MH2O instance's vertices, row by row with
+/// X fastest, `None` where its vertex format carries no such value.
+///
+/// Read from the raw chunk: wow-adt (still as of 0.7.0) mis-parses the vertex
+/// data, reading height and depth as one interleaved record where WotLK stores
+/// the heightmap and the depthmap as two separate arrays. The layout follows
+/// the vertex format (LVF): 0 heights then depths, 1 heights then UVs, 2
+/// depths only, 3 heights, UVs, then depths — heights 4 bytes, UVs 4, depths 1.
+fn instance_vertices(
+    mh2o: &[u8],
+    instance: &Mh2oInstance,
+) -> (Vec<Option<f32>>, Vec<Option<f32>>) {
+    let count = (instance.width as usize + 1) * (instance.height as usize + 1);
+    let base = instance.offset_vertex_data as usize;
+    let (heights_at, depths_at) = match (base, instance.liquid_object_or_lvf) {
+        (0, _) => (None, None),
+        (_, 0) => (Some(0), Some(count * 4)),
+        (_, 1) => (Some(0), None),
+        (_, 2) => (None, Some(0)),
+        (_, 3) => (Some(0), Some(count * 8)),
+        _ => (None, None),
+    };
+    let heights = (0..count)
+        .map(|k| {
+            let at = base + heights_at? + k * 4;
+            Some(f32::from_le_bytes(mh2o.get(at..at + 4)?.try_into().ok()?))
+        })
+        .collect();
+    let depths = (0..count)
+        .map(|k| Some(f32::from(*mh2o.get(base + depths_at? + k)?) / 255.0))
+        .collect();
+    (heights, depths)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn append_instance(
     instance: &Mh2oInstance,
     mcnk_col: u32,
     mcnk_row: u32,
     exists: Option<u64>,
-    height_at: impl Fn(usize, usize) -> Option<f32>,
+    heights: &[Option<f32>],
+    depths: &[Option<f32>],
     tile_world_x0: f32,
     tile_world_y0: f32,
     liquid_types: &HashMap<u16, u8>,
@@ -122,25 +153,22 @@ fn append_instance(
     if width == 0 || height == 0 {
         return;
     }
-    // The instance header bounds the true surface: every real vertex height
-    // lies in [min_height_level, max_height_level]. We clamp to it because
-    // wow-adt (still as of 0.7.0) mis-parses the MH2O vertex data — it reads
-    // height+depth as an interleaved 5-byte record, but WotLK stores the
-    // heightmap and depthmap as two *separate* arrays. The 1-byte-per-vertex
-    // drift produces periodic garbage heights (e.g. -1.6e29 spikes) that
-    // otherwise punch degenerate triangles through the terrain. Clamping keeps
-    // genuine height variation on sloped water while discarding those
-    // out-of-range spikes; flat instances (min == max, the common case)
-    // collapse to a clean level plane.
+    // The instance header bounds the surface: every vertex height lies in
+    // [min_height_level, max_height_level]. Clamping to it is a guard against
+    // a corrupt record punching a spike through the terrain; flat instances
+    // (min == max, the common case) have no heightmap at all and sit at it.
     let lo = instance.min_height_level;
     let hi = instance.max_height_level.max(lo);
-    let level = lo;
+    // Vertex (i, j) of the instance's own (width + 1) x (height + 1) grid.
+    let vertex = |i: usize, j: usize| j * (width + 1) + i;
     let corner_z = |i: usize, j: usize| -> f32 {
-        match height_at(instance.x_offset as usize + i, instance.y_offset as usize + j) {
+        match heights.get(vertex(i, j)).copied().flatten() {
             Some(h) if h.is_finite() => h.clamp(lo, hi),
-            _ => level,
+            _ => lo,
         }
     };
+    // No depthmap reads as deep: the surface shows at full opacity.
+    let corner_depth = |i: usize, j: usize| depths.get(vertex(i, j)).copied().flatten().unwrap_or(1.0);
 
     let category = liquid_category(*liquid_types.get(&instance.liquid_type).unwrap_or(&0));
     let layer = buffers.entry(category_code(category)).or_insert_with(|| LiquidLayer {
@@ -166,6 +194,7 @@ fn append_instance(
                 let world_y = tile_world_y0 - gx as f32 * UNIT;
                 let world_x = tile_world_x0 - gy as f32 * UNIT;
                 layer.positions.extend_from_slice(&[world_x, world_y, corner_z(i, j)]);
+                layer.depths.push(corner_depth(i, j));
             }
             // Two CCW triangles for the quad: (0,1,2) (0,2,3).
             layer.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);

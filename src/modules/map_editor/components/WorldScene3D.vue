@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
-import { MapManager } from '@wowserhq/scene'
+import { MapManager, scaleFadeDist } from '@wowserhq/scene'
 import type {
   CreatureSpawnMarker,
   FocusPosition,
@@ -125,18 +125,50 @@ const RESOLUTION_SETTLE_MS = 180
  * alpha-key M2 materials, which does nothing without MSAA, so foliage and
  * fence cutouts go hard-edged at `low`.
  *
+ * The other two bound the M2 models, which were most of the draw calls once
+ * the terrain was in hand: measured in Stormwind, creatures were four fifths
+ * of a 5 300-call frame and the WMOs' furniture most of the rest.
+ * `fadeScale` is the scale of @wowserhq/scene's doodad fade table: the
+ * distance each size of model stays visible at, terrain doodads and WMO
+ * furniture alike (the library hard-codes 1.5). `spawnDistance` caps creatures
+ * on top of it; left to the table, an NPC stayed drawn out to 300 yards.
+ *
  * Read once at mount — `MapManager` only looks at `viewDistance` in its
  * constructor, and the renderer's MSAA is fixed at context creation — so the
  * parent keys this component on the quality and remounts when it changes.
  */
 const QUALITY_PRESETS: Record<
   RenderQuality,
-  { viewDistance: number; drawDistance: number | null; antialias: boolean }
+  {
+    viewDistance: number
+    drawDistance: number | null
+    antialias: boolean
+    fadeScale: number
+    spawnDistance: number
+  }
 > = {
-  low: { viewDistance: 600, drawDistance: 250, antialias: false },
-  medium: { viewDistance: 900, drawDistance: 400, antialias: true },
-  // The library's own defaults, so `high` renders exactly as it always did.
-  high: { viewDistance: 1277, drawDistance: null, antialias: true },
+  low: {
+    viewDistance: 600,
+    drawDistance: 250,
+    antialias: false,
+    fadeScale: 0.75,
+    spawnDistance: 80,
+  },
+  medium: {
+    viewDistance: 900,
+    drawDistance: 400,
+    antialias: true,
+    fadeScale: 1,
+    spawnDistance: 120,
+  },
+  // The library's own view distance, fog and fade scale.
+  high: {
+    viewDistance: 1277,
+    drawDistance: null,
+    antialias: true,
+    fadeScale: 1.5,
+    spawnDistance: 200,
+  },
 }
 
 /**
@@ -298,6 +330,7 @@ function enableSpawns() {
     assets,
     installQueue,
     props.spawnPhase,
+    QUALITY_PRESETS[props.quality].spawnDistance,
   )
   scene.add(spawnManager.root)
 }
@@ -394,6 +427,9 @@ onMounted(() => {
   // rather than granted three times over.
   installQueue = new InstallQueue()
 
+  // Before anything is culled by it. The table is the library's, module-wide:
+  // this view is the only thing that fades models by distance.
+  scaleFadeDist(preset.fadeScale)
   mapManager = new MapManager({
     host: { baseUrl: MPQ_ASSET_BASE_URL, normalizePath: true },
     soundManager: silentSound,

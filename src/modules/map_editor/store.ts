@@ -14,8 +14,12 @@ interface PersistedState {
 
 const RENDER_QUALITIES: readonly RenderQuality[] = ['low', 'medium', 'high']
 
+/**
+ * An editor needs a responsive view more than a distant horizon, so a first
+ * run starts at medium; a stored choice is kept.
+ */
 function readQuality(value: unknown): RenderQuality {
-  return RENDER_QUALITIES.includes(value as RenderQuality) ? (value as RenderQuality) : 'high'
+  return RENDER_QUALITIES.includes(value as RenderQuality) ? (value as RenderQuality) : 'medium'
 }
 
 function readInitial(): PersistedState {
@@ -39,7 +43,7 @@ function readInitial(): PersistedState {
     lastMapId: '',
     lastZoneId: '',
     spawnPhase: null,
-    renderQuality: 'high',
+    renderQuality: readQuality(undefined),
   }
 }
 

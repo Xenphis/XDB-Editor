@@ -3,6 +3,7 @@ import type { CreatureModelInfo, CreatureSpawnMarker, MinimapMapInfo } from '../
 import { loadCreatureSpawnsInBounds, resolveCreatureModels, tileWorldBounds } from '../service'
 import type { SceneAssets } from '@core/wow/SceneAssets'
 import { applyModelSkins } from '@core/wow/modelSkins'
+import { filterCharacterGeosets } from '@core/wow/characterGeosets'
 import { cullModel, type SceneModel } from './ModelCulling'
 import type { InstallQueue } from './InstallQueue'
 import { TileWindow, type TileCoord } from './TileWindow'
@@ -49,6 +50,8 @@ export class CreatureSpawnManager {
   readonly #window: TileWindow
   /** Phase filter passed to the query; null streams every phase. */
   #phaseMask: number | null
+  /** Yards past which no spawn is drawn, whatever its size (see `cullModel`). */
+  readonly #maxDistance: number
   /**
    * Bumped whenever the phase changes. Tile loads capture it and abandon their
    * results if it moved while they were in flight, so rows fetched for the old
@@ -62,8 +65,10 @@ export class CreatureSpawnManager {
     assets: SceneAssets,
     queue: InstallQueue,
     phaseMask: number | null = null,
+    maxDistance = Infinity,
   ) {
     this.#mapId = mapId
+    this.#maxDistance = maxDistance
     this.#assets = assets
     this.#queue = queue
     this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
@@ -181,6 +186,7 @@ export class CreatureSpawnManager {
       // this frame's cull pass — leaving a model at the origin for one frame.
       model.updateMatrixWorld()
       applyModelSkins(model, info.textures, this.#assets.textureManager)
+      filterCharacterGeosets(model, info.model)
       return model
     }
   }
@@ -198,7 +204,7 @@ export class CreatureSpawnManager {
       // is — the draw call is the smaller half.
       const shown = this.#window.shows(key)
       for (const object of objects) {
-        if (shown) cullModel(object, frustum, cameraPosition)
+        if (shown) cullModel(object, frustum, cameraPosition, this.#maxDistance)
         else object.hide()
       }
     }

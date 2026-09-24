@@ -57,6 +57,11 @@ export interface LiquidLayer {
   /** Flat XYZ triplets in world (== three) space. */
   positions: number[]
   indices: number[]
+  /**
+   * Liquid depth under each vertex, 0..1, one per position. Empty when the
+   * source has none (WMO liquid), which reads as deep everywhere.
+   */
+  depths: number[]
 }
 
 export interface LiquidMesh {

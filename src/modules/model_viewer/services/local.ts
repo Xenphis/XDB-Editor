@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from '@wowserhq/scene'
 import { SceneAssets } from '@core/wow/SceneAssets'
 import { applyModelSkins } from '@core/wow/modelSkins'
+import { filterCharacterGeosets } from '@core/wow/characterGeosets'
 import { buildWmoTemplate } from '@core/wow/wmoGeometry'
 import {
   ensureClientLoaded,
@@ -176,6 +177,7 @@ async function buildCreature(displayId: number): Promise<Subject> {
   // is given, so scaling would only change the numbers, never the picture.
   model.updateMatrixWorld()
   applyModelSkins(model, info.textures, assets().textureManager)
+  filterCharacterGeosets(model, info.model)
 
   return {
     root: model,
