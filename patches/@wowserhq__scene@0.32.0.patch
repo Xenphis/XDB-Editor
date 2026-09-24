@@ -210,7 +210,7 @@ index 74b0a5efebd0b21d500a12d834ed31a7e9da59eb..6e432870a635e6632fef006df9049462
      show() {
          if (this.visible) {
 diff --git a/dist/esm/model/ModelManager.js b/dist/esm/model/ModelManager.js
-index 1f298194f1216101e78e8e8823bdaa2497af74ad..9339230c706acb48e27813399bbc345b187143fa 100644
+index 1f298194f1216101e78e8e8823bdaa2497af74ad..6352bccfe5aa9bb19da92bedde515306368126be 100644
 --- a/dist/esm/model/ModelManager.js
 +++ b/dist/esm/model/ModelManager.js
 @@ -82,6 +82,9 @@ class ModelManager {
@@ -223,6 +223,22 @@ index 1f298194f1216101e78e8e8823bdaa2497af74ad..9339230c706acb48e27813399bbc345b
          }
          // Bounds
          geometry.boundingBox = new THREE.Box3().setFromArray(spec.bounds.extent);
+@@ -110,7 +113,14 @@ class ModelManager {
+             return this.#textureManager.get(spec.path, wrapS, wrapT);
+         }
+         // TODO handle other component types
+-        return new THREE.Texture();
++        const placeholder = new THREE.Texture();
++        // Which runtime texture the slot wants (body, cape, hair, monster skin…)
++        // and how it wraps: only the caller knows the image, and without these
++        // it could only guess which slot is which.
++        placeholder.userData.component = spec.component;
++        placeholder.userData.wrapS = wrapS;
++        placeholder.userData.wrapT = wrapT;
++        return placeholder;
+     }
+     async #createModel(resources) {
+         const { name, geometry, animator, skinned } = resources;
 diff --git a/dist/esm/model/loader/ModelLoaderWorker.js b/dist/esm/model/loader/ModelLoaderWorker.js
 index 849ef35d18a61d48701d785526d291fd3509fd2c..bf641cefb2edd57ddbb93cc0a5fb74fb050058f7 100644
 --- a/dist/esm/model/loader/ModelLoaderWorker.js

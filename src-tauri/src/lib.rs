@@ -1,6 +1,7 @@
 mod db;
 mod debug;
 mod commands;
+mod creature_display;
 mod liquids;
 mod minimap;
 mod model_proxy;
@@ -10,7 +11,7 @@ mod wmo;
 use db::DbState;
 use debug::{DebugState, set_debug_mode, get_debug_mode};
 use minimap::{MinimapState, minimap_load_client, minimap_adt_liquids};
-use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_gameobject_models, minimap_zone_bounds};
+use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds};
 use spell_dbc::{client_spell_search, client_spell_names, client_spell_detail};
 use commands::addon::{get_npc_addon, save_npc_addon};
 use commands::batch::execute_batch;
@@ -270,6 +271,7 @@ pub fn run() {
       minimap_global_wmo_placements,
       minimap_wmo_model,
       minimap_creature_models,
+      minimap_model_attachments,
       minimap_gameobject_models,
       minimap_zone_bounds,
       client_spell_search,

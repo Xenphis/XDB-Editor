@@ -3,7 +3,7 @@ import type { CreatureModelInfo, CreatureSpawnMarker, MinimapMapInfo } from '../
 import { loadCreatureSpawnsInBounds, resolveCreatureModels, tileWorldBounds } from '../service'
 import type { SceneAssets } from '@core/wow/SceneAssets'
 import { applyModelSkins } from '@core/wow/modelSkins'
-import { filterCharacterGeosets } from '@core/wow/characterGeosets'
+import { showCharacterGeosets } from '@core/wow/characterGeosets'
 import { cullModel, type SceneModel } from './ModelCulling'
 import type { InstallQueue } from './InstallQueue'
 import { TileWindow, type TileCoord } from './TileWindow'
@@ -186,7 +186,9 @@ export class CreatureSpawnManager {
       // this frame's cull pass — leaving a model at the origin for one frame.
       model.updateMatrixWorld()
       applyModelSkins(model, info.textures, this.#assets.textureManager)
-      filterCharacterGeosets(model, info.model)
+      // The display's geosets only; its helm and shoulder models are not
+      // hung here (the preview does it), to keep a city's worth of NPCs cheap.
+      showCharacterGeosets(model, info.model, info.character?.geosets)
       return model
     }
   }

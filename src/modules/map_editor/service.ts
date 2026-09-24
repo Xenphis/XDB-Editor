@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { LatLng } from 'leaflet'
 import { MPQ_ASSET_BASE_URL } from '@core/wow/assetHost'
+import type { AttachmentPoint } from '@core/wow/creatureDisplay'
 import type {
   CreatureModelInfo,
   CreatureSpawnMarker,
@@ -185,11 +186,19 @@ export function loadCreatureSpawnsByMap(
   })
 }
 
-/** Resolves creature display ids to their M2 model + scale (from client DBCs). */
+/**
+ * Resolves creature display ids to their M2 model, scale, skins and — for
+ * humanoid NPCs — how they are dressed (from client DBCs).
+ */
 export function resolveCreatureModels(
   displayIds: number[],
 ): Promise<Record<number, CreatureModelInfo>> {
   return invoke<Record<number, CreatureModelInfo>>('minimap_creature_models', { displayIds })
+}
+
+/** The attachment points (helm, shoulders, hands…) of one client M2. */
+export function loadModelAttachments(path: string): Promise<AttachmentPoint[]> {
+  return invoke<AttachmentPoint[]>('minimap_model_attachments', { path })
 }
 
 /** Resolves gameobject display ids to their client model (from client DBCs). */

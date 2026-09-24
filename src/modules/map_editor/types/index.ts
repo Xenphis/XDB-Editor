@@ -1,3 +1,5 @@
+import type { CharacterAppearance, ComponentTextures } from '@core/wow/creatureDisplay'
+
 /** One entry per map directory found in the client's md5translate.trs. */
 export interface MinimapMapInfo {
   /** Lowercased map directory name; used in tile URLs. */
@@ -159,11 +161,14 @@ export interface CreatureModelInfo {
   /** Combined CreatureDisplayInfo × CreatureModelData scale. */
   scale: number
   /**
-   * Skin BLP paths (CreatureDisplayInfo texture variations, up to 3). The M2
-   * only declares these as component slots, so they must be applied on top of
-   * the loaded model or the creature renders black.
+   * BLPs for the M2's runtime texture slots, keyed by texture component: the
+   * monster skins of ordinary creatures, the baked body, hair, fur and cape of
+   * humanoid NPCs. The M2 only declares these slots, so they must be applied
+   * on top of the loaded model or the creature renders black.
    */
-  textures: string[]
+  textures: ComponentTextures
+  /** How a humanoid NPC is dressed; null for ordinary creatures. */
+  character: CharacterAppearance | null
 }
 
 /** What the client needs to render one gameobject display id. */
