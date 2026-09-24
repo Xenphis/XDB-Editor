@@ -21,11 +21,15 @@ export interface QuestZoneFilter {
   bounds?: WorldBounds | null
 }
 
+/** 'start' = first quest of a chain, 'single' = quest outside any chain. */
+export type QuestChainFilter = 'start' | 'single'
+
 export async function getQuests(
   search?: string,
   limit?: number,
   offset?: number,
   zone?: QuestZoneFilter | null,
+  chain?: QuestChainFilter | null,
 ): Promise<QuestListResult> {
   return invoke('get_quests', {
     search,
@@ -36,6 +40,7 @@ export async function getQuests(
     maxX: zone?.bounds?.maxX,
     minY: zone?.bounds?.minY,
     maxY: zone?.bounds?.maxY,
+    chain: chain ?? undefined,
   })
 }
 
@@ -142,4 +147,33 @@ export async function getQuestPreviewRefs(
   gameobjects: number[],
 ): Promise<QuestPreviewRefs> {
   return invoke('get_quest_preview_refs', { items, creatures, gameobjects })
+}
+
+// ─── quest chain graph ────────────────────────────────────────────────────────
+
+export interface QuestChainNode {
+  id: number
+  /** null = referenced by a link but missing from quest_template. */
+  title: string | null
+  level: number | null
+  min_level: number | null
+  quest_type: number | null
+  exclusive_group: number
+}
+
+export interface QuestChainEdge {
+  from: number
+  to: number
+  /** 'completed' = `to` needs `from` rewarded, 'active' = `from` in the quest log. */
+  kind: 'completed' | 'active'
+}
+
+export interface QuestChain {
+  nodes: QuestChainNode[]
+  edges: QuestChainEdge[]
+  truncated: boolean
+}
+
+export async function getQuestChain(id: number): Promise<QuestChain> {
+  return invoke('get_quest_chain', { id })
 }

@@ -7,6 +7,25 @@
       "all": "All zones",
       "placeholder": "Zone of the quest giver"
     },
+    "chainFilter": {
+      "start": "Chain starters",
+      "single": "Standalone quests",
+      "placeholder": "Filter by quest chain"
+    },
+    "chainView": {
+      "title": "Quest chain",
+      "count": "{count} quests",
+      "completed": "requires completion",
+      "active": "requires in quest log",
+      "hint": "Click a quest to edit it",
+      "truncated": "Chain too large: only the first 300 quests are shown.",
+      "missing": "Missing quest",
+      "level": "lvl. {level}",
+      "scaling": "Scaling",
+      "groupOne": "Exclusive group {group}: only one of these quests can be done",
+      "groupAll": "Group {group}: all of these quests are required",
+      "back": "Chain"
+    },
     "addButton": "Add Quest",
     "columns": {
       "id": "ID",

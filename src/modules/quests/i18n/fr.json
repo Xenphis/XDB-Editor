@@ -7,6 +7,25 @@
       "all": "Toutes les zones",
       "placeholder": "Zone du donneur de quête"
     },
+    "chainFilter": {
+      "start": "Débuts de chaîne",
+      "single": "Quêtes isolées",
+      "placeholder": "Filtrer par chaîne de quêtes"
+    },
+    "chainView": {
+      "title": "Chaîne de quêtes",
+      "count": "{count} quêtes",
+      "completed": "prérequis terminé",
+      "active": "prérequis en cours",
+      "hint": "Cliquez sur une quête pour l'éditer",
+      "truncated": "Chaîne trop grande : seules les 300 premières quêtes sont affichées.",
+      "missing": "Quête introuvable",
+      "level": "niv. {level}",
+      "scaling": "Adaptatif",
+      "groupOne": "Groupe exclusif {group} : une seule de ces quêtes peut être faite",
+      "groupAll": "Groupe {group} : toutes ces quêtes sont requises",
+      "back": "Chaîne"
+    },
     "addButton": "Ajouter une quête",
     "columns": {
       "id": "ID",

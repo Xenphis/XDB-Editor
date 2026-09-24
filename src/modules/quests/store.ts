@@ -252,6 +252,8 @@ export const useQuestModuleStore = defineStore('questModule', () => {
   const currentSearch = ref('')
   /** Zone slug (map_editor/data/zones.ts) the list is scoped to; '' = all zones. */
   const zoneId = ref('')
+  /** Chain scope of the list: null = all, 'start' = chain starters, 'single' = standalone. */
+  const chainFilter = ref<'start' | 'single' | null>(null)
   const listLoaded = ref(false)
 
   // --- Sub-table managers ---
@@ -459,7 +461,7 @@ export const useQuestModuleStore = defineStore('questModule', () => {
   }
 
   return {
-    quests, loading, currentSearch, zoneId, listLoaded,
+    quests, loading, currentSearch, zoneId, chainFilter, listLoaded,
     addon, offerReward, requestItems, details, locales,
     offerRewardLocales, requestItemsLocales,
     creatureStarters, creatureEnders, gameobjectStarters, gameobjectEnders,
