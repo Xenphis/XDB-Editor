@@ -70,6 +70,32 @@
   line-height: calc(var(--input-height) - 2px);
 }
 
+/* Dropdown panel is teleported to <body>; no font-size token exists for its
+   options, so align it with the field text here (row padding is in the preset). */
+.p-select-overlay {
+  font-size: var(--font-field);
+  /* PrimeVue pins an inline min-width equal to the trigger width, so the panel
+     is never narrower than its field; only cap how far it can grow. */
+  max-width: min(22rem, calc(100vw - 1rem));
+}
+
+/* Keep the filter input from contributing its intrinsic width (~20ch) to the
+   shrink-to-fit width of the panel. */
+.p-select-overlay .p-select-filter {
+  width: 0;
+  min-width: 100%;
+}
+
+.p-select-overlay .p-select-option {
+  min-width: 0;
+}
+
+.p-select-overlay .p-select-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Icon-only button paired with an input (e.g. "search a model" next to a
    displayId/modelid field) — sized to match the input height. */
 .model-search-btn {

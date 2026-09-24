@@ -55,6 +55,12 @@ const TrinityPreset = definePreset(Aura, {
       900: '{cyan.900}',
       950: '{cyan.950}'
     },
+    // Compact dropdown rows (Select, MultiSelect, AutoComplete, Listbox…) to
+    // match the dense form fields; Aura's default is 0.5rem 0.75rem.
+    list: {
+      option: { padding: '0.25rem 0.5rem' },
+      optionGroup: { padding: '0.25rem 0.5rem' }
+    },
     colorScheme: {
       light: {
         // Crème surfaces + vermilion accent — mirrors :root tokens in tokens.css.
