@@ -3,6 +3,10 @@
     "title": "Quêtes",
     "description": "Gérer les quêtes, leurs objectifs et récompenses",
     "searchPlaceholder": "Rechercher par titre ou ID...",
+    "zoneFilter": {
+      "all": "Toutes les zones",
+      "placeholder": "Zone du donneur de quête"
+    },
     "addButton": "Ajouter une quête",
     "columns": {
       "id": "ID",

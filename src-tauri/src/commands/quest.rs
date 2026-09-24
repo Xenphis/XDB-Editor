@@ -123,6 +123,11 @@ pub struct QuestListResult {
     pub total: i64,
 }
 
+/// Quests listed by title/ID, optionally only those whose giver (creature or
+/// gameobject queststarter) spawns in a zone. Zone scoping is spatial, like the
+/// map editor's tables: `creature.zoneId` is 0 on stock rows, so a zone is its
+/// WorldMapArea world rectangle on `map`. `map` NULL disables the zone filter;
+/// all-NULL bounds mean map-wide (instances).
 #[tauri::command]
 pub async fn get_quests(
     state: State<'_, DbState>,
@@ -131,40 +136,82 @@ pub async fn get_quests(
     search: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
+    map: Option<u16>,
+    min_x: Option<f32>,
+    max_x: Option<f32>,
+    min_y: Option<f32>,
+    max_y: Option<f32>,
 ) -> Result<QuestListResult, String> {
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
     let limit = limit.unwrap_or(50);
     let offset = offset.unwrap_or(0);
-    let (data, total) = match &search {
-        Some(q) if !q.is_empty() => {
-            let pattern = format!("%{}%", q);
-            const SQL_DATA: &str = "SELECT * FROM quest_template WHERE LogTitle LIKE ? OR ID LIKE ? ORDER BY ID LIMIT ? OFFSET ?";
-            let rows: Vec<QuestTemplate> = debug_sql!(app, debug, SQL_DATA,
-                sqlx::query_as(SQL_DATA).bind(&pattern).bind(&pattern).bind(limit).bind(offset).fetch_all(pool).await,
-                &pattern, &pattern, limit, offset
-            ).map_err(|e| format!("Query failed: {}", e))?;
-            const SQL_COUNT: &str = "SELECT COUNT(*) FROM quest_template WHERE LogTitle LIKE ? OR ID LIKE ?";
-            let count: (i64,) = debug_sql!(app, debug, SQL_COUNT,
-                sqlx::query_as(SQL_COUNT).bind(&pattern).bind(&pattern).fetch_one(pool).await,
-                &pattern, &pattern
-            ).map_err(|e| format!("Count query failed: {}", e))?;
-            (rows, count.0)
-        }
-        _ => {
-            const SQL_DATA: &str = "SELECT * FROM quest_template ORDER BY ID LIMIT ? OFFSET ?";
-            let rows: Vec<QuestTemplate> = debug_sql!(app, debug, SQL_DATA,
-                sqlx::query_as(SQL_DATA).bind(limit).bind(offset).fetch_all(pool).await,
-                limit, offset
-            ).map_err(|e| format!("Query failed: {}", e))?;
-            const SQL_COUNT: &str = "SELECT COUNT(*) FROM quest_template";
-            let count: (i64,) = debug_sql!(app, debug, SQL_COUNT,
-                sqlx::query_as(SQL_COUNT).fetch_one(pool).await
-            ).map_err(|e| format!("Count query failed: {}", e))?;
-            (rows, count.0)
+    // No search = match everything.
+    let pattern = format!("%{}%", search.unwrap_or_default());
+
+    // Zone scope, resolved first as a plain list of quest IDs. Folding it into
+    // the list query as `? IS NULL OR q.ID IN (subquery)` keeps MySQL from
+    // turning it into a semi-join: it re-runs the subquery per quest row and
+    // the list never comes back. `None` = no zone filter.
+    let zone_ids: Option<Vec<u32>> = match map {
+        None => None,
+        Some(map) => {
+            // The bounds filter binds min_x twice: NULL disables it (map-wide).
+            const SQL_ZONE: &str = "SELECT cq.quest FROM creature c \
+                JOIN creature_queststarter cq ON cq.id = c.id \
+                WHERE c.map = ? AND (? IS NULL OR (c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ?)) \
+                UNION \
+                SELECT gq.quest FROM gameobject g \
+                JOIN gameobject_queststarter gq ON gq.id = g.id \
+                WHERE g.map = ? AND (? IS NULL OR (g.position_x BETWEEN ? AND ? AND g.position_y BETWEEN ? AND ?))";
+            let rows: Vec<(u32,)> = debug_sql!(app, debug, SQL_ZONE,
+                sqlx::query_as(SQL_ZONE)
+                    .bind(map).bind(min_x).bind(min_x).bind(max_x).bind(min_y).bind(max_y)
+                    .bind(map).bind(min_x).bind(min_x).bind(max_x).bind(min_y).bind(max_y)
+                    .fetch_all(pool).await,
+                map, min_x, max_x, min_y, max_y
+            ).map_err(|e| format!("Zone query failed: {}", e))?;
+            Some(rows.into_iter().map(|r| r.0).collect())
         }
     };
-    Ok(QuestListResult { data, total })
+
+    // IDs are u32s from the DB, so inlining them can't inject anything (the
+    // list can't be a single bound parameter).
+    let zone_clause = match &zone_ids {
+        None => String::new(),
+        Some(ids) if ids.is_empty() => " AND 1 = 0".to_string(),
+        Some(ids) => format!(
+            " AND q.ID IN ({})",
+            ids.iter().map(u32::to_string).collect::<Vec<_>>().join(",")
+        ),
+    };
+    let where_sql = format!("WHERE (q.LogTitle LIKE ? OR q.ID LIKE ?){zone_clause}");
+
+    // A zone list reads by level (scaling quests, level -1, last); the full
+    // list stays in ID order.
+    let order_sql = if zone_ids.is_some() {
+        "ORDER BY q.QuestLevel = -1, q.QuestLevel, q.MinLevel, q.ID"
+    } else {
+        "ORDER BY q.ID"
+    };
+    let sql_data = format!("SELECT q.* FROM quest_template q {where_sql} {order_sql} LIMIT ? OFFSET ?");
+    let data: Vec<QuestTemplate> = debug_sql!(app, debug, &sql_data,
+        sqlx::query_as(&sql_data)
+            .bind(&pattern).bind(&pattern)
+            .bind(limit).bind(offset)
+            .fetch_all(pool).await,
+        &pattern, limit, offset
+    ).map_err(|e| format!("Query failed: {}", e))?;
+
+    let sql_count = format!("SELECT COUNT(*) FROM quest_template q {where_sql}");
+    let count: (i64,) = debug_sql!(app, debug, &sql_count,
+        sqlx::query_as(&sql_count)
+            .bind(&pattern).bind(&pattern)
+            .fetch_one(pool).await,
+        &pattern
+    ).map_err(|e| format!("Count query failed: {}", e))?;
+
+    Ok(QuestListResult { data, total: count.0 })
 }
 
 #[tauri::command]

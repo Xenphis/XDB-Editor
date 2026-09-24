@@ -9,7 +9,10 @@ import WorkspaceEmptyState from '@core/components/workspace/WorkspaceEmptyState.
 import EditorHeader from '@core/components/EditorHeader.vue'
 import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.vue'
 import type { QuestTemplate } from '@/modules/quests/types/quest_template'
-import { getQuests } from '@/modules/quests/service'
+import { getQuests, type QuestZoneFilter } from '@/modules/quests/service'
+import { loadZoneWorldBounds } from '@/modules/map_editor/service'
+import { ZONE_BY_ID } from '@/modules/map_editor/data/zones'
+import QuestZoneSelect from '../components/QuestZoneSelect.vue'
 import { useQuestModuleStore } from '@/modules/quests/store'
 import QuestTabGeneral from './editor/quest_template/GeneralTab.vue'
 import QuestTabObjectives from './editor/quest_template/ObjectivesTab.vue'
@@ -67,10 +70,27 @@ watch(idParam, async (val) => {
 }, { immediate: true })
 
 // --- List ---
+/** Giver-zone scope of the list; the zone's world rectangle comes from the
+ * client's WorldMapArea.dbc, so without a client the zone falls back to its
+ * whole map. */
+async function zoneFilter(): Promise<QuestZoneFilter | null> {
+  const zone = ZONE_BY_ID.get(store.zoneId)
+  if (!zone) return null
+  let bounds = null
+  if (zone.zoneId != null) {
+    try {
+      bounds = await loadZoneWorldBounds(zone.zoneId)
+    } catch {
+      bounds = null
+    }
+  }
+  return { map: zone.map, bounds }
+}
+
 async function loadQuests() {
   store.loading = true
   try {
-    const result = await getQuests(store.currentSearch || undefined, 50)
+    const result = await getQuests(store.currentSearch || undefined, 50, undefined, await zoneFilter())
     store.setQuests(result.data)
     store.markListLoaded()
   } catch (e) {
@@ -78,6 +98,11 @@ async function loadQuests() {
   } finally {
     store.loading = false
   }
+}
+
+async function onZoneChange(id: string) {
+  store.zoneId = id
+  await loadQuests()
 }
 
 async function onSearch(query: string) {
@@ -142,6 +167,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
 <template>
   <EntityWorkspace storageKey="quests">
     <template #list>
+      <QuestZoneSelect :modelValue="store.zoneId" @update:modelValue="onZoneChange" />
       <EntityListPanel
         :items="store.quests"
         :idOf="(q: QuestTemplate) => q.ID"

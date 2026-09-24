@@ -250,6 +250,8 @@ export const useQuestModuleStore = defineStore('questModule', () => {
   const quests = ref<QuestTemplate[]>([])
   const loading = ref(false)
   const currentSearch = ref('')
+  /** Zone slug (map_editor/data/zones.ts) the list is scoped to; '' = all zones. */
+  const zoneId = ref('')
   const listLoaded = ref(false)
 
   // --- Sub-table managers ---
@@ -457,7 +459,7 @@ export const useQuestModuleStore = defineStore('questModule', () => {
   }
 
   return {
-    quests, loading, currentSearch, listLoaded,
+    quests, loading, currentSearch, zoneId, listLoaded,
     addon, offerReward, requestItems, details, locales,
     offerRewardLocales, requestItemsLocales,
     creatureStarters, creatureEnders, gameobjectStarters, gameobjectEnders,

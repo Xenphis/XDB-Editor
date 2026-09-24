@@ -3,6 +3,10 @@
     "title": "Quests",
     "description": "Manage quests, their objectives and rewards",
     "searchPlaceholder": "Search by title or ID...",
+    "zoneFilter": {
+      "all": "All zones",
+      "placeholder": "Zone of the quest giver"
+    },
     "addButton": "Add Quest",
     "columns": {
       "id": "ID",

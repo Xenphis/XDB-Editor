@@ -7,18 +7,36 @@ import type { QuestOfferRewardLocale } from '@/modules/quests/types/quest_offer_
 import type { QuestRequestItems } from '@/modules/quests/types/quest_request_items'
 import type { QuestRequestItemsLocale } from '@/modules/quests/types/quest_request_items_locale'
 import type { QuestDetails } from '@/modules/quests/types/quest_details'
+import type { WorldBounds } from '@/modules/map_editor/service'
 
 export interface QuestListResult {
   data: QuestTemplate[]
   total: number
 }
 
+/** Restricts the list to quests whose giver spawns on `map`, inside `bounds`
+ * (the zone's world rectangle; omitted = the whole map). */
+export interface QuestZoneFilter {
+  map: number
+  bounds?: WorldBounds | null
+}
+
 export async function getQuests(
   search?: string,
   limit?: number,
   offset?: number,
+  zone?: QuestZoneFilter | null,
 ): Promise<QuestListResult> {
-  return invoke('get_quests', { search, limit, offset })
+  return invoke('get_quests', {
+    search,
+    limit,
+    offset,
+    map: zone?.map,
+    minX: zone?.bounds?.minX,
+    maxX: zone?.bounds?.maxX,
+    minY: zone?.bounds?.minY,
+    maxY: zone?.bounds?.maxY,
+  })
 }
 
 export async function getQuest(id: number): Promise<QuestTemplate> {
