@@ -484,6 +484,8 @@ onMounted(() => {
   // ── Camera orientation (yaw about world +Z, pitch toward ±Z) ─────────
   // Initial view matches the old MapControls default offset (-30,-30,30):
   // heading north-west-ish (WoW +X north, +Y west), 35° below the horizon.
+  // A start carrying an orientation (zone origin) faces that way instead —
+  // yaw uses the game's convention, so a game_tele orientation maps as is.
   let yaw = Math.PI / 4
   let pitch = Math.asin(-1 / Math.sqrt(3))
   const lookDir = new THREE.Vector3()
@@ -544,6 +546,7 @@ onMounted(() => {
   } else {
     camera.position.set(start.x, start.y, FALLBACK_HEIGHT)
   }
+  if (start.orientation != null) yaw = start.orientation
   applyOrientation()
   resetLead()
 
@@ -578,6 +581,7 @@ onMounted(() => {
       probeTimer = undefined
     }
     camera.position.set(focus.x, focus.y, (focus.z ?? FALLBACK_HEIGHT) + EYE_HEIGHT)
+    if (focus.orientation != null) yaw = focus.orientation
     applyOrientation()
     resetLead()
     if (focus.z != null) grounded.value = true

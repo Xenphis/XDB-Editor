@@ -50,6 +50,9 @@ export interface MinimapMarker extends WorldPosition {
 /** A world position with optional height, used to focus/fly the views. */
 export interface FocusPosition extends WorldPosition {
   z?: number | null
+  /** Heading to face, in the game's convention (radians, counter-clockwise
+   * from north (+X) toward west (+Y)); the camera keeps its own when absent. */
+  orientation?: number
 }
 
 /** A curated zone of the world (static list, edited in code: data/zones.ts).
@@ -60,8 +63,8 @@ export interface ZoneDefinition {
   id: string
   /** DB map id (Map.dbc / creature.map / game_tele.map). */
   map: number
-  /** Camera / view start position. */
-  origin: { x: number; y: number; z: number }
+  /** Camera / view start position and heading (a game_tele row). */
+  origin: { x: number; y: number; z: number; orientation: number }
   /** AreaTable zone id — keys the WorldMapArea lookup that scopes the zone
    * tables (teleports, spawns) to the zone's world rectangle. */
   zoneId?: number
