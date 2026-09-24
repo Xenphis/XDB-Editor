@@ -97,6 +97,8 @@ export interface WmoDoodadSet {
 export interface WmoModel {
   batches: WmoBatch[]
   doodadSets: WmoDoodadSet[]
+  /** The WMO's own liquid (MLIQ), one layer per category, in WMO-local space. */
+  liquids: LiquidLayer[]
 }
 
 /** A WMO placed in the world; the world transform is applied on the client. */

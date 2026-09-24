@@ -44,8 +44,8 @@ const TILE_SIZE: u32 = 256;
 /// Bump when anything cached under the signature changes shape or meaning for
 /// identical archives — rendered tiles (e.g. the wow-blp 0.7 palettized-BLP
 /// R↔B fix) as well as the extracted WMO models (e.g. the MOCV vertex-lighting
-/// fix) — so the stale entries are dropped and rebuilt.
-const PIPELINE_VERSION: u32 = 3;
+/// fix, the MLIQ liquids) — so the stale entries are dropped and rebuilt.
+const PIPELINE_VERSION: u32 = 4;
 
 /// Cap of the in-memory MPQ read cache (raw, still-compressed-on-disk assets
 /// decompressed once and reused across 3D re-opens within a session).
@@ -561,7 +561,8 @@ pub async fn minimap_wmo_model(
         // batches is the longest job in this module. Each read grabs the lock
         // by itself and drops it again, so the merging in between runs free
         // instead of freezing the terrain stream for the whole build.
-        let model = build_model(&filename, |path| {
+        let types = state.liquid_types()?;
+        let model = build_model(&filename, &types, |path| {
             state.read_asset(path).map(|bytes| bytes.as_ref().clone())
         })?;
         write_json_cache(&cache_path, &model);

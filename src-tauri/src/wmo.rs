@@ -6,6 +6,8 @@ use wow_adt::{parse_adt, ParsedAdt};
 use wow_wdt::{version::WowVersion, WdtReader};
 use wow_wmo::{parse_wmo, ParsedWmo};
 
+use crate::liquids::{category_code, liquid_category, LiquidLayer};
+
 /// WMO (World Map Object) extraction for the 3D building/structure layer.
 ///
 /// `@wowserhq/scene` renders terrain + M2 doodads but no WMO. WMOs are the
@@ -15,8 +17,8 @@ use wow_wmo::{parse_wmo, ParsedWmo};
 /// file (`.wmo`) plus its group files (`<base>_NNN.wmo`) holding the geometry.
 ///
 /// This module parses placements and, on demand, a WMO's geometry (merged per
-/// texture, in WMO-local space) and interior doodad sets (M2 refs + local
-/// transforms). The world transform (position/rotation) of a placement is
+/// texture, in WMO-local space), its liquid surfaces and its interior doodad
+/// sets (M2 refs + local transforms). The world transform (position/rotation) of a placement is
 /// applied on the JS side, using @wowserhq/format's proven MODF/MDDF
 /// convention, so terrain and WMOs share one coordinate frame.
 
@@ -68,6 +70,10 @@ pub struct WmoDoodadSet {
 pub struct WmoModel {
     pub batches: Vec<WmoBatch>,
     pub doodad_sets: Vec<WmoDoodadSet>,
+    /// The WMO's own liquid (MLIQ: city canals, fountains, instance pools),
+    /// one merged surface per category, in WMO-local space like the batches.
+    #[serde(default)]
+    pub liquids: Vec<LiquidLayer>,
 }
 
 /// A WMO placed in the world (world transform resolved on the JS side).
@@ -128,9 +134,11 @@ pub fn wdt_wmo_placements(wdt_bytes: &[u8]) -> Vec<WmoPlacement> {
 
 /// Builds a WMO's geometry + doodad sets. `read` fetches an MPQ file by path
 /// (the caller wires it to the client's patch chain). Group files are the root
-/// name with `_000.wmo`, `_001.wmo`, … suffixes.
+/// name with `_000.wmo`, `_001.wmo`, … suffixes. `liquid_types` maps
+/// LiquidType.dbc ids to their type code, for the groups' liquid.
 pub fn build_model(
     root_path: &str,
+    liquid_types: &HashMap<u16, u8>,
     mut read: impl FnMut(&str) -> Result<Vec<u8>, String>,
 ) -> Result<WmoModel, String> {
     let root_bytes = read(root_path)?;
@@ -157,6 +165,8 @@ pub fn build_model(
     // often upper-case (`...WALL.WMO`), and a lower-case-only strip would
     // leave `.WMO` in the base, so `<base>_000.wmo` would never resolve.
     let mut buffers: HashMap<(String, bool, bool, u32), WmoBatch> = HashMap::new();
+    // Liquid surfaces, merged across groups per category code.
+    let mut liquids: HashMap<u8, LiquidLayer> = HashMap::new();
     let base = match root_path.get(root_path.len().saturating_sub(4)..) {
         Some(ext) if ext.eq_ignore_ascii_case(".wmo") => &root_path[..root_path.len() - 4],
         _ => root_path,
@@ -169,6 +179,19 @@ pub fn build_model(
         let Ok(ParsedWmo::Group(group)) = parse_wmo(&mut Cursor::new(&group_bytes)) else {
             continue;
         };
+
+        // wow-wmo reads no more of MLIQ than a header (and a misaligned one),
+        // so the liquid comes straight from the group's bytes.
+        if let Some(mliq) = group_mliq(&group_bytes) {
+            append_group_liquid(
+                mliq,
+                root.flags,
+                group.flags,
+                group.group_liquid,
+                liquid_types,
+                &mut liquids,
+            );
+        }
 
         // Exterior (outdoor) groups get dynamic lighting; interior groups keep
         // their baked MOCV. The flag is constant for a whole group.
@@ -317,7 +340,151 @@ pub fn build_model(
         })
         .collect();
 
-    Ok(WmoModel { batches, doodad_sets })
+    let mut liquids: Vec<LiquidLayer> =
+        liquids.into_values().filter(|l| !l.indices.is_empty()).collect();
+    liquids.sort_by(|a, b| a.category.cmp(&b.category));
+
+    Ok(WmoModel { batches, doodad_sets, liquids })
+}
+
+/// Yards per MLIQ tile: a 128th of an ADT tile, the same cell as MH2O's, so
+/// a WMO's water and the terrain's share one grid size.
+const LIQUID_UNIT: f32 = 1600.0 / 3.0 / 128.0;
+/// Bytes before MOGP's sub-chunks: the group header.
+const MOGP_HEADER_SIZE: usize = 0x44;
+/// MLIQ header: vertex counts, tile counts (2 x i32 each), corner (3 x f32),
+/// material id (u16).
+const MLIQ_HEADER_SIZE: usize = 30;
+/// One MLIQ vertex: four bytes of flow (water) or UV (magma), then the height.
+const MLIQ_VERTEX_SIZE: usize = 8;
+/// MLIQ tile flag: the tile carries no liquid to draw.
+const MLIQ_TILE_DONT_RENDER: u8 = 0x08;
+/// MOHD flag: MOGP's groupLiquid is a LiquidType.dbc id, not a legacy type.
+const MOHD_USE_LIQUID_TYPE_DBC_ID: u16 = 0x04;
+/// MOGP flag: the group's plain "water" is sea water.
+const MOGP_IS_NOT_WATER_BUT_OCEAN: u32 = 0x80000;
+
+/// The MLIQ chunk of a group file. It is one of MOGP's sub-chunks, which
+/// follow the group header, so it is looked for inside MOGP.
+fn group_mliq(group_bytes: &[u8]) -> Option<&[u8]> {
+    let mogp = find_chunk(group_bytes, *b"PGOM")?;
+    find_chunk(mogp.get(MOGP_HEADER_SIZE..)?, *b"QILM")
+}
+
+/// A group's liquid as a LiquidType.dbc type code (0 water, 1 ocean,
+/// 2 magma, 3 slime), resolved as the 3.3.5 client does.
+///
+/// Older WMOs store a legacy "basic" type (the low two bits) rather than a
+/// LiquidType.dbc id, and the root's MOHD flags say which one a model uses.
+/// "Green lava" (legacy 15) carries its type in the tiles instead, which is
+/// what `tile_type` is for: the low bits of the first tile that is drawn.
+fn group_liquid_type(
+    root_flags: u16,
+    group_flags: u32,
+    group_liquid: u32,
+    tile_type: u8,
+    liquid_types: &HashMap<u16, u8>,
+) -> u8 {
+    let ocean = group_flags & MOGP_IS_NOT_WATER_BUT_OCEAN != 0;
+    let basic = |legacy: u32| -> u8 {
+        match legacy & 0x3 {
+            0 if ocean => 1,
+            code => code as u8,
+        }
+    };
+    let dbc = |id: u32| -> u8 {
+        u16::try_from(id).ok().and_then(|id| liquid_types.get(&id)).copied().unwrap_or(0)
+    };
+    if root_flags & MOHD_USE_LIQUID_TYPE_DBC_ID != 0 {
+        // The first 20 ids are the basic types repeated (water, ocean, magma,
+        // slime), which the client reads by position rather than from the DBC.
+        if group_liquid < 21 {
+            basic(group_liquid.saturating_sub(1))
+        } else {
+            dbc(group_liquid)
+        }
+    } else if group_liquid == 15 {
+        basic(u32::from(tile_type))
+    } else if group_liquid < 20 {
+        basic(group_liquid)
+    } else {
+        dbc(group_liquid + 1)
+    }
+}
+
+/// Appends one group's MLIQ surface to the buffer of its liquid category.
+///
+/// MLIQ is a height grid: the header, then one vertex per grid point, row by
+/// row with X running fastest, then one flag byte per tile in the same order.
+/// Vertex (i, j) sits at `corner + (i, j) * LIQUID_UNIT` at its own height, in
+/// WMO-local space. Returns `None`, adding nothing, for a malformed chunk or a
+/// grid with no tile to draw.
+fn append_group_liquid(
+    mliq: &[u8],
+    root_flags: u16,
+    group_flags: u32,
+    group_liquid: u32,
+    liquid_types: &HashMap<u16, u8>,
+    buffers: &mut HashMap<u8, LiquidLayer>,
+) -> Option<()> {
+    let i32_at = |o: usize| -> Option<i32> {
+        Some(i32::from_le_bytes(mliq.get(o..o + 4)?.try_into().ok()?))
+    };
+    let f32_at = |o: usize| -> Option<f32> {
+        Some(f32::from_le_bytes(mliq.get(o..o + 4)?.try_into().ok()?))
+    };
+    let count = |o: usize| i32_at(o).and_then(|v| usize::try_from(v).ok());
+    let (x_verts, y_verts) = (count(0)?, count(4)?);
+    let (x_tiles, y_tiles) = (count(8)?, count(12)?);
+    let (corner_x, corner_y, corner_z) = (f32_at(16)?, f32_at(20)?, f32_at(24)?);
+    if x_tiles == 0 || y_tiles == 0 || x_verts != x_tiles + 1 || y_verts != y_tiles + 1 {
+        return None;
+    }
+    // Checking that the tiles are all there proves the vertices before them are.
+    let tiles_start = MLIQ_HEADER_SIZE + x_verts * y_verts * MLIQ_VERTEX_SIZE;
+    let tiles = mliq.get(tiles_start..tiles_start + x_tiles * y_tiles)?;
+    let drawn = |flags: u8| flags & MLIQ_TILE_DONT_RENDER == 0;
+    let tile_type = tiles.iter().copied().find(|&flags| drawn(flags))? & 0x0F;
+
+    let type_code = group_liquid_type(root_flags, group_flags, group_liquid, tile_type, liquid_types);
+    let category = liquid_category(type_code);
+    let layer = buffers.entry(category_code(category)).or_insert_with(|| LiquidLayer {
+        category: category.to_string(),
+        ..Default::default()
+    });
+
+    // The whole grid goes in, drawn tiles or not: tiles share their corners,
+    // and indexing into one grid is simpler than compacting it.
+    let base = (layer.positions.len() / 3) as u32;
+    for j in 0..y_verts {
+        for i in 0..x_verts {
+            let height = f32_at(MLIQ_HEADER_SIZE + (j * x_verts + i) * MLIQ_VERTEX_SIZE + 4)
+                .filter(|h| h.is_finite())
+                .unwrap_or(corner_z);
+            layer.positions.extend_from_slice(&[
+                corner_x + i as f32 * LIQUID_UNIT,
+                corner_y + j as f32 * LIQUID_UNIT,
+                height,
+            ]);
+        }
+    }
+    let vertex = |i: usize, j: usize| base + (j * x_verts + i) as u32;
+    for j in 0..y_tiles {
+        for i in 0..x_tiles {
+            if !drawn(tiles[j * x_tiles + i]) {
+                continue;
+            }
+            layer.indices.extend_from_slice(&[
+                vertex(i, j),
+                vertex(i + 1, j),
+                vertex(i + 1, j + 1),
+                vertex(i, j),
+                vertex(i + 1, j + 1),
+                vertex(i, j + 1),
+            ]);
+        }
+    }
+    Some(())
 }
 
 /// MODN is a block of null-terminated paths; `offset` is a byte offset into it.

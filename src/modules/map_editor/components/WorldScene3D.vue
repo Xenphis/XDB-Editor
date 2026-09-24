@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
 import { LiquidManager } from './LiquidManager'
+import { LiquidSurfaces } from './LiquidSurfaces'
 import { WmoManager } from './WmoManager'
 import { CreatureSpawnManager } from './CreatureSpawnManager'
 import { InstallQueue } from './InstallQueue'
@@ -269,6 +270,8 @@ let mapManager: MapManager | null = null
 /** Frame-budgeted queue every streaming layer installs through. */
 let installQueue: InstallQueue | null = null
 let liquidManager: LiquidManager | null = null
+/** Liquid materials and their animation, shared by the terrain's and the WMOs' water. */
+let liquidSurfaces: LiquidSurfaces | null = null
 /** Gradient sky behind the world; one draw call, no depth. */
 let skyDome: SkyDome | null = null
 let wmoManager: WmoManager | null = null
@@ -406,7 +409,8 @@ onMounted(() => {
   scene.add(mapManager.root)
 
   // Water isn't rendered by @wowserhq/scene; stream it from the ADT MH2O data.
-  liquidManager = new LiquidManager(props.map, installQueue, assets)
+  liquidSurfaces = new LiquidSurfaces(assets)
+  liquidManager = new LiquidManager(props.map, installQueue, liquidSurfaces)
   scene.add(liquidManager.root)
 
   // Behind everything: the view used to clear to a flat fog colour, which read
@@ -415,7 +419,7 @@ onMounted(() => {
   scene.add(skyDome.mesh)
 
   // WMOs (buildings/structures) aren't rendered either; stream them too.
-  wmoManager = new WmoManager(props.map, assets, installQueue)
+  wmoManager = new WmoManager(props.map, assets, installQueue, liquidSurfaces)
   scene.add(wmoManager.root)
 
   // Creature spawns (DB) stream as models around the camera when enabled.
@@ -853,7 +857,11 @@ onMounted(() => {
     // here: the culling frustum below is derived from it.
     let far = applyDrawDistance(mapManager)
     // Head under a liquid surface: the fog becomes that liquid.
-    const submerged = liquidManager?.submergedIn(camera.position) ?? null
+    // The terrain's water first, then the WMOs' (a city canal, a flooded crypt).
+    const submerged =
+      liquidManager?.submergedIn(camera.position) ??
+      wmoManager?.submergedIn(camera.position) ??
+      null
     if (submerged) far = Math.min(far, applyUnderwater(mapManager, submerged))
     // After the fog is settled, so the horizon matches it — including
     // underwater, where the dome turns the colour of the water.
@@ -866,7 +874,7 @@ onMounted(() => {
     const lead = updateLead(dt)
     const cameraTile = worldToTile({ x: camera.position.x, y: camera.position.y })
     const leadTile = worldToTile({ x: lead.x, y: lead.y })
-    liquidManager?.advance(dt)
+    liquidSurfaces?.advance(dt)
     liquidManager?.update(cameraTile, leadTile)
     wmoManager?.update(cameraTile, leadTile)
     spawnManager?.update(cameraTile, leadTile)
@@ -922,6 +930,7 @@ onBeforeUnmount(() => {
   installQueue?.clear()
   skyDome?.dispose()
   liquidManager?.dispose()
+  liquidSurfaces?.dispose()
   wmoManager?.dispose()
   spawnManager?.dispose()
   mapManager?.dispose()
@@ -937,6 +946,7 @@ onBeforeUnmount(() => {
   installQueue = null
   skyDome = null
   liquidManager = null
+  liquidSurfaces = null
   wmoManager = null
   spawnManager = null
   selectionRing = null

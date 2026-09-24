@@ -5,6 +5,7 @@ import type { SceneAssets } from '@core/wow/SceneAssets'
 import { buildWmoTemplate } from '@core/wow/wmoGeometry'
 import { cullModel, type SceneModel } from './ModelCulling'
 import type { InstallQueue } from './InstallQueue'
+import { buildLiquidGeometry, liquidAbove, type LiquidSurfaces } from './LiquidSurfaces'
 import { TileWindow, type TileCoord } from './TileWindow'
 
 /**
@@ -17,9 +18,16 @@ import { TileWindow, type TileCoord } from './TileWindow'
  * reused. The world transform of a placement uses @wowserhq/format's proven
  * MODF/MDDF convention so WMOs share the terrain's coordinate frame.
  *
+ * A WMO that straddles tiles is listed in the MODF of every tile it overlaps —
+ * the Stormwind city shell in nine of them — and the client draws it once. So
+ * an ADT placement is built once, whichever tile lists it first, and the tiles
+ * listing it only hold a reference to it (see `TilePlacement`).
+ *
  * Textures and interior M2s come from the scene-wide `SceneAssets`, so a WMO
  * shares its decoded BLPs and model geometry with the terrain and the creature
- * spawns instead of keeping a private copy of each.
+ * spawns instead of keeping a private copy of each. The WMO's own liquid
+ * (canals, fountains, instance pools) draws with the same `LiquidSurfaces` as
+ * the terrain's water, as part of the template every placement clones.
  *
  * Nothing here touches the scene graph directly. Building a template, cloning
  * it per placement and adding the result are all main-thread work, and a city
@@ -34,8 +42,32 @@ const KEEP_RADIUS = 2
 /** Half the map extent (34133.332 / 2), used to normalize MODF positions. */
 const MAP_CORNER = 34133.332 / 2
 
+/**
+ * An ADT placement, shared by every resident tile that lists it.
+ *
+ * Drawing one per listing drew the Stormwind shell nine times over: nine
+ * times the draw calls, and nine stacked copies of every translucent surface,
+ * its canals included, which read as opaque.
+ */
+interface TilePlacement {
+  /** Null until the install queue has built it (or for good if it failed). */
+  object: THREE.Object3D | null
+  /** Keys of the resident tiles that list it; it goes with the last one. */
+  tiles: Set<string>
+}
+
+/**
+ * What makes two MODF entries the same placement. The client matches them on
+ * their uniqueId; the entries it matches are copies, so they agree on
+ * everything this key holds too, and two that agree on all of it would draw
+ * the same pixels anyway.
+ */
+function placementKey(p: WmoPlacement): string {
+  return JSON.stringify([p.model.toLowerCase(), p.position, p.rotation, p.doodadSet])
+}
+
 interface LoadedWmo {
-  /** Batch geometry group; cloned per placement (geometry/materials shared). */
+  /** Batch + liquid geometry group; cloned per placement (geometry/materials shared). */
   template: THREE.Group
   doodadSets: WmoDoodadSet[]
 }
@@ -73,9 +105,14 @@ export class WmoManager {
   readonly root = new THREE.Group()
 
   readonly #assets: SceneAssets
+  readonly #liquids: LiquidSurfaces
+  /** Scratch list for the submerged test, refilled each call. */
+  readonly #liquidScratch: THREE.Object3D[] = []
   #modelCache = new Map<string, Promise<LoadedWmo>>()
-  /** One group per tile, so residency and visibility can be toggled as a unit. */
-  #tiles = new Map<string, THREE.Group>()
+  /** Resident tiles, each with the keys of the placements it lists. */
+  #tiles = new Map<string, string[]>()
+  /** ADT placements by `placementKey`, each built once for all its tiles. */
+  #placements = new Map<string, TilePlacement>()
   /** Placements from the WDT (WMO-only maps): loaded once, never evicted. */
   #globalObjects: THREE.Object3D[] = []
   #loading = new Set<string>()
@@ -86,9 +123,15 @@ export class WmoManager {
   readonly #queue: InstallQueue
   readonly #window: TileWindow
 
-  constructor(map: MinimapMapInfo, assets: SceneAssets, queue: InstallQueue) {
+  constructor(
+    map: MinimapMapInfo,
+    assets: SceneAssets,
+    queue: InstallQueue,
+    liquids: LiquidSurfaces,
+  ) {
     this.#map = map
     this.#assets = assets
+    this.#liquids = liquids
     this.#queue = queue
     this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
     this.root.name = 'wmos'
@@ -105,17 +148,40 @@ export class WmoManager {
       }
     }
 
-    for (const [key, group] of this.#tiles) {
-      if (!this.#window.keeps(key)) {
-        this.root.remove(group)
-        this.#tiles.delete(key)
-        continue
+    for (const [key, ids] of this.#tiles) {
+      if (!this.#window.keeps(key)) this.#releaseTile(key, ids)
+    }
+    // Resident but outside the camera's own ring: held in memory, kept out of
+    // the frame. This covers the batch meshes; the interior M2s need hiding of
+    // their own in `cull` so they also drop out of the skinning pass, which a
+    // hidden ancestor does not do for them.
+    for (const placement of this.#placements.values()) {
+      if (placement.object) placement.object.visible = this.#shown(placement)
+    }
+  }
+
+  /** Whether any of the tiles listing a placement is in the camera's ring. */
+  #shown(placement: TilePlacement): boolean {
+    for (const key of placement.tiles) {
+      if (this.#window.shows(key)) return true
+    }
+    return false
+  }
+
+  /** Drops a tile, and with it every placement no other resident tile lists. */
+  #releaseTile(key: string, ids: string[]): void {
+    this.#tiles.delete(key)
+    for (const id of ids) {
+      const placement = this.#placements.get(id)
+      if (!placement) continue
+      placement.tiles.delete(key)
+      if (placement.tiles.size > 0) continue
+      this.#placements.delete(id)
+      if (placement.object) {
+        // Out of the skinning pass as well as out of the scene.
+        this.#hideGroup(placement.object)
+        this.root.remove(placement.object)
       }
-      // Resident but outside the camera's own ring: held in memory, kept out
-      // of the frame. This covers the batch meshes; the interior M2s need
-      // hiding of their own in `cull` so they also drop out of the skinning
-      // pass, which a hidden ancestor does not do for them.
-      group.visible = this.#window.shows(key)
     }
   }
 
@@ -154,21 +220,33 @@ export class WmoManager {
     if (this.#disposed || !this.#window.keeps(key)) return
 
     // Register the (possibly empty) tile up front so panning doesn't refetch.
-    const group = new THREE.Group()
-    group.name = `wmo-tile-${key}`
-    group.visible = this.#window.shows(key)
-    this.#tiles.set(key, group)
-    this.root.add(group)
+    const ids = placements.map(placementKey)
+    this.#tiles.set(key, ids)
     await Promise.all(
-      placements.map(async placement => {
+      placements.map(async (placement, i) => {
+        const id = ids[i]
+        if (id === undefined) return
+        // Already listed by a neighbouring tile: share it.
+        const existing = this.#placements.get(id)
+        if (existing) {
+          existing.tiles.add(key)
+          return
+        }
+        const entry: TilePlacement = { object: null, tiles: new Set([key]) }
+        this.#placements.set(id, entry)
+
         const build = await this.#prepare(placement)
         if (!build) return
         await this.#queue.run(() => {
-          // Evicted — or evicted and reloaded, hence the identity test on the
-          // group — while this waited its turn. Tested before `build()` so a
-          // tile the camera has left costs nothing more than the fetch.
-          if (this.#disposed || this.#tiles.get(key) !== group) return
-          group.add(build())
+          // Released with its last tile — or released and listed afresh,
+          // hence the identity test — while this waited its turn. Tested
+          // before `build()` so a tile the camera has left costs nothing more
+          // than the fetch.
+          if (this.#disposed || this.#placements.get(id) !== entry) return
+          const object = build()
+          object.visible = this.#shown(entry)
+          entry.object = object
+          this.root.add(object)
         })
       }),
     )
@@ -214,12 +292,20 @@ export class WmoManager {
         group.add(model)
         placed.push(model)
       })
+      // The template's liquid surfaces, cloned with it; the submerged test
+      // casts against these alone rather than the whole building.
+      const liquids = group.children.filter(child => child.userData.category !== undefined)
+      if (liquids.length > 0) group.userData.liquids = liquids
       if (placed.length > 0) {
         // Culling walks these directly; they are buried under the batch meshes
         // and re-traversing the group every frame to find them would undo the
-        // point. Seeding the world matrices also gives them a real
-        // `boundingSphereWorld` before the first cull pass reads it.
+        // point.
         group.userData.doodads = placed
+      }
+      if (placed.length > 0 || liquids.length > 0) {
+        // Seeding the world matrices gives the doodads a real
+        // `boundingSphereWorld` before the first cull pass reads it, and the
+        // liquids a real position before the first submerged test.
         group.updateMatrixWorld(true)
       }
       return group
@@ -234,15 +320,33 @@ export class WmoManager {
    */
   cull(frustum: THREE.Frustum, cameraPosition: THREE.Vector3): void {
     for (const object of this.#globalObjects) this.#cullGroup(object, frustum, cameraPosition)
-    for (const group of this.#tiles.values()) {
-      // A hidden tile's doodads still have to be hidden one by one: the
+    for (const { object } of this.#placements.values()) {
+      if (!object) continue
+      // A hidden placement's doodads still have to be hidden one by one: the
       // animator walks models by their own `visible` flag, so an invisible
       // ancestor would stop them drawing but not stop them being skinned.
-      for (const placement of group.children) {
-        if (group.visible) this.#cullGroup(placement, frustum, cameraPosition)
-        else this.#hideGroup(placement)
-      }
+      if (object.visible) this.#cullGroup(object, frustum, cameraPosition)
+      else this.#hideGroup(object)
     }
+  }
+
+  /**
+   * The category of the WMO liquid the camera is under, or null. Only the
+   * placements on screen are tested: the camera is in one of them if it is
+   * in any.
+   */
+  submergedIn(cameraPosition: THREE.Vector3): string | null {
+    const surfaces = this.#liquidScratch
+    surfaces.length = 0
+    const collect = (placement: THREE.Object3D) => {
+      const liquids = placement.userData.liquids as THREE.Object3D[] | undefined
+      if (liquids) surfaces.push(...liquids)
+    }
+    for (const object of this.#globalObjects) collect(object)
+    for (const { object } of this.#placements.values()) {
+      if (object?.visible) collect(object)
+    }
+    return liquidAbove(cameraPosition, surfaces, false)
   }
 
   /** Drops a placement's interior doodads out of the draw and skinning passes. */
@@ -262,7 +366,7 @@ export class WmoManager {
     for (const model of doodads) cullModel(model, frustum, cameraPosition)
   }
 
-  /** Builds (once) a WMO's batch-geometry template + doodad-set data. */
+  /** Builds (once) a WMO's batch + liquid template and its doodad-set data. */
   #loadModel(filename: string): Promise<LoadedWmo> {
     const cached = this.#modelCache.get(filename)
     if (cached) return cached
@@ -281,6 +385,18 @@ export class WmoManager {
         )
         this.#ownedGeometries.push(...built.geometries)
         this.#ownedMaterials.push(...built.materials)
+        // The liquid is in WMO-local space like the batches, so it rides the
+        // placement transform with them. Its materials are the shared ones:
+        // only the geometry is this WMO's to free.
+        for (const layer of model.liquids) {
+          const material = this.#liquids.material(layer.category)
+          if (layer.indices.length === 0 || !material) continue
+          const geometry = buildLiquidGeometry(layer, 0, 0)
+          const surface = new THREE.Mesh(geometry, material)
+          surface.userData.category = layer.category
+          built.group.add(surface)
+          this.#ownedGeometries.push(geometry)
+        }
         return { template: built.group, doodadSets: model.doodadSets }
       }),
     )
@@ -290,7 +406,10 @@ export class WmoManager {
 
   dispose(): void {
     this.#disposed = true
-    for (const group of this.#tiles.values()) this.root.remove(group)
+    for (const { object } of this.#placements.values()) {
+      if (object) this.root.remove(object)
+    }
+    this.#placements.clear()
     this.#tiles.clear()
     for (const obj of this.#globalObjects) this.root.remove(obj)
     this.#globalObjects = []

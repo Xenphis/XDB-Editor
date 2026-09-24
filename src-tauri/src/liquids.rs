@@ -188,7 +188,7 @@ fn cell_present(exists: Option<u64>, ci: usize, cj: usize, width: usize) -> bool
 
 /// Maps a LiquidType.dbc "type" (0 water, 1 ocean, 2 magma, 3 slime) to a
 /// stable category label for the frontend's materials.
-fn liquid_category(type_code: u8) -> &'static str {
+pub(crate) fn liquid_category(type_code: u8) -> &'static str {
     match type_code {
         1 => "ocean",
         2 => "magma",
@@ -197,7 +197,7 @@ fn liquid_category(type_code: u8) -> &'static str {
     }
 }
 
-fn category_code(category: &str) -> u8 {
+pub(crate) fn category_code(category: &str) -> u8 {
     match category {
         "ocean" => 1,
         "magma" => 2,
