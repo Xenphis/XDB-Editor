@@ -48,9 +48,9 @@ const TILE_SIZE: u32 = 256;
 /// Bump when anything cached under the signature changes shape or meaning for
 /// identical archives — rendered tiles (e.g. the wow-blp 0.7 palettized-BLP
 /// R↔B fix) as well as the extracted WMO models (e.g. the MOCV vertex-lighting
-/// fix, the MLIQ liquids, the MH2O depths) — so the stale entries are dropped
-/// and rebuilt.
-const PIPELINE_VERSION: u32 = 5;
+/// fix, the MLIQ liquids, the MH2O depths, the MCLQ liquids) — so the stale
+/// entries are dropped and rebuilt.
+const PIPELINE_VERSION: u32 = 6;
 
 /// Cap of the in-memory MPQ read cache (raw, still-compressed-on-disk assets
 /// decompressed once and reused across 3D re-opens within a session).

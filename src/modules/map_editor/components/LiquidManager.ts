@@ -6,8 +6,8 @@ import { buildLiquidGeometry, liquidAbove, type LiquidSurfaces } from './LiquidS
 import { TileWindow, type TileCoord } from './TileWindow'
 
 /**
- * Streams ADT liquid (MH2O) meshes around the camera to complement
- * @wowserhq/scene's terrain, which doesn't render water.
+ * Streams ADT liquid meshes (MH2O, or MCLQ in older tiles) around the camera
+ * to complement @wowserhq/scene's terrain, which doesn't render water.
  *
  * The Rust side returns world-space geometry per liquid category; this keeps
  * one THREE.Group per loaded tile, adding tiles the `TileWindow` asks for and
