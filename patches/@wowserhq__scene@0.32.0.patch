@@ -12,11 +12,65 @@ index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce733
      load(mapName, mapId) {
          this.#mapName = mapName;
          this.#mapDir = `world/maps/${mapName}`;
+diff --git a/dist/esm/map/light/MapLight.js b/dist/esm/map/light/MapLight.js
+index 6710a62f983e7f17dae11bbdf20855a5cdf97b7f..f4c751193de925a39dbc7264be8e9e5c297860db 100644
+--- a/dist/esm/map/light/MapLight.js
++++ b/dist/esm/map/light/MapLight.js
+@@ -11,6 +11,8 @@ class MapLight extends SceneLight {
+     #lights;
+     // Applicable area lights given current camera position
+     #selectedLights;
++    // Default light for maps that have none of their own (see #loadLights)
++    #fallbackLight = null;
+     // Time in half-minutes since midnight (0 - 2879)
+     #time = 0;
+     // Overridden time in half-minutes since midnight (0 - 2879)
+@@ -82,10 +84,12 @@ class MapLight extends SceneLight {
+         this.fogParams.copy(fogParams);
+     }
+     #selectLights(position) {
+-        if (!this.#lights || this.#mapId === undefined || !this.#lights[this.#mapId]) {
++        if (!this.#lights) {
+             return;
+         }
+-        this.#selectedLights = selectLightsForPosition(this.#lights[this.#mapId], position);
++        // A map with no light of its own still gets the fallback, rather than
++        // keeping the placeholder light it was constructed with.
++        this.#selectedLights = selectLightsForPosition(this.#lights[this.#mapId] ?? [], position, this.#fallbackLight);
+     }
+     async #loadLights() {
+         const lightDb = await this.#dbManager.get('Light.dbc', LightRecord);
+@@ -93,6 +97,11 @@ class MapLight extends SceneLight {
+         const lightIntBandDb = await this.#dbManager.get('LightIntBand.dbc', LightIntBandRecord);
+         const lightFloatBandDb = await this.#dbManager.get('LightFloatBand.dbc', LightFloatBandRecord);
+         this.#lights = getAreaLightsFromDb(lightDb, lightParamsDb, lightIntBandDb, lightFloatBandDb);
++        // Azeroth's default stands in on the 71 maps that have no default of
++        // their own (most instances, every transport). It is a choice, not a
++        // read of the client: neutral daylight, where the alternative was the
++        // placeholder's saturated blue.
++        this.#fallbackLight = this.#lights[0]?.find((light) => light.isDefault) ?? null;
+     }
+ }
+ export default MapLight;
 diff --git a/dist/esm/map/light/db.js b/dist/esm/map/light/db.js
-index 7f8e8110b7948f5c1a64bff7f2ec5376a3d0f6cd..7cbf30eca1c7bfbcc05db69d154894fdaacc29df 100644
+index 7f8e8110b7948f5c1a64bff7f2ec5376a3d0f6cd..62e16c8649f315254556dbd585cff60ad3174cf5 100644
 --- a/dist/esm/map/light/db.js
 +++ b/dist/esm/map/light/db.js
-@@ -71,7 +71,12 @@ const getIntBandsForParam = (paramId, bandDb) => {
+@@ -33,6 +33,13 @@ const getAreaLightsFromDb = (lightDb, lightParamsDb, lightIntBandDb, lightFloatB
+             position,
+             falloffStart,
+             falloffEnd,
++            // A light at the origin is its map's default: it covers the whole map
++            // and the zone lights blend over it. Only the position says so. Most
++            // 3.3.5 defaults carry a small radius (Northrend's is 33..46), and a
++            // test that also required a zero radius missed 44 of them.
++            isDefault: lightRecord.gameCoords[0] === 0 &&
++                lightRecord.gameCoords[1] === 0 &&
++                lightRecord.gameCoords[2] === 0,
+             params,
+         };
+         if (lights[mapId]) {
+@@ -71,7 +78,12 @@ const getIntBandsForParam = (paramId, bandDb) => {
          const intBand = [];
          for (let b = 0; b < intBandRecord.num; b++) {
              const time = (intBandRecord.time[b] >>> 0) / 2880;
@@ -30,6 +84,64 @@ index 7f8e8110b7948f5c1a64bff7f2ec5376a3d0f6cd..7cbf30eca1c7bfbcc05db69d154894fd
              intBand.push(time, value);
          }
          intBands[band] = intBand;
+diff --git a/dist/esm/map/light/util.js b/dist/esm/map/light/util.js
+index ee4fe64694190c5bb1518510d9b10ebbc15461c1..247f51895066073e1e90cf668cc22c26c4054e67 100644
+--- a/dist/esm/map/light/util.js
++++ b/dist/esm/map/light/util.js
+@@ -1,4 +1,3 @@
+-import { MAP_CORNER_X, MAP_CORNER_Y } from '@wowserhq/format';
+ const clamp = (value, min, max) => {
+     return Math.min(Math.max(value, min), max);
+ };
+@@ -95,23 +94,32 @@ const interpolateNumericTable = (table, key) => {
+     const factor = (key - previousKey) / keyDistance;
+     return lerpNumbers(previousValue, nextValue, factor);
+ };
+-const selectLightsForPosition = (lights, position) => {
++const selectLightsForPosition = (lights, position, fallbackLight = null) => {
+     const selectedLights = [];
++    let defaultLight = null;
+     for (const light of lights) {
++        // The default takes whatever weight the zone lights leave, so it joins
++        // after the sort rather than competing with them on distance.
++        if (light.isDefault) {
++            defaultLight = light;
++            continue;
++        }
+         const distance = position.distanceTo(light.position);
+         // Include lights if position is within falloff radii
+         if (distance <= light.falloffEnd) {
+             selectedLights.push({ light, distance, weight: 0.0 });
+         }
+-        // Include default light
+-        if (light.position.x === MAP_CORNER_X &&
+-            light.position.y === MAP_CORNER_Y &&
+-            light.falloffEnd === 0.0) {
+-            selectedLights.push({ light, distance, weight: 0.0 });
+-        }
+     }
+     // Sort selected lights by distance (closer -> farther)
+     selectedLights.sort((light1, light2) => light1.distance - light2.distance);
++    // A map without a default of its own blends over the fallback instead, so
++    // the weights always add up to one. Without it, the share the zone lights
++    // left went nowhere, which darkened the light and pulled the fog in, and
++    // with no zone light in reach the placeholder light stayed on.
++    const baseLight = defaultLight ?? fallbackLight;
++    if (baseLight) {
++        selectedLights.push({ light: baseLight, distance: 0.0, weight: 0.0 });
++    }
+     // Distribute weights by falloff
+     let availableWeight = 1.0;
+     for (const selectedLight of selectedLights) {
+@@ -120,7 +128,7 @@ const selectLightsForPosition = (lights, position) => {
+         }
+         const { light, distance } = selectedLight;
+         // Default light has no falloff
+-        const falloff = light.falloffStart > 0.0 && light.falloffEnd > 0.0
++        const falloff = !light.isDefault && light.falloffStart > 0.0 && light.falloffEnd > 0.0
+             ? (distance - light.falloffStart) / (light.falloffEnd - light.falloffStart)
+             : 0.0;
+         const weight = clamp(1.0 - falloff, 0.0, availableWeight);
 diff --git a/dist/esm/map/terrain/TerrainManager.js b/dist/esm/map/terrain/TerrainManager.js
 index e6532f687a2ccebda70aaa82ffeb3fc0821380e0..fcf860ec96152d4ce850f4fe6cafda6478ac2118 100644
 --- a/dist/esm/map/terrain/TerrainManager.js

@@ -184,10 +184,10 @@ const FPS_SAMPLE_MS = 500
  *
  * Left alone, @wowserhq/scene reads the wall clock, so the same zone rendered
  * green at lunchtime and near-black at dusk. An editor should look the same
- * whenever it is opened. It also has to: nothing else in the scene follows
- * that cycle — the liquids are unlit `MeshBasicMaterial` and the WMO surfaces
- * run off a fixed sun — so a darkened terrain left the water and the buildings
- * glowing on top of it.
+ * whenever it is opened. It also has to: the M2 models follow the map light,
+ * but the liquids are unlit `MeshBasicMaterial` and the WMO surfaces run off a
+ * fixed sun, so a darkened terrain left the water and the buildings glowing on
+ * top of it.
  *
  * Reaching the map light needs the `mapLight` getter added in
  * `patches/@wowserhq__scene@0.32.0.patch`; the library keeps it private.
@@ -883,7 +883,10 @@ onMounted(() => {
     spawnManager?.cull(cullFrustum, camera.position)
     // Animations and sun uniforms for every M2 in the scene, driven once:
     // WMO doodads and creature spawns now share one ModelManager, and it
-    // advances each animator by `dt` per call.
+    // advances each animator by `dt` per call. They are lit by the zone's own
+    // light, copied after the draw distance and the underwater tint have had
+    // their say, so they fog out with the terrain rather than on their own.
+    assets?.matchLight(mapManager.mapLight)
     assets?.update(dt, camera)
     // The map light holds gamma-space bytes as-is, but the renderer encodes a
     // clear colour from linear to sRGB. Decoding it first cancels that out, so

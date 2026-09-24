@@ -24,7 +24,7 @@ log = "0.4"
 tauri = { version = "2.11.0", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-mcp-bridge = "0.11"
+tauri-plugin-mcp-bridge = "0.13"
 sqlx = { version = "0.8", features = ["runtime-tokio", "mysql"] }
 tokio = { version = "1", features = ["full"] }
 # Used to proxy the Wowhead model-viewer CDN from the Rust side, bypassing the

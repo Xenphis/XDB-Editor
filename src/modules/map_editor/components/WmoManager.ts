@@ -92,18 +92,6 @@ export class WmoManager {
     this.#queue = queue
     this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
     this.root.name = 'wmos'
-
-    // Sun + ambient for exterior WMO surfaces (MeshLambert). Only lit
-    // materials react: interior WMO batches (MeshBasic/MOCV), the liquids
-    // (MeshBasic) and the terrain (its own shader) are all unaffected. The
-    // interior doodads are M2s instead, lit by the shared scene light whose
-    // sun direction this mirrors.
-    this.root.add(new THREE.AmbientLight(0xffffff, 0.65))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.1)
-    sun.position.set(0.5, 0.3, 1) // direction only (parallel light toward origin)
-    this.root.add(sun)
-    this.root.add(sun.target)
-
     void this.#loadGlobal()
   }
 
@@ -284,7 +272,13 @@ export class WmoManager {
     // budget rather than all at once when the fetch lands.
     const promise = loadWmoModel(filename).then((model: WmoModel) =>
       this.#queue.run(() => {
-        const built = buildWmoTemplate(model.batches, this.#assets.textureManager)
+        // Lit by the scene light the world view keeps on the zone's light, so
+        // the batches share the sun, ambient and fog of the M2s they hold.
+        const built = buildWmoTemplate(
+          model.batches,
+          this.#assets.textureManager,
+          this.#assets.sceneLight,
+        )
         this.#ownedGeometries.push(...built.geometries)
         this.#ownedMaterials.push(...built.materials)
         return { template: built.group, doodadSets: model.doodadSets }

@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import type { LiquidMesh, MinimapMapInfo } from '../types'
 import { loadAdtLiquids, tileWorldBounds, TILE_YARDS } from '../service'
+import type { SceneLight } from '@wowserhq/scene'
 import type { SceneAssets } from '@core/wow/SceneAssets'
+import { FOG_FACTOR_GLSL, WHITE_TEXTURE } from '@core/wow/sceneShading'
 import type { InstallQueue } from './InstallQueue'
 import { TileWindow, type TileCoord } from './TileWindow'
 
@@ -68,37 +70,119 @@ const TEXTURE_YARDS = TILE_YARDS / 128
  */
 const SUBMERGED_MAX_DEPTH = 60
 
-/** Flat, unlit materials keyed by liquid category; water reads as translucent. */
-function makeMaterials(): Record<string, THREE.MeshBasicMaterial> {
-  const water = new THREE.MeshBasicMaterial({
-    color: 0x2c6b9e,
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  })
-  const ocean = new THREE.MeshBasicMaterial({
-    color: 0x1f5c86,
-    transparent: true,
-    opacity: 0.62,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  })
-  const magma = new THREE.MeshBasicMaterial({ color: 0xff6a1a, side: THREE.DoubleSide })
-  const slime = new THREE.MeshBasicMaterial({
-    color: 0x6aa832,
-    transparent: true,
-    opacity: 0.85,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  })
-  return { water, ocean, magma, slime }
+/**
+ * The flat colour each category shows until (or unless) its frames load, and
+ * how opaque its surface is. Water reads as translucent; magma is solid.
+ */
+const LIQUID_LOOKS: Record<string, { color: number; opacity: number }> = {
+  water: { color: 0x2c6b9e, opacity: 0.6 },
+  ocean: { color: 0x1f5c86, opacity: 0.62 },
+  magma: { color: 0xff6a1a, opacity: 1 },
+  slime: { color: 0x6aa832, opacity: 0.85 },
+}
+
+/**
+ * The liquid surface shader: the current frame (or the flat colour), unlit,
+ * faded by the scene's fog.
+ *
+ * Written in the terrain's terms rather than as a three.js material, like the
+ * WMO shader (see wmoGeometry.ts): the frame's texels are the client's own
+ * bytes and go out unconverted, where a built-in material encoded them to sRGB
+ * and washed the water out. And it fogs with the library's curve, so a lake
+ * fades into the haze with the shore around it instead of staying crisp to
+ * the far plane and ending there in a hard line.
+ */
+const VERTEX_SHADER = /* glsl */ `
+precision highp float;
+
+uniform mat4 modelMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform vec3 cameraPosition;
+uniform vec4 fogParams;
+
+in vec3 position;
+in vec2 uv;
+
+out vec2 vUv;
+out float vFogFactor;
+
+${FOG_FACTOR_GLSL}
+
+void main() {
+  vUv = uv;
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vFogFactor = calculateFogFactor(fogParams, distance(cameraPosition, worldPosition.xyz));
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`
+
+const FRAGMENT_SHADER = /* glsl */ `
+precision highp float;
+
+uniform sampler2D map;
+uniform vec3 tint;
+uniform float alpha;
+uniform vec3 fogColor;
+
+in vec2 vUv;
+in float vFogFactor;
+
+out vec4 color;
+
+void main() {
+  // The frame contributes colour only: its alpha channel is not coverage in
+  // the client, the liquid's own opacity is (see #loadFrames).
+  color = vec4(texture(map, vUv).rgb * tint, alpha);
+  color.rgb = mix(color.rgb, fogColor, vFogFactor);
+}
+`
+
+/** One category's material, and the two inputs of it that change later. */
+interface LiquidSurface {
+  material: THREE.RawShaderMaterial
+  /** The animation frame on show; white until the frames decode. */
+  map: THREE.IUniform<THREE.Texture>
+  /** The flat colour multiplied into the frame; white once frames load. */
+  tint: THREE.Color
+}
+
+/**
+ * Builds one surface per category, fogged by `light` (the scene light the
+ * world view keeps on the zone's light).
+ */
+function makeSurfaces(light: SceneLight): Record<string, LiquidSurface> {
+  const surfaces: Record<string, LiquidSurface> = {}
+  for (const [category, look] of Object.entries(LIQUID_LOOKS)) {
+    const map: THREE.IUniform<THREE.Texture> = { value: WHITE_TEXTURE }
+    // Tagged linear so the hex reaches the shader as written: this pipeline
+    // works in the client's gamma-space bytes, and an sRGB read would convert.
+    const tint = new THREE.Color().setHex(look.color, THREE.LinearSRGBColorSpace)
+    const translucent = look.opacity < 1
+    const material = new THREE.RawShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
+      uniforms: {
+        fogParams: light.uniforms.fogParams,
+        fogColor: light.uniforms.fogColor,
+        map,
+        tint: { value: tint },
+        alpha: { value: look.opacity },
+      },
+      transparent: translucent,
+      depthWrite: !translucent,
+      side: THREE.DoubleSide,
+    })
+    surfaces[category] = { material, map, tint }
+  }
+  return surfaces
 }
 
 export class LiquidManager {
   readonly root = new THREE.Group()
 
-  #materials = makeMaterials()
+  readonly #surfaces: Record<string, LiquidSurface>
   #tiles = new Map<string, THREE.Group>()
   #loading = new Set<string>()
   #disposed = false
@@ -116,6 +200,7 @@ export class LiquidManager {
 
   constructor(map: MinimapMapInfo, queue: InstallQueue, assets: SceneAssets) {
     this.#assets = assets
+    this.#surfaces = makeSurfaces(assets.sceneLight)
     this.#map = map
     this.#queue = queue
     this.#window = new TileWindow(map, LOAD_RADIUS, KEEP_RADIUS)
@@ -137,8 +222,8 @@ export class LiquidManager {
    */
   async #loadFrames(category: string): Promise<void> {
     const base = LIQUID_TEXTURES[category]
-    const material = this.#materials[category]
-    if (!base || !material) return
+    const surface = this.#surfaces[category]
+    if (!base || !surface) return
 
     const frames: THREE.Texture[] = []
     for (let frame = 1; frame <= MAX_FRAMES; frame++) {
@@ -160,23 +245,16 @@ export class LiquidManager {
     if (this.#disposed) return
 
     this.#frames.set(category, frames)
-    material.map = frames[0] ?? null
+    if (frames[0]) surface.map.value = frames[0]
     // The frames carry the liquid's own colour, so the flat tint that stood in
     // for them would only darken the texture.
-    material.color.setScalar(1)
-    // The client's liquid BLPs carry an alpha channel of their own, and three
-    // multiplies it into `opacity` — 0.6 x a low texel alpha left the surface
-    // all but invisible, with the riverbed showing straight through. The
-    // client does not use that channel as coverage either; the transparency of
-    // water is a property of the liquid, not of the frame. So the map
-    // contributes colour only and the alpha stays the material's.
-    material.onBeforeCompile = shader => {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <map_fragment>',
-        '#include <map_fragment>\n\tdiffuseColor.a = opacity;',
-      )
-    }
-    material.needsUpdate = true
+    //
+    // Their alpha channel is left out of the shader altogether: multiplied
+    // into the opacity, 0.6 x a low texel alpha left the surface all but
+    // invisible, with the riverbed showing straight through. The client does
+    // not use that channel as coverage either; the transparency of water is a
+    // property of the liquid, not of the frame.
+    surface.tint.setScalar(1)
   }
 
   /**
@@ -188,13 +266,12 @@ export class LiquidManager {
     if (this.#frames.size === 0) return
     this.#elapsed += deltaTime
     for (const [category, frames] of this.#frames) {
-      const material = this.#materials[category]
-      if (!material || frames.length === 0) continue
+      const surface = this.#surfaces[category]
+      if (!surface || frames.length === 0) continue
       const index = Math.floor(this.#elapsed * FRAMES_PER_SECOND) % frames.length
       const frame = frames[index]
-      // Swapping the map between textures of the same shape does not rebuild
-      // the program; only gaining or losing a map would.
-      if (frame && material.map !== frame) material.map = frame
+      // A new sampler value, not a new program: nothing recompiles.
+      if (frame) surface.map.value = frame
     }
   }
 
@@ -262,7 +339,8 @@ export class LiquidManager {
       // sat in the queue.
       if (this.#disposed || this.#tiles.get(key) !== group) return
       for (const layer of mesh.layers) {
-        if (layer.indices.length === 0) continue
+        const liquid = this.#surfaces[layer.category] ?? this.#surfaces.water
+        if (layer.indices.length === 0 || !liquid) continue
         const geometry = new THREE.BufferGeometry()
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(layer.positions, 3))
         // The backend sends positions and indices only. World XY doubles as
@@ -283,8 +361,7 @@ export class LiquidManager {
         }
         geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
         geometry.setIndex(layer.indices)
-        const material = this.#materials[layer.category] ?? this.#materials.water
-        const surface = new THREE.Mesh(geometry, material)
+        const surface = new THREE.Mesh(geometry, liquid.material)
         // Read back by `submergedIn` off the raycast hit.
         surface.userData.category = layer.category
         group.add(surface)
@@ -305,6 +382,6 @@ export class LiquidManager {
     for (const group of this.#tiles.values()) this.#disposeTile(group)
     this.#tiles.clear()
     this.#frames.clear()
-    for (const material of Object.values(this.#materials)) material.dispose()
+    for (const { material } of Object.values(this.#surfaces)) material.dispose()
   }
 }

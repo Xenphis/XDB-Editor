@@ -151,8 +151,6 @@ export async function renderLocalModel(
 /** The scene content for one display id, plus what its teardown must release. */
 interface Subject {
   root: THREE.Object3D
-  /** Extra lights the content needs (WMO batches use lit materials). */
-  lit: boolean
   dispose(): void
 }
 
@@ -181,7 +179,6 @@ async function buildCreature(displayId: number): Promise<Subject> {
 
   return {
     root: model,
-    lit: false,
     dispose: () => model.dispose(),
   }
 }
@@ -209,7 +206,7 @@ async function buildDoodad(path: string): Promise<Subject> {
     throw new LocalModelError('failed', `could not load ${path}: ${String(e)}`)
   }
   model.updateMatrixWorld()
-  return { root: model, lit: false, dispose: () => model.dispose() }
+  return { root: model, dispose: () => model.dispose() }
 }
 
 /** A WMO gameobject (ship, elevator, gate): batch geometry + doodad set 0. */
@@ -221,7 +218,7 @@ async function buildWmo(path: string): Promise<Subject> {
     throw new LocalModelError('failed', `could not load ${path}: ${String(e)}`)
   }
 
-  const built = buildWmoTemplate(wmo.batches, assets().textureManager)
+  const built = buildWmoTemplate(wmo.batches, assets().textureManager, assets().sceneLight)
   // Set 0 is the always-visible default set; the others are selected by a
   // placement, which a standalone preview doesn't have.
   const doodads = wmo.doodadSets[0]?.doodads ?? []
@@ -240,7 +237,6 @@ async function buildWmo(path: string): Promise<Subject> {
 
   return {
     root: built.group,
-    lit: true,
     dispose: () => {
       for (const model of placed) model?.dispose()
       for (const geometry of built.geometries) geometry.dispose()
@@ -262,15 +258,6 @@ function mount(container: HTMLElement, subject: Subject): ModelViewerHandle {
 
   const scene = new THREE.Scene()
   scene.add(subject.root)
-  if (subject.lit) {
-    // WMO exterior batches use a lit material; mirror the sun/ambient the map
-    // editor puts on them so a ship doesn't render pitch black.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.65))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.1)
-    sun.position.set(0.5, 0.3, 1) // direction only (parallel light toward origin)
-    scene.add(sun)
-    scene.add(sun.target)
-  }
 
   const camera = new THREE.PerspectiveCamera(FOV, width / height, 0.1, 1000)
   camera.up.set(0, 0, 1) // WoW is Z-up (must precede OrbitControls: it reads `up`)
