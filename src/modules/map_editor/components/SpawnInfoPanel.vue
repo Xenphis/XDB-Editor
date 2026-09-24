@@ -12,8 +12,8 @@ import type { CreatureSpawnMarker } from '../types'
  * Selected-spawn side panel for the 3D world view. Mirrors the NPC module's
  * `NpcModelPanel` (a collapsible `ViewInfoPanel` with the shared `ModelViewer`)
  * so a spawn reads the same in both places, and adds the world position plus
- * the move-to-terrain workflow (armed right-click → migration SQL). Rendered as
- * an overlay by the parent, so showing it never reflows the map.
+ * the move-to-terrain workflow (armed right-click → migration SQL). The parent
+ * shows it in the inspector column in place of the zone tables, at their width.
  */
 const props = defineProps<{
   spawn: CreatureSpawnMarker
@@ -132,21 +132,23 @@ function openInNpcEditor() {
 </template>
 
 <style scoped>
-/* Overlay sizing: fit the map area rather than the tall inline column the
-   shared panel assumes (its calc(93vh) height would overflow the viewport). */
-.spawn-info-panel :deep(.view-info-panel) {
+/* Inspector sizing: fill the column like the zone tables this stands in for,
+   rather than the sticky calc(93vh) box the shared panel assumes. The class
+   lands on the shared panel's own root (panel or rail), hence the compound
+   selectors. */
+.spawn-info-panel.view-info-panel {
   position: static;
-  height: auto;
-  max-height: 100%;
-  width: 300px;
-  backdrop-filter: blur(12px);
-  background: rgba(15, 23, 42, 0.82);
+  align-self: stretch;
+  height: 100%;
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
 }
 
-.spawn-info-panel :deep(.view-info-rail) {
+.spawn-info-panel.view-info-rail {
   position: static;
-  backdrop-filter: blur(12px);
-  background: rgba(15, 23, 42, 0.82);
+  align-self: stretch;
+  height: 100%;
+  border-radius: var(--radius-lg);
 }
 
 .spawn-meta {

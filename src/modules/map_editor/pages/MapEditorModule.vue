@@ -467,6 +467,8 @@ const viewSettingsOpen = ref(false)
 
 /** Spawn clicked in the 3D view; its repositioning drives the migration output. */
 const selectedSpawn = ref<CreatureSpawnMarker | null>(null)
+/** The selected spawn's panel takes the inspector over from the zone tables. */
+const spawnInInspector = computed(() => activeViewMode.value === '3d' && selectedSpawn.value != null)
 /** When armed, the next terrain right-click relocates the selected spawn. */
 const moveArmed = ref(false)
 /** New position captured after a move, kept for the UPDATE statement. */
@@ -496,6 +498,12 @@ function clearSelectedSpawn() {
   movedPosition.value = null
 }
 
+/** The panel's close button: deselect in the view too, so the ring goes with it. */
+function closeSpawnPanel() {
+  scene3d.value?.clearSelection()
+  clearSelectedSpawn()
+}
+
 async function copyMigration() {
   if (!migrationSql.value) return
   try {
@@ -508,8 +516,8 @@ async function copyMigration() {
 }
 
 // ── 3D minimap ─────────────────────────────────────────────────────────
-// The minimap sits with the view controls (top right, as in the client) so
-// the spawn panel stacks under it; the camera pose is read off the 3D view.
+// The minimap sits with the view controls (top right, as in the client); the
+// camera pose is read off the 3D view.
 const scene3d = ref<InstanceType<typeof WorldScene3D> | null>(null)
 
 function cameraPose() {
@@ -679,9 +687,8 @@ onMounted(async () => {
             <p>{{ emptyMessage }}</p>
           </div>
 
-          <!-- Right edge, as in the client: the minimap in the top corner,
-               the selected spawn's panel under it, and the view controls
-               pushed to the bottom corner, out of the way of both. -->
+          <!-- Right edge, as in the client: the minimap in the top corner and
+               the view controls pushed to the bottom corner. -->
           <div v-if="selectedMap" class="stage-right">
             <!-- A WMO-only instance has no minimap tiles to draw. -->
             <SceneMinimap
@@ -692,18 +699,6 @@ onMounted(async () => {
               v-model:yards="store.minimapYards"
               :markers="minimapMarkers"
             />
-
-            <div v-if="activeViewMode === '3d' && selectedSpawn" class="spawn-overlay">
-              <SpawnInfoPanel
-                :spawn="selectedSpawn"
-                v-model:moveArmed="moveArmed"
-                :movedPosition="movedPosition"
-                :migrationSql="migrationSql"
-                :sqlCopied="sqlCopied"
-                @copy-sql="copyMigration"
-                @close="clearSelectedSpawn"
-              />
-            </div>
 
             <div class="stage-controls">
               <!-- Instances are 3D only (see activeViewMode). -->
@@ -830,9 +825,24 @@ onMounted(async () => {
         </div>
       </template>
 
-      <!-- Zone tables live off the DB map id alone, minimap or not. -->
-      <template v-if="tablesMap != null" #inspector>
+      <!-- Zone tables live off the DB map id alone, minimap or not. A spawn
+           selected in 3D takes their place until it is deselected; the tables
+           stay mounted meanwhile so their tab, search and rows come back
+           as they were. -->
+      <template v-if="tablesMap != null || spawnInInspector" #inspector>
+        <SpawnInfoPanel
+          v-if="spawnInInspector && selectedSpawn"
+          :spawn="selectedSpawn"
+          v-model:moveArmed="moveArmed"
+          :movedPosition="movedPosition"
+          :migrationSql="migrationSql"
+          :sqlCopied="sqlCopied"
+          @copy-sql="copyMigration"
+          @close="closeSpawnPanel"
+        />
         <ZoneTablesPanel
+          v-if="tablesMap != null"
+          v-show="!spawnInInspector"
           ref="tablesPanel"
           :map="tablesMap"
           :zoneId="selectedZone?.zoneId"
@@ -1009,8 +1019,7 @@ onMounted(async () => {
 }
 
 /* Right-edge column over the map: minimap at the top, view controls at the
-   bottom, and the spawn panel in between, scrolling internally instead of
-   pushing anything. */
+   bottom. */
 .stage-right {
   position: absolute;
   top: 0.75rem;
@@ -1038,7 +1047,7 @@ onMounted(async () => {
   gap: 0.5rem;
   flex-wrap: nowrap;
   justify-content: flex-end;
-  /* Bottom of the column whether or not a spawn panel sits above. */
+  /* Bottom of the column whether or not the minimap sits above. */
   margin-top: auto;
 }
 
@@ -1057,24 +1066,6 @@ onMounted(async () => {
 
 .stage-controls :deep(.p-togglebutton-content) {
   padding: 0.2rem 0.4rem;
-}
-
-.spawn-overlay {
-  display: flex;
-  align-items: flex-start;
-  flex: 1;
-  min-height: 0;
-}
-
-/* The overlay box fills the column down to the controls; only the panel in
-   it should catch the pointer, not the empty strip of 3D view under it. */
-.stage-right > .spawn-overlay {
-  pointer-events: none;
-}
-
-.spawn-overlay > * {
-  max-height: 100%;
-  pointer-events: auto;
 }
 
 /* Coordinates float over the map's bottom-left corner instead of a toolbar. */

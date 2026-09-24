@@ -345,7 +345,7 @@ function cameraPose(): Readonly<CameraPose> | null {
   return poseReady ? pose : null
 }
 
-defineExpose({ cameraPose })
+defineExpose({ cameraPose, clearSelection })
 
 /** Creates the spawn manager and adds it to the scene (idempotent). */
 function enableSpawns() {
