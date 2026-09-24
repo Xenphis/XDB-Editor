@@ -12,6 +12,24 @@ index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce733
      load(mapName, mapId) {
          this.#mapName = mapName;
          this.#mapDir = `world/maps/${mapName}`;
+diff --git a/dist/esm/map/light/db.js b/dist/esm/map/light/db.js
+index 7f8e8110b7948f5c1a64bff7f2ec5376a3d0f6cd..7cbf30eca1c7bfbcc05db69d154894fdaacc29df 100644
+--- a/dist/esm/map/light/db.js
++++ b/dist/esm/map/light/db.js
+@@ -71,7 +71,12 @@ const getIntBandsForParam = (paramId, bandDb) => {
+         const intBand = [];
+         for (let b = 0; b < intBandRecord.num; b++) {
+             const time = (intBandRecord.time[b] >>> 0) / 2880;
+-            const value = new THREE.Color(intBandRecord.data[b] >>> 0);
++            // The bands hold the client's own bytes, and every shader that reads
++            // them lights in that same gamma space. `new THREE.Color(hex)` reads
++            // a hex as sRGB and converts it to linear, which darkened the ambient
++            // term to under half its authored value; tagging it linear keeps the
++            // bytes as they are.
++            const value = new THREE.Color().setHex(intBandRecord.data[b] >>> 0, THREE.LinearSRGBColorSpace);
+             intBand.push(time, value);
+         }
+         intBands[band] = intBand;
 diff --git a/dist/esm/map/terrain/TerrainManager.js b/dist/esm/map/terrain/TerrainManager.js
 index e6532f687a2ccebda70aaa82ffeb3fc0821380e0..fcf860ec96152d4ce850f4fe6cafda6478ac2118 100644
 --- a/dist/esm/map/terrain/TerrainManager.js

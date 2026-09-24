@@ -813,7 +813,13 @@ onMounted(() => {
    * rewrites both from the DBC bands in its own update.
    */
   const applyUnderwater = (manager: MapManager, category: string): number => {
-    manager.mapLight.fogColor.setHex(UNDERWATER_TINT[category] ?? UNDERWATER_TINT_DEFAULT)
+    // Linear tag, like the Light.dbc colours this replaces: the library's
+    // shaders take the fog as gamma-space bytes, so the hex must not be
+    // converted on the way in.
+    manager.mapLight.fogColor.setHex(
+      UNDERWATER_TINT[category] ?? UNDERWATER_TINT_DEFAULT,
+      THREE.LinearSRGBColorSpace,
+    )
     const fog = manager.mapLight.fogParams
     fog.x = 1 / UNDERWATER_FOG_YARDS
     fog.y = UNDERWATER_FOG_YARDS
@@ -823,6 +829,8 @@ onMounted(() => {
   // Reused across frames; the managers cull their own M2s against this.
   const cullFrustum = new THREE.Frustum()
   const cullMatrix = new THREE.Matrix4()
+  // Scratch for the clear colour, decoded once per frame (see the render call).
+  const clearColor = new THREE.Color()
 
   const clock = new THREE.Clock()
   const animate = () => {
@@ -877,7 +885,10 @@ onMounted(() => {
     // WMO doodads and creature spawns now share one ModelManager, and it
     // advances each animator by `dt` per call.
     assets?.update(dt, camera)
-    renderer.setClearColor(mapManager.clearColor)
+    // The map light holds gamma-space bytes as-is, but the renderer encodes a
+    // clear colour from linear to sRGB. Decoding it first cancels that out, so
+    // the backdrop stays the fog colour the shaders draw with.
+    renderer.setClearColor(clearColor.copy(mapManager.clearColor).convertSRGBToLinear())
     renderer.render(scene, camera)
     updateFpsCounter(dt, now, renderer.info.render.calls, renderer.info.render.triangles)
   }
