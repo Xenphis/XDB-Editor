@@ -7,6 +7,10 @@
       "browse": "Parcourir…",
       "browseTitle": "Sélectionnez le dossier du client WoW 3.3.5"
     },
+    "categories": {
+      "world": "Monde ouvert",
+      "instances": "Donjons & raids"
+    },
     "zones": {
       "searchPlaceholder": "Rechercher une zone…",
       "mapMeta": "Carte {map}",
@@ -86,6 +90,14 @@
         "zuldrak": "Zul'Drak"
       }
     },
+    "instances": {
+      "searchPlaceholder": "Rechercher une instance…",
+      "meta": "{type} · Carte {map}",
+      "types": {
+        "dungeon": "Donjon",
+        "raid": "Raid"
+      }
+    },
     "tables": {
       "title": "Données de zone",
       "teleports": "Téléporteurs",
@@ -136,6 +148,10 @@
       "zoomIn": "Zoom avant",
       "zoomOut": "Zoom arrière"
     },
+    "collision": {
+      "toggle": "Collision de la caméra",
+      "hint": "Les murs, sols et plafonds arrêtent la caméra, comme un joueur. Surfaces opaques uniquement : le terrain et les objets ne bloquent pas."
+    },
     "picked": {
       "copy": "Copier la position",
       "clear": "Effacer"
@@ -167,6 +183,8 @@
       "noClient": "Renseignez le dossier du client WoW dans les Paramètres pour parcourir ses cartes.",
       "noZone": "Sélectionnez une zone dans la liste.",
       "noMinimap": "Pas de données minimap pour la carte de cette zone ({map}).",
+      "noInstance": "Sélectionnez une instance dans la liste.",
+      "instanceUnavailable": "La carte {map} est introuvable dans les données du client.",
       "loading": "Indexation des archives du client…",
       "error": "Échec du chargement du client : {message}"
     }

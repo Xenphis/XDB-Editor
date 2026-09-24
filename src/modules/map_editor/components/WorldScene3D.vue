@@ -58,6 +58,8 @@ const props = defineProps<{
   moveArmed: boolean
   /** How much to ask of the GPU; read once, the parent remounts on change. */
   quality: RenderQuality
+  /** WMO walls, floors and ceilings stop the camera (read live, per move). */
+  collision: boolean
 }>()
 
 const emit = defineEmits<{
@@ -89,6 +91,15 @@ const MAX_PITCH = Math.PI / 2 - 0.01
 const PAN_DISTANCE = 30
 /** Wheel fly speed, yards per wheel deltaY unit (~4 yd per notch). */
 const WHEEL_SPEED = 0.04
+/**
+ * Camera sphere when collision is on, in yards: wide enough that the near
+ * plane (1 yd out, 60° fov) never pokes through the wall it rests against.
+ */
+const COLLISION_RADIUS = 1.5
+/** A colliding move advances in steps under the radius, so it can't hop a wall. */
+const COLLISION_STEP = COLLISION_RADIUS / 2
+/** Steps per move at most; a longer move (a hitch at boost speed) is cut short. */
+const MAX_COLLISION_STEPS = 64
 
 /**
  * Device pixel ratio ceiling. A 2x display quadruples the fragments shaded,
@@ -621,6 +632,23 @@ onMounted(() => {
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('blur', onBlur)
 
+  // ── Camera moves (keyboard, wheel, pan) ─────────────────────────────
+  // Fly-tos and the start position teleport the camera instead: they aim at
+  // known-good spots, and must be able to reach one behind a wall.
+  const collisionStep = new THREE.Vector3()
+  const moveCamera = (delta: THREE.Vector3) => {
+    if (!props.collision || !wmoManager) {
+      camera.position.add(delta)
+      return
+    }
+    const needed = Math.ceil(delta.length() / COLLISION_STEP)
+    collisionStep.copy(delta).divideScalar(Math.max(needed, 1))
+    for (let i = 0; i < Math.min(needed, MAX_COLLISION_STEPS); i++) {
+      camera.position.add(collisionStep)
+      wmoManager.collide(camera.position, COLLISION_RADIUS)
+    }
+  }
+
   const forward = new THREE.Vector3()
   const rightward = new THREE.Vector3()
   const movement = new THREE.Vector3()
@@ -646,7 +674,7 @@ onMounted(() => {
 
     const boost = some(KEY_BOOST) ? MOVE_BOOST : 1
     movement.normalize().multiplyScalar(MOVE_SPEED * boost * dt)
-    camera.position.add(movement)
+    moveCamera(movement)
   }
 
   // ── Right-click → world position under the pointer ───────────────────
@@ -671,6 +699,8 @@ onMounted(() => {
   // direction. Drag state doubles as the click-slop anchor for picking.
   let dragButton = -1
   let lastPointer: { x: number; y: number } | null = null
+  const pan = new THREE.Vector3()
+  const wheelMove = new THREE.Vector3()
 
   const onPointerDown = (event: PointerEvent) => {
     if (event.button === 2) rightDown = { x: event.clientX, y: event.clientY }
@@ -698,14 +728,18 @@ onMounted(() => {
       const scale = (2 * PAN_DISTANCE * Math.tan((camera.fov * Math.PI) / 360)) / height
       const rightX = Math.sin(yaw)
       const rightY = -Math.cos(yaw)
-      camera.position.x += (-dx * rightX + dy * Math.cos(yaw)) * scale
-      camera.position.y += (-dx * rightY + dy * Math.sin(yaw)) * scale
+      pan.set(
+        (-dx * rightX + dy * Math.cos(yaw)) * scale,
+        (-dx * rightY + dy * Math.sin(yaw)) * scale,
+        0,
+      )
+      moveCamera(pan)
     }
   }
 
   const onWheel = (event: WheelEvent) => {
     event.preventDefault()
-    camera.position.addScaledVector(lookDir, -event.deltaY * WHEEL_SPEED)
+    moveCamera(wheelMove.copy(lookDir).multiplyScalar(-event.deltaY * WHEEL_SPEED))
   }
 
   // Left-click without drag selects the spawn model under the pointer

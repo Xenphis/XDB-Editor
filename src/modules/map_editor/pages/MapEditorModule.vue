@@ -12,18 +12,23 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import { useMapEditorStore } from '../store'
-import { ensureClientLoaded } from '../service'
+import { ensureClientLoaded, loadAreatriggerTeleportTargets, loadMapRecords } from '../service'
 import { ZONES, ZONE_BY_ID } from '../data/zones'
-import type {
-  CreatureSpawnMarker,
-  FocusPosition,
-  GameTele,
-  MinimapMapInfo,
-  MinimapMarker,
-  PickedPosition,
-  WorldPosition,
-  ZoneDefinition,
+import {
+  INSTANCE_TYPE_DUNGEON,
+  INSTANCE_TYPE_RAID,
+  type CreatureSpawnMarker,
+  type FocusPosition,
+  type GameTele,
+  type MapCategory,
+  type MapRecord,
+  type MinimapMapInfo,
+  type MinimapMarker,
+  type PickedPosition,
+  type WorldPosition,
+  type ZoneDefinition,
 } from '../types'
+import MapCategorySelect from '../components/MapCategorySelect.vue'
 import WorldMap from '../components/WorldMap.vue'
 import WorldScene3D from '../components/WorldScene3D.vue'
 import SceneMinimap from '../components/SceneMinimap.vue'
@@ -44,6 +49,13 @@ const viewModes = [
   { label: '2D', value: '2d' as const },
   { label: '3D', value: '3d' as const },
 ]
+/**
+ * What the stage shows. Instances are 3D only: most have no usable 2D map —
+ * their minimaps are drawn per WMO, which the tile index doesn't serve, and
+ * the ones built from WMOs only have no tiles at all. `viewMode` keeps the
+ * open world's own choice for when its list comes back.
+ */
+const activeViewMode = computed(() => (store.mapCategory === 'instances' ? '3d' : viewMode.value))
 /** Last 2D view center; seeds the 3D camera when toggling. */
 const viewCenter = ref<WorldPosition | null>(null)
 /** Position picked with right-click, shown in the toolbar with a copy action. */
@@ -51,8 +63,10 @@ const picked = ref<PickedPosition | null>(null)
 const copied = ref(false)
 
 // ── Zones ──────────────────────────────────────────────────────────────
-// The zone list is the only navigation: selecting a zone switches the map.
-const zoneSearch = ref('')
+// The sidebar list is the only navigation: selecting a zone (or, in the
+// instances category, a dungeon/raid) switches the map.
+/** Search of whichever list is shown; a category switch clears it. */
+const listSearch = ref('')
 
 /** Localized zone name; a zone without a translation shows its raw id. */
 function zoneName(zone: ZoneDefinition): string {
@@ -61,14 +75,16 @@ function zoneName(zone: ZoneDefinition): string {
 }
 
 const filteredZones = computed(() => {
-  const query = zoneSearch.value.trim().toLowerCase()
+  const query = listSearch.value.trim().toLowerCase()
   const zones = query
     ? ZONES.filter(zone => zoneName(zone).toLowerCase().includes(query))
     : [...ZONES]
   // Continents in map order, zones alphabetically within each (per locale).
   return zones.sort((a, b) => a.map - b.map || zoneName(a).localeCompare(zoneName(b)))
 })
-const selectedZone = computed(() => ZONE_BY_ID.get(store.lastZoneId) ?? null)
+const selectedZone = computed(() =>
+  store.mapCategory === 'world' ? ZONE_BY_ID.get(store.lastZoneId) ?? null : null,
+)
 /** Camera/view target; each assignment is a fresh object so the views re-trigger. */
 const focusTarget = ref<FocusPosition | null>(null)
 /** Selected table row position, shown as a dot on the 2D map. */
@@ -78,6 +94,158 @@ const rowMarker = ref<FocusPosition | null>(null)
 function onFly(target: { x: number; y: number; z: number }) {
   focusTarget.value = { ...target }
   rowMarker.value = { ...target }
+}
+
+// ── Instances ──────────────────────────────────────────────────────────
+// Dungeons and raids come from the client's Map.dbc, and open on their
+// entrance: the map's first areatrigger_teleport landing (DB).
+const mapRecordsLoading = ref(false)
+/** Entrance per DB map id; null until the DB has answered. */
+const entrances = ref<Map<number, FocusPosition> | null>(null)
+let entrancesLoad: Promise<Map<number, FocusPosition>> | null = null
+
+/** Fetched once per visit; a failure leaves every instance without one. */
+function instanceEntrances(): Promise<Map<number, FocusPosition>> {
+  entrancesLoad ??= loadAreatriggerTeleportTargets()
+    .then(rows => new Map(rows.map((row): [number, FocusPosition] => [row.target_map, {
+      x: row.target_position_x,
+      y: row.target_position_y,
+      z: row.target_position_z,
+      orientation: row.target_orientation,
+    }])))
+    .catch(e => {
+      console.error('Failed to load instance entrances:', e)
+      return new Map<number, FocusPosition>()
+    })
+    .then(map => (entrances.value = map))
+  return entrancesLoad
+}
+
+/** Map.dbc read of the current client. Showing a WMO-only instance waits on
+ * it: its directory, which the 3D view loads it by, only comes from there. */
+let instanceMapsLoad: Promise<void> = Promise.resolve()
+
+async function loadInstanceMaps() {
+  mapRecordsLoading.value = true
+  try {
+    const records = await loadMapRecords()
+    store.instanceMaps = records.filter(
+      record =>
+        record.instanceType === INSTANCE_TYPE_DUNGEON || record.instanceType === INSTANCE_TYPE_RAID,
+    )
+  } catch (e) {
+    store.instanceMaps = []
+    console.error('Failed to read Map.dbc:', e)
+  } finally {
+    mapRecordsLoading.value = false
+  }
+}
+
+const instancesLoading = computed(() => mapRecordsLoading.value || entrances.value === null)
+
+/**
+ * The dungeons and raids that can be shown (minimap tiles) or at least
+ * entered (an entrance in the DB) — which drops the unused and test instances
+ * Map.dbc still carries. Alphabetical; the search matches a name or a map id.
+ */
+const filteredInstances = computed(() => {
+  const tiled = new Set(store.maps.map(info => info.mapId))
+  const query = listSearch.value.trim().toLowerCase()
+  return store.instanceMaps
+    .filter(record => tiled.has(record.id) || entrances.value?.has(record.id))
+    .filter(
+      record =>
+        !query || record.name.toLowerCase().includes(query) || String(record.id) === query,
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+function instanceMeta(record: MapRecord): string {
+  const type = record.instanceType === INSTANCE_TYPE_RAID ? 'raid' : 'dungeon'
+  return t('mapEditor.instances.meta', {
+    type: t(`mapEditor.instances.types.${type}`),
+    map: record.id,
+  })
+}
+
+/**
+ * Stand-ins for the dungeons and raids built from WMOs only: without minimap
+ * tiles the index doesn't list them, but the 3D view renders them from their
+ * WDT's global WMO. The bounds span the whole grid so spawns stream around
+ * the camera wherever it goes; terrain, water and ADT buildings find no ADT
+ * there and stay empty.
+ */
+const wmoOnlyMaps = computed<MinimapMapInfo[]>(() => {
+  const tiled = new Set(store.maps.map(info => info.mapId))
+  return store.instanceMaps
+    .filter(record => !tiled.has(record.id))
+    .map(record => ({
+      id: record.directory.toLowerCase(),
+      name: record.directory,
+      mapId: record.id,
+      tileCount: 0,
+      minX: 0,
+      maxX: 63,
+      minY: 0,
+      maxY: 63,
+    }))
+})
+
+/** What the views load for a DB map id: its minimap index entry, else its WMO-only stand-in. */
+function mapInfoByMapId(map: number): MinimapMapInfo | null {
+  return (
+    store.maps.find(info => info.mapId === map) ??
+    wmoOnlyMaps.value.find(info => info.mapId === map) ??
+    null
+  )
+}
+
+/** DB map id of the selected dungeon/raid, while that list is shown. */
+const selectedInstanceMap = computed(() =>
+  store.mapCategory === 'instances' ? store.lastInstanceMap : null,
+)
+const selectedEntrance = computed(() => {
+  const map = selectedInstanceMap.value
+  return map == null ? null : entrances.value?.get(map) ?? null
+})
+
+/**
+ * Same as `selectZone`, with the entrance as origin. An instance without one
+ * opens centered on its tiles (only tiled ones are listed without one).
+ */
+async function selectInstance(map: number) {
+  store.lastInstanceMap = map
+  const tiled = store.maps.some(info => info.mapId === map)
+  const [byMap] = await Promise.all([instanceEntrances(), tiled ? null : instanceMapsLoad])
+  // Another pick, or a category switch, landed while this was loading.
+  if (store.mapCategory !== 'instances' || store.lastInstanceMap !== map) return
+  const entrance = byMap.get(map)
+  focusTarget.value = entrance ? { ...entrance } : null
+  rowMarker.value = null
+  store.lastMapId = mapInfoByMapId(map)?.id ?? ''
+}
+
+function onSelectInstance(record: MapRecord) {
+  void selectInstance(record.id)
+}
+
+/** Shows the current category's last selection, or nothing when it has none. */
+async function showCategorySelection() {
+  if (selectedInstanceMap.value != null) {
+    await selectInstance(selectedInstanceMap.value)
+  } else if (selectedZone.value) {
+    selectZone(selectedZone.value)
+  } else {
+    focusTarget.value = null
+    rowMarker.value = null
+    store.lastMapId = ''
+  }
+}
+
+function onCategoryChange(category: MapCategory) {
+  store.mapCategory = category
+  listSearch.value = ''
+  void showCategorySelection()
 }
 
 /**
@@ -95,9 +263,18 @@ async function applyPendingFocus() {
   const y = Number(focusY)
   const z = Number(focusZ)
   if (![mapId, x, y, z].every(Number.isFinite)) return
-  const info = store.maps.find(m => m.mapId === mapId)
+  // A WMO-only instance is only known once Map.dbc is read.
+  if (!store.maps.some(m => m.mapId === mapId)) await instanceMapsLoad
+  const info = mapInfoByMapId(mapId)
   if (!info) return
-  store.lastZoneId = ''
+  // Continents belong to the zone list, anything else to the instance list.
+  if (ZONES.some(zone => zone.map === mapId)) {
+    store.mapCategory = 'world'
+    store.lastZoneId = ''
+  } else {
+    store.mapCategory = 'instances'
+    store.lastInstanceMap = mapId
+  }
   store.lastMapId = info.id
   // The lastMapId watch below clears rowMarker on a map switch; let it flush
   // before setting the marker so it isn't wiped out.
@@ -150,13 +327,33 @@ async function copyPicked() {
 }
 
 const selectedMap = computed<MinimapMapInfo | null>(
-  () => store.maps.find(m => m.id === store.lastMapId) ?? null,
+  () =>
+    store.maps.find(m => m.id === store.lastMapId) ??
+    wmoOnlyMaps.value.find(m => m.id === store.lastMapId) ??
+    null,
 )
 
 /** DB map id of what is on screen — `game_tele.map` for a new teleport. */
 const dbMapId = computed<number | null>(
-  () => selectedMap.value?.mapId ?? selectedZone.value?.map ?? null,
+  () => selectedMap.value?.mapId ?? selectedZone.value?.map ?? selectedInstanceMap.value,
 )
+
+/** Map the tables panel lists: the selected zone's, or the instance's. */
+const tablesMap = computed(() => selectedZone.value?.map ?? selectedInstanceMap.value)
+
+/** Why the stage has no map to show. */
+const emptyMessage = computed(() => {
+  if (loading.value) return t('mapEditor.states.loading')
+  if (store.maps.length === 0) return t('mapEditor.states.noClient')
+  if (store.mapCategory === 'instances') {
+    return selectedInstanceMap.value != null
+      ? t('mapEditor.states.instanceUnavailable', { map: selectedInstanceMap.value })
+      : t('mapEditor.states.noInstance')
+  }
+  return selectedZone.value
+    ? t('mapEditor.states.noMinimap', { map: selectedZone.value.map })
+    : t('mapEditor.states.noZone')
+})
 
 // ── Teleports (game_tele) ──────────────────────────────────────────────
 // This module owns the table: right-clicking the 2D map (or the picked-chip
@@ -187,12 +384,13 @@ function onMapContext(payload: { position: PickedPosition; event: MouseEvent }) 
   mapMenu.value?.show(payload.event)
 }
 
-/** Seed for the panel's + button: last picked spot, else the view, else the zone. */
+/** Seed for the panel's + button: last picked spot, else the view, else the
+ * zone's origin or the instance's entrance. */
 function defaultTeleportPosition(): PickedPosition | null {
   if (picked.value) return picked.value
   if (viewCenter.value) return { ...viewCenter.value, z: null }
-  const origin = selectedZone.value?.origin
-  return origin ? { x: origin.x, y: origin.y, z: origin.z } : null
+  const origin = selectedZone.value?.origin ?? selectedEntrance.value
+  return origin ? { x: origin.x, y: origin.y, z: origin.z ?? null } : null
 }
 
 function openNewTeleport(position: PickedPosition | null) {
@@ -354,8 +552,8 @@ watch(() => store.lastMapId, () => {
 
 // Leaving 3D invalidates any current spawn selection, and takes away the
 // settings button the popover is anchored to.
-watch(viewMode, () => {
-  if (viewMode.value === '3d') return
+watch(activeViewMode, () => {
+  if (activeViewMode.value === '3d') return
   clearSelectedSpawn()
   viewSettings.value?.hide()
 })
@@ -367,13 +565,11 @@ async function load() {
   error.value = ''
   try {
     store.maps = await ensureClientLoaded(path)
-    if (selectedZone.value) {
-      // Restore the persisted zone: map + camera back at its origin.
-      selectZone(selectedZone.value)
-    } else {
-      // No zone yet: nothing to display (the map only follows the zone).
-      store.lastMapId = ''
-    }
+    // Not awaited: Map.dbc waits for the client's background open.
+    instanceMapsLoad = loadInstanceMaps()
+    // Restore the persisted zone or instance: map + camera back at its origin.
+    // Nothing selected yet: nothing to display (the map only follows the list).
+    await showCategorySelection()
   } catch (e) {
     store.maps = []
     error.value = String(e)
@@ -391,6 +587,7 @@ watch(() => store.clientPath, () => {
 })
 
 onMounted(async () => {
+  void instanceEntrances()
   if (store.clientPath && store.maps.length === 0) {
     await load()
   }
@@ -408,9 +605,14 @@ onMounted(async () => {
     </div>
 
     <EntityWorkspace storageKey="mapEditor" listWidth="240px" class="editor-workspace">
-      <!-- Curated zones (data/zones.ts); selecting one drives map + camera. -->
+      <!-- Curated zones (data/zones.ts) or the client's dungeons and raids;
+           selecting one drives map + camera. Keyed so a switch also clears
+           the list's own search box. -->
       <template #list>
+        <MapCategorySelect :modelValue="store.mapCategory" @update:modelValue="onCategoryChange" />
         <EntityListPanel
+          v-if="store.mapCategory === 'world'"
+          key="world"
           :items="filteredZones"
           :idOf="zone => zone.id"
           :titleOf="zoneName"
@@ -418,8 +620,22 @@ onMounted(async () => {
           :selectedId="store.lastZoneId || null"
           :showAdd="false"
           :searchPlaceholder="t('mapEditor.zones.searchPlaceholder')"
-          @search="zoneSearch = $event"
+          @search="listSearch = $event"
           @select="selectZone"
+        />
+        <EntityListPanel
+          v-else
+          key="instances"
+          :items="filteredInstances"
+          :idOf="record => record.id"
+          :titleOf="record => record.name"
+          :metaOf="instanceMeta"
+          :selectedId="store.lastInstanceMap"
+          :loading="instancesLoading"
+          :showAdd="false"
+          :searchPlaceholder="t('mapEditor.instances.searchPlaceholder')"
+          @search="listSearch = $event"
+          @select="onSelectInstance"
         />
       </template>
 
@@ -428,7 +644,7 @@ onMounted(async () => {
 
         <div class="map-stage">
           <WorldMap
-            v-if="selectedMap && viewMode === '2d'"
+            v-if="selectedMap && activeViewMode === '2d'"
             :map="selectedMap"
             :focus="focusTarget"
             :marker="rowMarker"
@@ -452,6 +668,7 @@ onMounted(async () => {
             :spawnPhase="store.spawnPhase"
             :moveArmed="moveArmed"
             :quality="store.renderQuality"
+            :collision="store.mapCategory === 'instances' && store.cameraCollision"
             class="editor-map"
             @pick="picked = $event"
             @select-spawn="onSelectSpawn"
@@ -459,25 +676,16 @@ onMounted(async () => {
           />
           <div v-else class="editor-empty">
             <i class="pi pi-map" style="font-size: 3rem; color: var(--text-placeholder)"></i>
-            <p>
-              {{
-                loading
-                  ? t('mapEditor.states.loading')
-                  : store.maps.length === 0
-                    ? t('mapEditor.states.noClient')
-                    : selectedZone
-                      ? t('mapEditor.states.noMinimap', { map: selectedZone.map })
-                      : t('mapEditor.states.noZone')
-              }}
-            </p>
+            <p>{{ emptyMessage }}</p>
           </div>
 
           <!-- Right edge, as in the client: the minimap in the top corner,
                the selected spawn's panel under it, and the view controls
                pushed to the bottom corner, out of the way of both. -->
           <div v-if="selectedMap" class="stage-right">
+            <!-- A WMO-only instance has no minimap tiles to draw. -->
             <SceneMinimap
-              v-if="viewMode === '3d' && store.showMinimap"
+              v-if="activeViewMode === '3d' && store.showMinimap && selectedMap.tileCount > 0"
               :key="selectedMap.id"
               :map="selectedMap"
               :pose="cameraPose"
@@ -485,7 +693,7 @@ onMounted(async () => {
               :markers="minimapMarkers"
             />
 
-            <div v-if="viewMode === '3d' && selectedSpawn" class="spawn-overlay">
+            <div v-if="activeViewMode === '3d' && selectedSpawn" class="spawn-overlay">
               <SpawnInfoPanel
                 :spawn="selectedSpawn"
                 v-model:moveArmed="moveArmed"
@@ -498,7 +706,9 @@ onMounted(async () => {
             </div>
 
             <div class="stage-controls">
+              <!-- Instances are 3D only (see activeViewMode). -->
               <SelectButton
+                v-if="store.mapCategory === 'world'"
                 v-model="viewMode"
                 :options="viewModes"
                 optionLabel="label"
@@ -511,7 +721,7 @@ onMounted(async () => {
                    height, and it stays pressed while the popover is open. Its
                    own click flip is overridden by @show/@hide below. -->
               <ToggleButton
-                v-if="viewMode === '3d'"
+                v-if="activeViewMode === '3d'"
                 :modelValue="viewSettingsOpen"
                 size="small"
                 class="stage-icon-toggle"
@@ -567,14 +777,25 @@ onMounted(async () => {
                   </label>
                   <ToggleSwitch v-model="store.showMinimap" inputId="view-settings-minimap" />
                 </div>
+                <!-- Instances only: narrow interiors are where the camera
+                     slips through walls; the open world is left free-flying. -->
+                <div v-if="store.mapCategory === 'instances'" class="view-settings-field">
+                  <div class="view-settings-row">
+                    <label for="view-settings-collision" class="view-settings-label">
+                      {{ t('mapEditor.collision.toggle') }}
+                    </label>
+                    <ToggleSwitch v-model="store.cameraCollision" inputId="view-settings-collision" />
+                  </div>
+                  <p class="view-settings-hint">{{ t('mapEditor.collision.hint') }}</p>
+                </div>
               </div>
             </Popover>
           </div>
 
           <!-- Coordinates float bottom-left: live cursor position, then the
                right-clicked/picked point with its actions. -->
-          <div v-if="(cursor && viewMode === '2d') || picked" class="stage-bottom-left">
-            <span v-if="cursor && viewMode === '2d'" class="cursor-coords">
+          <div v-if="(cursor && activeViewMode === '2d') || picked" class="stage-bottom-left">
+            <span v-if="cursor && activeViewMode === '2d'" class="cursor-coords">
               X {{ cursor.x.toFixed(1) }} · Y {{ cursor.y.toFixed(1) }}
             </span>
             <span v-if="picked" class="picked-chip">
@@ -610,11 +831,11 @@ onMounted(async () => {
       </template>
 
       <!-- Zone tables live off the DB map id alone, minimap or not. -->
-      <template v-if="selectedZone" #inspector>
+      <template v-if="tablesMap != null" #inspector>
         <ZoneTablesPanel
           ref="tablesPanel"
-          :map="selectedZone.map"
-          :zoneId="selectedZone.zoneId"
+          :map="tablesMap"
+          :zoneId="selectedZone?.zoneId"
           @fly="onFly"
           @add-teleport="openNewTeleport(defaultTeleportPosition())"
           @edit-teleport="openTeleport"

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { MinimapMapInfo, RenderQuality } from './types'
+import type { MapCategory, MapRecord, MinimapMapInfo, RenderQuality } from './types'
 
 const STORAGE_KEY = 'mapEditor:settings'
 
@@ -8,10 +8,13 @@ interface PersistedState {
   clientPath: string
   lastMapId: string
   lastZoneId: string
+  mapCategory: MapCategory
+  lastInstanceMap: number | null
   spawnPhase: number | null
   renderQuality: RenderQuality
   showMinimap: boolean
   minimapYards: number
+  cameraCollision: boolean
 }
 
 const RENDER_QUALITIES: readonly RenderQuality[] = ['low', 'medium', 'high']
@@ -40,6 +43,8 @@ function readInitial(): PersistedState {
         clientPath: typeof parsed.clientPath === 'string' ? parsed.clientPath : '',
         lastMapId: typeof parsed.lastMapId === 'string' ? parsed.lastMapId : '',
         lastZoneId: typeof parsed.lastZoneId === 'string' ? parsed.lastZoneId : '',
+        mapCategory: parsed.mapCategory === 'instances' ? 'instances' : 'world',
+        lastInstanceMap: typeof parsed.lastInstanceMap === 'number' ? parsed.lastInstanceMap : null,
         spawnPhase: typeof parsed.spawnPhase === 'number' ? parsed.spawnPhase : null,
         renderQuality: readQuality(parsed.renderQuality),
         showMinimap: typeof parsed.showMinimap === 'boolean' ? parsed.showMinimap : true,
@@ -47,6 +52,7 @@ function readInitial(): PersistedState {
           typeof parsed.minimapYards === 'number' && parsed.minimapYards > 0
             ? parsed.minimapYards
             : DEFAULT_MINIMAP_YARDS,
+        cameraCollision: parsed.cameraCollision === true,
       }
     }
   } catch {
@@ -56,10 +62,13 @@ function readInitial(): PersistedState {
     clientPath: '',
     lastMapId: '',
     lastZoneId: '',
+    mapCategory: 'world',
+    lastInstanceMap: null,
     spawnPhase: null,
     renderQuality: readQuality(undefined),
     showMinimap: true,
     minimapYards: DEFAULT_MINIMAP_YARDS,
+    cameraCollision: false,
   }
 }
 
@@ -73,6 +82,10 @@ export const useMapEditorStore = defineStore('mapEditor', () => {
   const lastMapId = ref<string>(initial.lastMapId)
   /** Selected zone slug (data/zones.ts); '' when browsing maps directly. */
   const lastZoneId = ref<string>(initial.lastZoneId)
+  /** Which list the sidebar shows; each keeps its own last selection. */
+  const mapCategory = ref<MapCategory>(initial.mapCategory)
+  /** Selected dungeon/raid, by DB map id; null when none picked yet. */
+  const lastInstanceMap = ref<number | null>(initial.lastInstanceMap)
   /** Only stream spawns visible in this phase (bitmask); null = every phase. */
   const spawnPhase = ref<number | null>(initial.spawnPhase)
   /**
@@ -85,18 +98,25 @@ export const useMapEditorStore = defineStore('mapEditor', () => {
   /** Minimap overlay of the 3D view: shown, and its diameter in yards. */
   const showMinimap = ref(initial.showMinimap)
   const minimapYards = ref(initial.minimapYards)
+  /** Instances only: WMO walls stop the 3D camera, as they stop a player. */
+  const cameraCollision = ref(initial.cameraCollision)
   /** Maps returned by the last successful minimap_load_client call. */
   const maps = ref<MinimapMapInfo[]>([])
+  /** The client's dungeon and raid maps (Map.dbc), re-read with the client. */
+  const instanceMaps = ref<MapRecord[]>([])
 
   watch(
     [
       clientPath,
       lastMapId,
       lastZoneId,
+      mapCategory,
+      lastInstanceMap,
       spawnPhase,
       renderQuality,
       showMinimap,
       minimapYards,
+      cameraCollision,
     ],
     () => {
       try {
@@ -106,10 +126,13 @@ export const useMapEditorStore = defineStore('mapEditor', () => {
             clientPath: clientPath.value,
             lastMapId: lastMapId.value,
             lastZoneId: lastZoneId.value,
+            mapCategory: mapCategory.value,
+            lastInstanceMap: lastInstanceMap.value,
             spawnPhase: spawnPhase.value,
             renderQuality: renderQuality.value,
             showMinimap: showMinimap.value,
             minimapYards: minimapYards.value,
+            cameraCollision: cameraCollision.value,
           }),
         )
       } catch {
@@ -122,10 +145,14 @@ export const useMapEditorStore = defineStore('mapEditor', () => {
     clientPath,
     lastMapId,
     lastZoneId,
+    mapCategory,
+    lastInstanceMap,
     spawnPhase,
     renderQuality,
     showMinimap,
     minimapYards,
+    cameraCollision,
     maps,
+    instanceMaps,
   }
 })

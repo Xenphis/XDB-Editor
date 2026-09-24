@@ -3,11 +3,13 @@ import type { LatLng } from 'leaflet'
 import { MPQ_ASSET_BASE_URL } from '@core/wow/assetHost'
 import type { AttachmentPoint } from '@core/wow/creatureDisplay'
 import type {
+  AreatriggerTeleportTarget,
   CreatureModelInfo,
   CreatureSpawnMarker,
   GameObjectModelInfo,
   GameTele,
   LiquidMesh,
+  MapRecord,
   MinimapMapInfo,
   WmoModel,
   WmoPlacement,
@@ -170,6 +172,17 @@ export function deleteGameTele(id: number): Promise<void> {
  * null when the zone has no world map entry. Rejects while no client loaded. */
 export function loadZoneWorldBounds(zoneId: number): Promise<WorldBounds | null> {
   return invoke<WorldBounds | null>('minimap_zone_bounds', { zoneId })
+}
+
+/** Every Map.dbc row (id, localized name, instance type) from the client.
+ * Waits out the client's background open; rejects while no client loaded. */
+export function loadMapRecords(): Promise<MapRecord[]> {
+  return invoke<MapRecord[]>('minimap_map_records')
+}
+
+/** First `areatrigger_teleport` landing per target map (DB): an instance's entrance. */
+export function loadAreatriggerTeleportTargets(): Promise<AreatriggerTeleportTarget[]> {
+  return invoke<AreatriggerTeleportTarget[]>('get_areatrigger_teleport_targets')
 }
 
 /** Creature spawns on one map, searchable. Zone scoping is spatial (the DB's

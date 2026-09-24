@@ -11,7 +11,7 @@ mod wmo;
 use db::DbState;
 use debug::{DebugState, set_debug_mode, get_debug_mode};
 use minimap::{MinimapState, minimap_load_client, minimap_adt_liquids};
-use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds};
+use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds, minimap_map_records};
 use spell_dbc::{client_spell_search, client_spell_names, client_spell_detail};
 use commands::addon::{get_npc_addon, save_npc_addon};
 use commands::batch::execute_batch;
@@ -49,6 +49,7 @@ use commands::movement::{get_npc_movement, save_npc_movement};
 use commands::resistance::{get_npc_resistances, save_npc_resistances};
 use commands::access_requirement::{get_access_requirements, get_access_requirement, save_access_requirement, delete_access_requirement};
 use commands::exploration_basexp::{get_exploration_basexps, get_exploration_basexp, save_exploration_basexp, delete_exploration_basexp};
+use commands::areatrigger_teleport::get_areatrigger_teleport_targets;
 use commands::game_tele::{get_game_teles_by_map, get_next_game_tele_id, save_game_tele, delete_game_tele};
 use commands::instance_template::{get_instance_templates, get_instance_template, save_instance_template, delete_instance_template};
 use commands::instance_encounters::{get_instance_encounters, get_instance_encounters_by_map, get_instance_encounter, save_instance_encounter, delete_instance_encounter};
@@ -200,6 +201,7 @@ pub fn run() {
       get_exploration_basexp,
       save_exploration_basexp,
       delete_exploration_basexp,
+      get_areatrigger_teleport_targets,
       get_game_teles_by_map,
       get_next_game_tele_id,
       save_game_tele,
@@ -274,6 +276,7 @@ pub fn run() {
       minimap_model_attachments,
       minimap_gameobject_models,
       minimap_zone_bounds,
+      minimap_map_records,
       client_spell_search,
       client_spell_names,
       client_spell_detail,

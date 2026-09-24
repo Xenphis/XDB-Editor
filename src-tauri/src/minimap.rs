@@ -864,6 +864,72 @@ fn parse_map_dbc(bytes: &[u8]) -> Option<HashMap<String, (u32, String)>> {
     Some(index)
 }
 
+/// One Map.dbc row, as the map editor lists it.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MapRecord {
+    pub id: u32,
+    pub directory: String,
+    /// MapName_lang in the client's own locale; the directory when it has none.
+    pub name: String,
+    /// 0 world, 1 dungeon, 2 raid, 3 battleground, 4 arena.
+    pub instance_type: u32,
+}
+
+/// Map.dbc (3.3.5, build 12340): field 0 = id, 1 = Directory, 2 =
+/// InstanceType, 5-20 = MapName_lang, one string per locale. A client only
+/// fills its own locale's column, so the first non-empty one is its name.
+fn parse_map_records(bytes: &[u8]) -> Option<Vec<MapRecord>> {
+    let u32_at = |offset: usize| -> Option<u32> {
+        Some(u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
+    };
+    if bytes.get(..4)? != b"WDBC" {
+        return None;
+    }
+    let record_count = u32_at(4)? as usize;
+    let record_size = u32_at(12)? as usize;
+    let strings_start = 20 + record_count * record_size;
+    if record_size < 21 * 4 || bytes.len() < strings_start {
+        return None;
+    }
+    let string_at = |offset: usize| -> Option<String> {
+        let text = bytes.get(strings_start + u32_at(offset)? as usize..)?;
+        let end = text.iter().position(|&b| b == 0)?;
+        Some(String::from_utf8_lossy(&text[..end]).into_owned())
+    };
+
+    let mut records = Vec::with_capacity(record_count);
+    for record in 0..record_count {
+        let base = 20 + record * record_size;
+        let directory = string_at(base + 4)?;
+        let name = (5..=20)
+            .filter_map(|field| string_at(base + field * 4))
+            .find(|name| !name.is_empty())
+            .unwrap_or_else(|| directory.clone());
+        records.push(MapRecord {
+            id: u32_at(base)?,
+            directory,
+            name,
+            instance_type: u32_at(base + 8)?,
+        });
+    }
+    Some(records)
+}
+
+/// Every Map.dbc row. The map editor lists its dungeons and raids from here
+/// rather than from the minimap index, which only knows maps with minimap
+/// tiles and so misses the instances built from WMOs alone.
+#[tauri::command]
+pub async fn minimap_map_records(app: tauri::AppHandle) -> Result<Vec<MapRecord>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<MinimapState>();
+        let bytes = state.read_asset("DBFilesClient\\Map.dbc")?;
+        parse_map_records(&bytes).ok_or_else(|| "Map.dbc: unexpected layout".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// GameObjectDisplayInfo.dbc: field 0 = id, field 1 = ModelName (string-block
 /// offset). Everything after it (10 sound ids, the geo box, the transport flag)
 /// is irrelevant here, so only those two fixed offsets are read.

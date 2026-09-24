@@ -1,4 +1,5 @@
 pub mod access_requirement;
+pub mod areatrigger_teleport;
 pub mod batch;
 pub mod addon;
 pub mod exploration_basexp;

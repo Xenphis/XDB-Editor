@@ -7,6 +7,7 @@ import { cullModel, type SceneModel } from './ModelCulling'
 import type { InstallQueue } from './InstallQueue'
 import { buildLiquidGeometry, liquidAbove, type LiquidSurfaces } from './LiquidSurfaces'
 import { TileWindow, type TileCoord } from './TileWindow'
+import { WmoCollider } from './WmoCollider'
 
 /**
  * Streams WMO buildings/structures around the camera to complement
@@ -70,6 +71,8 @@ interface LoadedWmo {
   /** Batch + liquid geometry group; cloned per placement (geometry/materials shared). */
   template: THREE.Group
   doodadSets: WmoDoodadSet[]
+  /** Camera collision, built the first time the camera collides near it. */
+  collider: WmoCollider | null
 }
 
 /** MODF/MDDF position [X,Y,Z] → world (== three) position. */
@@ -116,6 +119,9 @@ export class WmoManager {
   /** Placements from the WDT (WMO-only maps): loaded once, never evicted. */
   #globalObjects: THREE.Object3D[] = []
   #loading = new Set<string>()
+  /** Scratch for `collide`. */
+  readonly #local = new THREE.Vector3()
+  readonly #inverse = new THREE.Quaternion()
   #disposed = false
   #ownedGeometries: THREE.BufferGeometry[] = []
   #ownedMaterials: THREE.Material[] = []
@@ -281,6 +287,8 @@ export class WmoManager {
       const group = loaded.template.clone()
       group.position.copy(placementPosition(placement.position))
       group.quaternion.copy(placementQuaternion(placement.rotation))
+      // What `collide` finds the model's shared collider through.
+      group.userData.wmo = loaded
 
       const placed: SceneModel[] = []
       models.forEach((model, i) => {
@@ -349,6 +357,37 @@ export class WmoManager {
     return liquidAbove(cameraPosition, surfaces, false)
   }
 
+  /**
+   * Pushes a world position out of the solid geometry of the WMOs around it
+   * (see `WmoCollider`); returns whether it moved. Only the placements on
+   * screen are tested: a WMO the camera is in is one of them.
+   */
+  collide(position: THREE.Vector3, radius: number): boolean {
+    let moved = false
+    for (const object of this.#globalObjects) {
+      moved = this.#collideWith(object, position, radius) || moved
+    }
+    for (const { object } of this.#placements.values()) {
+      if (object?.visible) moved = this.#collideWith(object, position, radius) || moved
+    }
+    return moved
+  }
+
+  #collideWith(group: THREE.Object3D, position: THREE.Vector3, radius: number): boolean {
+    const loaded = group.userData.wmo as LoadedWmo | undefined
+    if (!loaded) return false
+    loaded.collider ??= new WmoCollider(loaded.template)
+    // Placements hang straight off `root`, which sits at the scene origin, and
+    // carry no scale: their position and rotation are the whole transform.
+    // Read from those rather than `matrixWorld`, which is stale until the
+    // first render after the placement is installed.
+    this.#inverse.copy(group.quaternion).invert()
+    const local = this.#local.subVectors(position, group.position).applyQuaternion(this.#inverse)
+    if (!loaded.collider.pushOut(local, radius)) return false
+    position.copy(local.applyQuaternion(group.quaternion).add(group.position))
+    return true
+  }
+
   /** Drops a placement's interior doodads out of the draw and skinning passes. */
   #hideGroup(group: THREE.Object3D): void {
     const doodads = group.userData.doodads as SceneModel[] | undefined
@@ -397,7 +436,7 @@ export class WmoManager {
           built.group.add(surface)
           this.#ownedGeometries.push(geometry)
         }
-        return { template: built.group, doodadSets: model.doodadSets }
+        return { template: built.group, doodadSets: model.doodadSets, collider: null }
       }),
     )
     this.#modelCache.set(filename, promise)

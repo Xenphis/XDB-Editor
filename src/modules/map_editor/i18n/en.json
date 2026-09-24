@@ -7,6 +7,10 @@
       "browse": "Browse…",
       "browseTitle": "Select the WoW 3.3.5 client folder"
     },
+    "categories": {
+      "world": "Open world",
+      "instances": "Dungeons & raids"
+    },
     "zones": {
       "searchPlaceholder": "Search zones…",
       "mapMeta": "Map {map}",
@@ -86,6 +90,14 @@
         "zuldrak": "Zul'Drak"
       }
     },
+    "instances": {
+      "searchPlaceholder": "Search instances…",
+      "meta": "{type} · Map {map}",
+      "types": {
+        "dungeon": "Dungeon",
+        "raid": "Raid"
+      }
+    },
     "tables": {
       "title": "Zone data",
       "teleports": "Teleports",
@@ -136,6 +148,10 @@
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out"
     },
+    "collision": {
+      "toggle": "Camera collision",
+      "hint": "Walls, floors and ceilings stop the camera, as they stop a player. Opaque surfaces only: terrain and objects don't block."
+    },
     "picked": {
       "copy": "Copy position",
       "clear": "Clear"
@@ -167,6 +183,8 @@
       "noClient": "Set the WoW client folder in Settings to browse its maps.",
       "noZone": "Select a zone from the list.",
       "noMinimap": "No minimap data for this zone's map ({map}).",
+      "noInstance": "Select an instance from the list.",
+      "instanceUnavailable": "Map {map} can't be found in the client data.",
       "loading": "Indexing the client archives…",
       "error": "Failed to load the client: {message}"
     }

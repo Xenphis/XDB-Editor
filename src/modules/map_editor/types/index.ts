@@ -70,6 +70,39 @@ export interface ZoneDefinition {
   zoneId?: number
 }
 
+/** What the map editor's sidebar lists: curated open-world zones, or the
+ * client's dungeon and raid maps. */
+export type MapCategory = 'world' | 'instances'
+
+export const MAP_CATEGORIES: readonly MapCategory[] = ['world', 'instances']
+
+/** Map.dbc InstanceType of a dungeon and of a raid. */
+export const INSTANCE_TYPE_DUNGEON = 1
+export const INSTANCE_TYPE_RAID = 2
+
+/** One Map.dbc row from the client (`minimap_map_records`). */
+export interface MapRecord {
+  /** DB map id. */
+  id: number
+  directory: string
+  /** Name in the client's own locale; the directory when it has none. */
+  name: string
+  /** 0 world, 1 dungeon, 2 raid, 3 battleground, 4 arena. */
+  instanceType: number
+}
+
+/**
+ * Where an `areatrigger_teleport` row drops the player — for an instance map,
+ * its entrance (one row per map: the lowest trigger ID).
+ */
+export interface AreatriggerTeleportTarget {
+  target_map: number
+  target_position_x: number
+  target_position_y: number
+  target_position_z: number
+  target_orientation: number
+}
+
 /** Liquid geometry for one category (water/ocean/magma/slime) in a tile. */
 export interface LiquidLayer {
   category: string
