@@ -75,9 +75,15 @@ interface LoadedWmo {
   collider: WmoCollider | null
 }
 
-/** MODF/MDDF position [X,Y,Z] → world (== three) position. */
-function placementPosition(p: [number, number, number]): THREE.Vector3 {
-  return new THREE.Vector3(MAP_CORNER - p[2], MAP_CORNER - p[0], p[1])
+/**
+ * MODF/MDDF position [X,Y,Z] → world (== three) position. An ADT placement
+ * counts from the map corner; the WDT's global WMO counts from the world
+ * origin — the server's vmap extractor adds the half extent back to it, and
+ * every WMO-only map stores [0,0,0] there, so its spawns sit around 0,0.
+ */
+function placementPosition(p: [number, number, number], global: boolean): THREE.Vector3 {
+  const corner = global ? 0 : MAP_CORNER
+  return new THREE.Vector3(corner - p[2], corner - p[0], p[1])
 }
 
 /**
@@ -201,7 +207,7 @@ export class WmoManager {
     if (this.#disposed || placements.length === 0) return
     await Promise.all(
       placements.map(async placement => {
-        const build = await this.#prepare(placement)
+        const build = await this.#prepare(placement, true)
         if (!build) return
         await this.#queue.run(() => {
           if (this.#disposed) return
@@ -241,7 +247,7 @@ export class WmoManager {
         const entry: TilePlacement = { object: null, tiles: new Set([key]) }
         this.#placements.set(id, entry)
 
-        const build = await this.#prepare(placement)
+        const build = await this.#prepare(placement, false)
         if (!build) return
         await this.#queue.run(() => {
           // Released with its last tile — or released and listed afresh,
@@ -262,8 +268,12 @@ export class WmoManager {
    * Loads one placement's assets, then hands back the synchronous step that
    * builds it — clone, transform, attach the doodads — for the caller to run
    * from the install queue. Null when the WMO itself could not be loaded.
+   * `global`: the placement comes from the WDT, not an ADT tile.
    */
-  async #prepare(placement: WmoPlacement): Promise<(() => THREE.Object3D) | null> {
+  async #prepare(
+    placement: WmoPlacement,
+    global: boolean,
+  ): Promise<(() => THREE.Object3D) | null> {
     let loaded: LoadedWmo
     try {
       loaded = await this.#loadModel(placement.model)
@@ -285,7 +295,7 @@ export class WmoManager {
 
     return () => {
       const group = loaded.template.clone()
-      group.position.copy(placementPosition(placement.position))
+      group.position.copy(placementPosition(placement.position, global))
       group.quaternion.copy(placementQuaternion(placement.rotation))
       // What `collide` finds the model's shared collider through.
       group.userData.wmo = loaded
