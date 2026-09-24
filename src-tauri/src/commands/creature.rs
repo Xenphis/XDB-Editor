@@ -129,6 +129,7 @@ pub async fn get_creature_spawns_in_bounds(
          LEFT JOIN creature_template ct ON ct.entry = c.id \
          WHERE c.map = ? AND c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ? \
          AND (? IS NULL OR (c.phaseMask & ?) <> 0) \
+         AND NOT EXISTS (SELECT 1 FROM game_event_creature gec WHERE gec.guid = c.guid) \
          LIMIT ?";
     let rows = debug_sql!(app, debug, SQL,
         sqlx::query_as::<_, CreatureSpawnRow>(SQL)
