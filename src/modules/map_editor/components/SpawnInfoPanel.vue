@@ -92,10 +92,6 @@ const shownResistances = computed(() =>
     .map(r => ({ school: SCHOOLS[r.School - 1], value: r.Resistance })),
 )
 
-const hasImmunities = computed(
-  () => !!template.value && (template.value.mechanic_immune_mask !== 0 || template.value.spell_school_immune_mask !== 0),
-)
-
 /** The spawn's own MovementType wins; the template's is the fallback. */
 const movementType = computed(() => row.value?.MovementType ?? template.value?.MovementType ?? 0)
 
@@ -122,7 +118,7 @@ function scaled(pick: (s: CreatureClassLevelStats) => number, modifier: number):
 }
 
 // creature_classlevelstats holds one health/damage column per expansion.
-function expansionBase(s: CreatureClassLevelStats, exp: number, cols: [number, number, number]): number {
+function expansionBase(_s: CreatureClassLevelStats, exp: number, cols: [number, number, number]): number {
   return cols[Math.min(Math.max(exp, 0), 2)] ?? 0
 }
 
@@ -282,10 +278,6 @@ function openInNpcEditor() {
                   {{ t(`mapEditor.spawns.schools.${r.school}`) }} {{ r.value }}
                 </span>
               </dd>
-            </div>
-            <div v-if="hasImmunities" class="sp-row">
-              <dt>{{ t('mapEditor.spawns.immunitiesLabel') }}</dt>
-              <dd>{{ t('mapEditor.spawns.immunities') }}</dd>
             </div>
           </dl>
         </section>

@@ -123,9 +123,9 @@ const layout = computed(() => {
       return ps.reduce((sum, p) => sum + xOf.get(p)!, 0) / ps.length
     })
     const xs: number[] = []
-    desired.forEach((d, i) => { xs.push(i === 0 ? d : Math.max(d, xs[i - 1] + STEP)) })
-    const drift = xs.reduce((sum, x, i) => sum + (x - desired[i]), 0) / xs.length
-    row.forEach((id, i) => xOf.set(id, xs[i] - drift))
+    desired.forEach((d, i) => { xs.push(i === 0 ? d : Math.max(d, xs[i - 1]! + STEP)) })
+    const drift = xs.reduce((sum, x, i) => sum + (x - desired[i]!), 0) / xs.length
+    row.forEach((id, i) => xOf.set(id, xs[i]! - drift))
   })
   const minX = Math.min(...xOf.values())
   const maxX = Math.max(...xOf.values())
