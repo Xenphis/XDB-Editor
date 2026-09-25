@@ -29,6 +29,7 @@ import {
   type MinimapMapInfo,
   type MinimapMarker,
   type PickedPosition,
+  type SavedView,
   type SpawnTransform,
   type WorldPosition,
   type ZoneDefinition,
@@ -49,7 +50,6 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const cursor = ref<WorldPosition | null>(null)
-const viewMode = ref<'2d' | '3d'>('2d')
 const viewModes = [
   { label: '2D', value: '2d' as const },
   { label: '3D', value: '3d' as const },
@@ -57,12 +57,18 @@ const viewModes = [
 /**
  * What the stage shows. Instances are 3D only: most have no usable 2D map —
  * their minimaps are drawn per WMO, which the tile index doesn't serve, and
- * the ones built from WMOs only have no tiles at all. `viewMode` keeps the
- * open world's own choice for when its list comes back.
+ * the ones built from WMOs only have no tiles at all. `store.viewMode` keeps
+ * the open world's own choice for when its list comes back.
  */
-const activeViewMode = computed(() => (store.mapCategory === 'instances' ? '3d' : viewMode.value))
-/** Last 2D view center; seeds the 3D camera when toggling. */
-const viewCenter = ref<WorldPosition | null>(null)
+const activeViewMode = computed(() => (store.mapCategory === 'instances' ? '3d' : store.viewMode))
+/**
+ * Where the view was left on the map shown: the 2D center and zoom, the 3D
+ * camera. Starts whichever view mounts when nothing is focused — after a
+ * 2D/3D toggle, and when coming back to the editor (it is persisted).
+ */
+const savedView = computed(() => (store.view?.map === store.lastMapId ? store.view : null))
+/** Yards the view can drift off a spot and still be on it. */
+const SAME_SPOT_YARDS = 5
 /** Position picked with right-click, shown in the toolbar with a copy action. */
 const picked = ref<PickedPosition | null>(null)
 const copied = ref(false)
@@ -299,14 +305,39 @@ function selectZone(zone: ZoneDefinition) {
   store.lastMapId = info?.id ?? ''
 }
 
-function onCenter(center: WorldPosition) {
-  viewCenter.value = center
-  // Panning away from the focused spot dissolves the focus: the 2D center
-  // seeds the 3D camera again (the focus only carried its exact height).
+/**
+ * Moving away from the focused spot dissolves the focus: the saved view
+ * starts the other view again (the focus only carried its exact height).
+ */
+function dissolveFocus(at: WorldPosition) {
   const focus = focusTarget.value
-  if (focus && Math.hypot(center.x - focus.x, center.y - focus.y) > 5) {
+  if (focus && Math.hypot(at.x - focus.x, at.y - focus.y) > SAME_SPOT_YARDS) {
     focusTarget.value = null
   }
+}
+
+function onCenter(center: WorldPosition, zoom: number) {
+  const saved = savedView.value
+  // The 3D look carries over; its height only holds on the spot it was taken
+  // (toggled over from 3D without panning).
+  const onSpot =
+    saved != null && Math.hypot(center.x - saved.x, center.y - saved.y) <= SAME_SPOT_YARDS
+  store.view = {
+    ...saved,
+    map: store.lastMapId,
+    x: center.x,
+    y: center.y,
+    z: onSpot ? saved.z : undefined,
+    zoom,
+  }
+  dissolveFocus(center)
+}
+
+function onCamera(view: SavedView) {
+  // A 3D view torn down by a map switch reports its old map on the way out.
+  if (view.map !== store.lastMapId) return
+  store.view = { ...view, zoom: savedView.value?.zoom }
+  dissolveFocus(view)
 }
 
 function formatCoord(value: number): string {
@@ -393,7 +424,7 @@ function onMapContext(payload: { position: PickedPosition; event: MouseEvent }) 
  * zone's origin or the instance's entrance. */
 function defaultTeleportPosition(): PickedPosition | null {
   if (picked.value) return picked.value
-  if (viewCenter.value) return { ...viewCenter.value, z: null }
+  if (savedView.value) return { x: savedView.value.x, y: savedView.value.y, z: null }
   const origin = selectedZone.value?.origin ?? selectedEntrance.value
   return origin ? { x: origin.x, y: origin.y, z: origin.z ?? null } : null
 }
@@ -568,9 +599,7 @@ const minimapMarkers = computed<MinimapMarker[]>(() => {
   return markers
 })
 
-// A center from another map would teleport the 3D camera into the void.
 watch(() => store.lastMapId, () => {
-  viewCenter.value = null
   cursor.value = null
   picked.value = null
   rowMarker.value = null
@@ -594,9 +623,15 @@ async function load() {
     store.maps = await ensureClientLoaded(path)
     // Not awaited: Map.dbc waits for the client's background open.
     instanceMapsLoad = loadInstanceMaps()
-    // Restore the persisted zone or instance: map + camera back at its origin.
-    // Nothing selected yet: nothing to display (the map only follows the list).
-    await showCategorySelection()
+    if (savedView.value) {
+      // Back where the view was left. A WMO-only instance only shows once
+      // Map.dbc is read; hold the loading state until then.
+      if (!store.maps.some(info => info.id === store.lastMapId)) await instanceMapsLoad
+    } else {
+      // Restore the persisted zone or instance: map + camera back at its origin.
+      // Nothing selected yet: nothing to display (the map only follows the list).
+      await showCategorySelection()
+    }
   } catch (e) {
     store.maps = []
     error.value = String(e)
@@ -675,6 +710,7 @@ onMounted(async () => {
             :map="selectedMap"
             :focus="focusTarget"
             :marker="rowMarker"
+            :initialView="savedView"
             class="editor-map"
             @cursor="cursor = $event"
             @center="onCenter"
@@ -689,7 +725,7 @@ onMounted(async () => {
             ref="scene3d"
             :key="`${selectedMap.id}:${store.renderQuality}`"
             :map="selectedMap"
-            :initialPosition="focusTarget ?? viewCenter"
+            :initialPosition="focusTarget ?? savedView"
             :focus="focusTarget"
             :showSpawns="spawnsAvailable"
             :spawnPhase="store.spawnPhase"
@@ -702,6 +738,7 @@ onMounted(async () => {
             @select-spawn="onSelectSpawn"
             @transform-spawn="onTransformSpawn"
             @undo-transform="spawnEdit.undo"
+            @camera="onCamera"
           />
           <div v-else class="editor-empty">
             <i class="pi pi-map" style="font-size: 3rem; color: var(--text-placeholder)"></i>
@@ -725,7 +762,7 @@ onMounted(async () => {
               <!-- Instances are 3D only (see activeViewMode). -->
               <SelectButton
                 v-if="store.mapCategory === 'world'"
-                v-model="viewMode"
+                v-model="store.viewMode"
                 :options="viewModes"
                 optionLabel="label"
                 optionValue="value"

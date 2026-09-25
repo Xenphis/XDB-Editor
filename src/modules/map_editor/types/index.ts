@@ -53,6 +53,24 @@ export interface FocusPosition extends WorldPosition {
   /** Heading to face, in the game's convention (radians, counter-clockwise
    * from north (+X) toward west (+Y)); the camera keeps its own when absent. */
   orientation?: number
+  /** 3D look angle in radians, below the horizon when negative; the camera
+   * keeps its own when absent. */
+  pitch?: number
+}
+
+/** Which view the open world is browsed in (instances are 3D only). */
+export type ViewMode = '2d' | '3d'
+
+/**
+ * Where the view was last left, persisted so that leaving the editor (or the
+ * app) and coming back lands on the same spot. Reads as a `FocusPosition`: the
+ * 3D camera sits its eye height above `z`, which is absent when unknown.
+ */
+export interface SavedView extends FocusPosition {
+  /** `MinimapMapInfo.id` of the map it was on; ignored on any other map. */
+  map: string
+  /** 2D zoom level; absent until the 2D view has been used there. */
+  zoom?: number
 }
 
 /** A curated zone of the world (static list, edited in code: data/zones.ts).

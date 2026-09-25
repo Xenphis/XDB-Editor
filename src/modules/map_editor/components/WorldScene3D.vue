@@ -10,6 +10,7 @@ import type {
   MinimapMapInfo,
   PickedPosition,
   RenderQuality,
+  SavedView,
   SpawnTransform,
 } from '../types'
 import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
@@ -82,6 +83,12 @@ const emit = defineEmits<{
   (e: 'update:gizmoMode', mode: GizmoMode | null): void
   /** Ctrl/Cmd+Z on the scene, with a spawn selected. */
   (e: 'undo-transform'): void
+  /**
+   * Where the camera is and looks, once it settles after a move (and on
+   * unmount if it hadn't yet): given back as `initialPosition`, it starts
+   * the camera in the same spot.
+   */
+  (e: 'camera', view: SavedView): void
 }>()
 
 /** Height the camera starts at before the terrain under it is known. */
@@ -125,6 +132,8 @@ const MAX_PIXEL_RATIO = 1.5
 const MOVING_PIXEL_RATIO = 1
 /** How long the camera must sit still before full resolution comes back. */
 const RESOLUTION_SETTLE_MS = 180
+/** How long the camera must sit still before its spot is reported to be kept. */
+const CAMERA_REPORT_SETTLE_MS = 400
 
 /**
  * What each quality preset asks of the renderer.
@@ -338,6 +347,8 @@ let animationFrame = 0
 let probeTimer: ReturnType<typeof setInterval> | undefined
 let resizeObserver: ResizeObserver | undefined
 let removeInputListeners: (() => void) | undefined
+/** Reports a camera move still waiting to settle; set up with the camera. */
+let flushCameraReport: (() => void) | undefined
 
 // Spawn selection state (a picked model + its ground ring highlight).
 let selectedObject: THREE.Object3D | null = null
@@ -656,6 +667,7 @@ onMounted(() => {
     camera.position.set(start.x, start.y, FALLBACK_HEIGHT)
   }
   if (start.orientation != null) yaw = start.orientation
+  if (start.pitch != null) pitch = start.pitch
   applyOrientation()
   resetLead()
 
@@ -923,12 +935,15 @@ onMounted(() => {
   const lastPosition = camera.position.clone()
   const lastQuaternion = camera.quaternion.clone()
   let lastMoveAt = 0
+  /** Whether the parent has the camera's current spot (see Camera report). */
+  let cameraReported = false
 
   const updateResolution = (now: number) => {
     if (!camera.position.equals(lastPosition) || !camera.quaternion.equals(lastQuaternion)) {
       lastPosition.copy(camera.position)
       lastQuaternion.copy(camera.quaternion)
       lastMoveAt = now
+      cameraReported = false
     }
     const wanted =
       now - lastMoveAt < RESOLUTION_SETTLE_MS ? movingPixelRatio : basePixelRatio
@@ -936,6 +951,33 @@ onMounted(() => {
       pixelRatio = wanted
       renderer?.setPixelRatio(wanted)
     }
+  }
+
+  // ── Camera report ─────────────────────────────────────────────────────
+  // The parent keeps where the camera was left (see the `camera` event), off
+  // the same movement test: once per settle rather than every frame, since
+  // it ends up persisted. The start spot is reported too, so a camera that
+  // never moves is still where the editor comes back to.
+  const reportCamera = () => {
+    cameraReported = true
+    emit('camera', {
+      map: props.map.id,
+      x: camera.position.x,
+      y: camera.position.y,
+      // Before the ground probe lands the camera sits at a guessed height:
+      // leave it out so the next start probes again.
+      z: grounded.value ? camera.position.z - EYE_HEIGHT : null,
+      orientation: yaw,
+      pitch,
+    })
+  }
+
+  const updateCameraReport = (now: number) => {
+    if (!cameraReported && now - lastMoveAt >= CAMERA_REPORT_SETTLE_MS) reportCamera()
+  }
+
+  flushCameraReport = () => {
+    if (!cameraReported) reportCamera()
   }
 
   // ── Frame-rate counter ────────────────────────────────────────────────
@@ -1039,6 +1081,7 @@ onMounted(() => {
     if (selectedObject && !selectedObject.parent) clearSelection()
     applyKeyboardMove(dt)
     updateResolution(now)
+    updateCameraReport(now)
     // Refresh the camera matrices BEFORE the managers run: skinned M2s
     // (creatures, animated doodads) bake camera.matrixWorldInverse into
     // their bone textures, and the renderer only recomputes it during
@@ -1128,6 +1171,8 @@ watch(() => props.gizmoMode, mode => gizmo?.setMode(mode))
 watch(() => props.spawnTransform, applySpawnTransform)
 
 onBeforeUnmount(() => {
+  // First, while the camera is still there: a move made just before leaving.
+  flushCameraReport?.()
   cancelAnimationFrame(animationFrame)
   poseReady = false
   if (probeTimer !== undefined) clearInterval(probeTimer)
