@@ -14,17 +14,20 @@ import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import { useMapEditorStore } from '../store'
 import { ensureClientLoaded, loadAreatriggerTeleportTargets, loadMapRecords } from '../service'
 import { ZONES, ZONE_BY_ID } from '../data/zones'
+import { useSpawnTransform } from '../spawnTransform'
 import {
   INSTANCE_TYPE_DUNGEON,
   INSTANCE_TYPE_RAID,
   type CreatureSpawnMarker,
   type FocusPosition,
   type GameTele,
+  type GizmoMode,
   type MapCategory,
   type MapRecord,
   type MinimapMapInfo,
   type MinimapMarker,
   type PickedPosition,
+  type SpawnTransform,
   type WorldPosition,
   type ZoneDefinition,
 } from '../types'
@@ -471,31 +474,33 @@ const selectedSpawn = ref<CreatureSpawnMarker | null>(null)
 const spawnInInspector = computed(() => activeViewMode.value === '3d' && selectedSpawn.value != null)
 /** When armed, the next terrain right-click relocates the selected spawn. */
 const moveArmed = ref(false)
-/** New position captured after a move, kept for the UPDATE statement. */
-const movedPosition = ref<{ x: number; y: number; z: number } | null>(null)
+/** Move/rotate gizmo on the selected spawn; null until asked for (panel, G/R). */
+const gizmoMode = ref<GizmoMode | null>(null)
+/** Where the selected spawn was moved/turned to, its undo history and UPDATE. */
+const spawnEdit = useSpawnTransform(selectedSpawn)
+const { current: spawnTransform, canUndo: spawnCanUndo, migrationSql } = spawnEdit
 const sqlCopied = ref(false)
-
-const migrationSql = computed(() => {
-  if (!selectedSpawn.value || !movedPosition.value) return ''
-  const p = movedPosition.value
-  return `UPDATE creature SET position_x = ${p.x.toFixed(4)}, position_y = ${p.y.toFixed(4)}, position_z = ${p.z.toFixed(4)} WHERE guid = ${selectedSpawn.value.guid};`
-})
 
 function onSelectSpawn(spawn: CreatureSpawnMarker | null) {
   selectedSpawn.value = spawn
   moveArmed.value = false
-  movedPosition.value = null
+  gizmoMode.value = null
+  spawnEdit.clear()
 }
 
-function onMoveSpawn(move: { guid: number; x: number; y: number; z: number }) {
-  movedPosition.value = { x: move.x, y: move.y, z: move.z }
+function onTransformSpawn(move: { guid: number } & SpawnTransform) {
+  // The view only reports the selected spawn, but a late event from a drag
+  // that outlived its selection must not land on the next one.
+  if (move.guid !== selectedSpawn.value?.guid) return
+  spawnEdit.apply(move)
   moveArmed.value = false
 }
 
 function clearSelectedSpawn() {
   selectedSpawn.value = null
   moveArmed.value = false
-  movedPosition.value = null
+  gizmoMode.value = null
+  spawnEdit.clear()
 }
 
 /** The panel's close button: deselect in the view too, so the ring goes with it. */
@@ -543,7 +548,7 @@ const minimapMarkers = computed<MinimapMarker[]>(() => {
   const spawn = selectedSpawn.value
   if (spawn) {
     // A moved spawn is drawn where it was dropped, like its model.
-    const at = movedPosition.value ?? { x: spawn.position_x, y: spawn.position_y }
+    const at = spawnTransform.value ?? { x: spawn.position_x, y: spawn.position_y }
     markers.push({ x: at.x, y: at.y, color: MARKER_COLORS.spawn })
   }
   return markers
@@ -677,10 +682,13 @@ onMounted(async () => {
             :moveArmed="moveArmed"
             :quality="store.renderQuality"
             :collision="store.mapCategory === 'instances' && store.cameraCollision"
+            v-model:gizmoMode="gizmoMode"
+            :spawnTransform="spawnTransform"
             class="editor-map"
             @pick="picked = $event"
             @select-spawn="onSelectSpawn"
-            @move-spawn="onMoveSpawn"
+            @transform-spawn="onTransformSpawn"
+            @undo-transform="spawnEdit.undo"
           />
           <div v-else class="editor-empty">
             <i class="pi pi-map" style="font-size: 3rem; color: var(--text-placeholder)"></i>
@@ -834,9 +842,13 @@ onMounted(async () => {
           v-if="spawnInInspector && selectedSpawn"
           :spawn="selectedSpawn"
           v-model:moveArmed="moveArmed"
-          :movedPosition="movedPosition"
+          v-model:gizmoMode="gizmoMode"
+          :transform="spawnTransform"
+          :canUndo="spawnCanUndo"
           :migrationSql="migrationSql"
           :sqlCopied="sqlCopied"
+          @undo="spawnEdit.undo"
+          @reset="spawnEdit.reset"
           @copy-sql="copyMigration"
           @close="closeSpawnPanel"
         />

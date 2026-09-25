@@ -131,7 +131,15 @@ export class SelectionRing {
       MAX_RADIUS,
     )
     this.mesh.scale.setScalar(radius)
+    this.follow(target, terrain)
+  }
 
+  /**
+   * Moves the ring along with `target` without measuring it again: a drag
+   * moves a spawn, it does not resize it, and the measure walks every vertex
+   * of the model — too much to repeat on every step of the drag.
+   */
+  follow(target: THREE.Object3D, terrain: THREE.Object3D | null): void {
     this.mesh.position.copy(target.position)
     this.#normal.copy(LOCAL_UP)
 

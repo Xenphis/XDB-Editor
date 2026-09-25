@@ -6,9 +6,11 @@ import type {
   CameraPose,
   CreatureSpawnMarker,
   FocusPosition,
+  GizmoMode,
   MinimapMapInfo,
   PickedPosition,
   RenderQuality,
+  SpawnTransform,
 } from '../types'
 import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
 import { LiquidManager } from './LiquidManager'
@@ -18,6 +20,7 @@ import { CreatureSpawnManager } from './CreatureSpawnManager'
 import { InstallQueue } from './InstallQueue'
 import { SkyDome } from './SkyDome'
 import { SelectionRing } from './SelectionRing'
+import { TransformGizmo } from './TransformGizmo'
 import { SceneAssets } from '@core/wow/SceneAssets'
 
 /**
@@ -34,6 +37,11 @@ import { SceneAssets } from '@core/wow/SceneAssets'
  * forward/back; fly-cam on the keyboard (physical WASD — ZQSD on AZERTY — or
  * arrows, Space/C for up/down, Shift for speed); a right-click without drag
  * reports the world position under the pointer to the parent.
+ *
+ * A selected spawn can be moved or turned with a gizmo (see `TransformGizmo`),
+ * shown only once asked for: G moves, R turns, Escape puts it away, Ctrl/Cmd+Z
+ * undoes. The parent keeps the edit and its history; this view applies
+ * whatever `spawnTransform` says to the model, which is how an undo lands.
  *
  * The camera is driven directly (yaw/pitch state below) instead of through
  * @wowserhq/scene's MapControls: those orbit a pivot re-derived 30 yd ahead
@@ -60,14 +68,22 @@ const props = defineProps<{
   quality: RenderQuality
   /** WMO walls, floors and ceilings stop the camera (read live, per move). */
   collision: boolean
+  /** Gizmo shown on the selected spawn; null keeps it hidden. */
+  gizmoMode: GizmoMode | null
+  /** Where the selected spawn is edited to; null leaves it where the DB has it. */
+  spawnTransform: SpawnTransform | null
 }>()
 
 const emit = defineEmits<{
   (e: 'pick', position: PickedPosition): void
   /** A spawn model was clicked (null when clicking away deselects). */
   (e: 'select-spawn', spawn: CreatureSpawnMarker | null): void
-  /** The selected spawn was dragged to a new world position (for the migration). */
-  (e: 'move-spawn', move: { guid: number; x: number; y: number; z: number }): void
+  /** The selected spawn was moved or turned (gizmo drag, right-click placement). */
+  (e: 'transform-spawn', move: { guid: number } & SpawnTransform): void
+  /** G / R / Escape on the scene. */
+  (e: 'update:gizmoMode', mode: GizmoMode | null): void
+  /** Ctrl/Cmd+Z on the scene, with a spawn selected. */
+  (e: 'undo-transform'): void
 }>()
 
 /** Height the camera starts at before the terrain under it is known. */
@@ -329,6 +345,8 @@ let removeInputListeners: (() => void) | undefined
 let selectedObject: THREE.Object3D | null = null
 let selectedSpawn: CreatureSpawnMarker | null = null
 let selectionRing: SelectionRing | null = null
+/** Move/rotate handles on the selected spawn, while a mode is set. */
+let gizmo: TransformGizmo | null = null
 
 const pressed = new Set<string>()
 
@@ -388,11 +406,71 @@ function positionSelectionRing() {
   selectionRing.place(selectedObject, mapManager?.root ?? null)
 }
 
+/** Keeps the ring under the spawn as it moves, at the size it was measured at. */
+function followSelectionRing() {
+  if (!selectionRing || !selectedObject) return
+  selectionRing.follow(selectedObject, mapManager?.root ?? null)
+}
+
 function clearSelection() {
   selectedObject = null
   selectedSpawn = null
   selectionRing?.hide()
+  gizmo?.attach(null)
   emit('select-spawn', null)
+}
+
+/** The selected spawn's current yaw, edited or as loaded. */
+function selectedOrientation(): number {
+  return props.spawnTransform?.orientation ?? selectedSpawn?.orientation ?? 0
+}
+
+/**
+ * Puts the selected model where `spawnTransform` says: the edit, or the DB
+ * position when there is none. Setting what is already there is harmless, so
+ * this also runs after a drag the model has already followed.
+ */
+function applySpawnTransform(transform: SpawnTransform | null) {
+  if (!selectedObject || !selectedSpawn) return
+  const target = transform ?? {
+    x: selectedSpawn.position_x,
+    y: selectedSpawn.position_y,
+    z: selectedSpawn.position_z,
+    orientation: selectedSpawn.orientation,
+  }
+  selectedObject.position.set(target.x, target.y, target.z)
+  // As placed by CreatureSpawnManager: a yaw about world +Z.
+  selectedObject.rotation.set(0, 0, target.orientation)
+  selectedObject.updateMatrixWorld()
+  followSelectionRing()
+}
+
+/**
+ * The gizmo's keys; true when the event was one. Letters by physical key
+ * like the fly-cam's, except the undo: Ctrl+Z follows the layout (on AZERTY it
+ * is the physical W, the fly-forward key), so it is matched by `key`.
+ */
+function handleGizmoKey(event: KeyboardEvent): boolean {
+  if (!selectedSpawn) return false
+  // Mid-drag the model belongs to the gizmo: the keys are swallowed, not run.
+  const dragging = gizmo?.dragging ?? false
+  const command = event.ctrlKey || event.metaKey
+  if (command && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'z') {
+    if (!dragging) emit('undo-transform')
+    return true
+  }
+  // Cmd+R reloads the webview, Ctrl+G is someone else's: plain keys only.
+  if (command || event.altKey || dragging) return false
+  if (event.code === 'KeyG' || event.code === 'KeyR') {
+    const mode: GizmoMode = event.code === 'KeyG' ? 'translate' : 'rotate'
+    emit('update:gizmoMode', props.gizmoMode === mode ? null : mode)
+    return true
+  }
+  if (event.code === 'Escape' && props.gizmoMode) {
+    emit('update:gizmoMode', null)
+    return true
+  }
+  return false
 }
 
 /** Keys only fly the camera when focus isn't in a form control elsewhere. */
@@ -491,6 +569,22 @@ onMounted(() => {
   selectionRing = new SelectionRing()
   scene.add(selectionRing.mesh)
   if (props.showSpawns) enableSpawns()
+
+  // Created ahead of the view's own pointer listeners (further down), so
+  // three's run first: a press on a handle is already a drag by the time the
+  // view asks whether to pan.
+  gizmo = new TransformGizmo({
+    camera,
+    domElement: renderer.domElement,
+    groundRoots: () =>
+      [mapManager?.root, wmoManager?.root].filter((root): root is THREE.Group => root !== undefined),
+    onChange: followSelectionRing,
+    onCommit: transform => {
+      if (selectedSpawn) emit('transform-spawn', { guid: selectedSpawn.guid, ...transform })
+    },
+  })
+  gizmo.setMode(props.gizmoMode)
+  scene.add(gizmo.root)
 
   // ── Camera orientation (yaw about world +Z, pitch toward ±Z) ─────────
   // Initial view matches the old MapControls default offset (-30,-30,30):
@@ -600,6 +694,12 @@ onMounted(() => {
 
   // ── Fly-cam keyboard movement ─────────────────────────────────────────
   const onKeyDown = (event: KeyboardEvent) => {
+    // Ahead of the fly-cam: Ctrl+Z on AZERTY is the fly-forward key, and must
+    // not also start the camera moving.
+    if (isSceneKeyTarget(event.target) && handleGizmoKey(event)) {
+      event.preventDefault()
+      return
+    }
     const layer = LAYER_KEYS[event.code]
     if (layer && isSceneKeyTarget(event.target)) {
       event.preventDefault()
@@ -703,6 +803,9 @@ onMounted(() => {
   const wheelMove = new THREE.Vector3()
 
   const onPointerDown = (event: PointerEvent) => {
+    // A press on a gizmo handle is the gizmo's drag: no pan, and no pick on
+    // release (leftDown stays unset), so it never deselects the spawn.
+    if (event.button === 0 && gizmo?.busy) return
     if (event.button === 2) rightDown = { x: event.clientX, y: event.clientY }
     else if (event.button === 0) leftDown = { x: event.clientX, y: event.clientY }
     if (event.button === 0 || event.button === 2) {
@@ -757,6 +860,7 @@ onMounted(() => {
       selectedObject = object
       selectedSpawn = object.userData.spawn as CreatureSpawnMarker
       positionSelectionRing()
+      gizmo?.attach(object)
       emit('select-spawn', selectedSpawn)
     } else {
       clearSelection()
@@ -776,8 +880,15 @@ onMounted(() => {
     if (!hit) return
     if (props.moveArmed && selectedObject && selectedSpawn) {
       selectedObject.position.set(hit.point.x, hit.point.y, hit.point.z)
-      positionSelectionRing()
-      emit('move-spawn', { guid: selectedSpawn.guid, x: hit.point.x, y: hit.point.y, z: hit.point.z })
+      selectedObject.updateMatrixWorld()
+      followSelectionRing()
+      emit('transform-spawn', {
+        guid: selectedSpawn.guid,
+        x: hit.point.x,
+        y: hit.point.y,
+        z: hit.point.z,
+        orientation: selectedOrientation(),
+      })
       return
     }
     emit('pick', { x: hit.point.x, y: hit.point.y, z: hit.point.z })
@@ -932,6 +1043,9 @@ onMounted(() => {
     if (!renderer || !mapManager || !scene) return
     const dt = clock.getDelta()
     const now = performance.now()
+    // The selected spawn's tile was unloaded, or re-phased, under it: the
+    // model has left the scene, and the ring and gizmo must not stay behind.
+    if (selectedObject && !selectedObject.parent) clearSelection()
     applyKeyboardMove(dt)
     updateResolution(now)
     // Refresh the camera matrices BEFORE the managers run: skinned M2s
@@ -1017,6 +1131,11 @@ watch(() => props.showSpawns, show => (show ? enableSpawns() : disableSpawns()))
 // Changing phase refetches the spawns around the camera with the new filter.
 watch(() => props.spawnPhase, phase => spawnManager?.setPhase(phase))
 
+watch(() => props.gizmoMode, mode => gizmo?.setMode(mode))
+
+// Undo, reset and right-click placements move the model from here.
+watch(() => props.spawnTransform, applySpawnTransform)
+
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationFrame)
   poseReady = false
@@ -1033,6 +1152,7 @@ onBeforeUnmount(() => {
   spawnManager?.dispose()
   mapManager?.dispose()
   selectionRing?.dispose()
+  gizmo?.dispose()
   if (renderer) {
     renderer.dispose()
     renderer.domElement.remove()
@@ -1048,6 +1168,7 @@ onBeforeUnmount(() => {
   wmoManager = null
   spawnManager = null
   selectionRing = null
+  gizmo = null
   selectedObject = null
   selectedSpawn = null
 })

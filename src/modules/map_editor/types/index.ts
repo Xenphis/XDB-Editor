@@ -204,6 +204,20 @@ export interface CreatureSpawnMarker {
   scale: number
 }
 
+/**
+ * Where a spawn stands and which way it faces: the four `creature` columns the
+ * 3D view can edit. Orientation is the DB's, a yaw in radians in [0, 2π).
+ */
+export interface SpawnTransform {
+  x: number
+  y: number
+  z: number
+  orientation: number
+}
+
+/** What the 3D view's transform gizmo does to the selected spawn. */
+export type GizmoMode = 'translate' | 'rotate'
+
 /** Resolved client model for a creature display id (from the client DBCs). */
 export interface CreatureModelInfo {
   /** M2 path, served over the `mpq://` scheme (like WMO doodads). */
