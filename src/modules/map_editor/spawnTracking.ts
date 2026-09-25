@@ -42,6 +42,21 @@ function moved(before: Placement, after: Placement) {
   return PLACEMENT.filter(p => changed(before[p.key], after[p.key], p.angle))
 }
 
+const AXES: { label: string; key: 'position_x' | 'position_y' | 'position_z' }[] = [
+  { label: 'x', key: 'position_x' },
+  { label: 'y', key: 'position_y' },
+  { label: 'z', key: 'position_z' },
+]
+
+function round2(value: number): number {
+  return Number(value.toFixed(2))
+}
+
+/** Plain-text form, for consumers that ignore `parts`. */
+function axes(p: Placement): string {
+  return AXES.map(({ label, key }) => `${label} ${round2(p[key])}`).join(', ')
+}
+
 const builder: SessionSqlBuilder = {
   statements: (original, current, id) => {
     const before = original?.main as unknown as Placement | undefined
@@ -57,11 +72,25 @@ const builder: SessionSqlBuilder = {
     const after = current?.main as unknown as Placement | undefined
     if (!before) return []
     if (!after) return [{ field: 'creature', oldValue: `#${id}`, newValue: '(deleted)' }]
-    return moved(before, after).map<FieldChange>(p => ({
-      field: p.column,
-      oldValue: before[p.key],
-      newValue: after[p.key],
-    }))
+    const diff = moved(before, after)
+    const fields: FieldChange[] = []
+    // The three axes read as one position, on a single line of the panel.
+    if (diff.some(p => p.key !== 'orientation')) {
+      fields.push({
+        field: 'position',
+        oldValue: axes(before),
+        newValue: axes(after),
+        parts: AXES.map(({ label, key }) => ({
+          label,
+          oldValue: round2(before[key]),
+          newValue: round2(after[key]),
+        })),
+      })
+    }
+    if (diff.some(p => p.key === 'orientation')) {
+      fields.push({ field: 'orientation', oldValue: Number(before.orientation.toFixed(4)), newValue: Number(after.orientation.toFixed(4)) })
+    }
+    return fields
   },
 }
 
