@@ -327,7 +327,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
 </script>
 
 <template>
-  <EntityWorkspace storageKey="object" listWidth="320px">
+  <EntityWorkspace storageKey="object">
     <template #list>
       <ObjectTableSwitch />
       <EntityListPanel

@@ -1,7 +1,5 @@
 {
   "mapEditor": {
-    "title": "World Editor",
-    "description": "Browse the game world rendered from your client's data: 2D map, 3D view, spawns and teleport points",
     "clientPath": {
       "placeholder": "Path to your 3.3.5 client folder (or its Data folder)",
       "browse": "Browse…",

@@ -1,7 +1,5 @@
 {
   "mapEditor": {
-    "title": "Éditeur du monde",
-    "description": "Parcourez le monde du jeu rendu depuis les données de votre client : carte 2D, vue 3D, spawns et points de téléportation",
     "clientPath": {
       "placeholder": "Chemin du client 3.3.5 (ou de son dossier Data)",
       "browse": "Parcourir…",

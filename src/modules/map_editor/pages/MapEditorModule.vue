@@ -659,14 +659,7 @@ onMounted(async () => {
 
 <template>
   <div class="map-editor">
-    <div class="editor-header">
-      <div>
-        <h2 class="editor-title">{{ t('mapEditor.title') }}</h2>
-        <p class="editor-description">{{ t('mapEditor.description') }}</p>
-      </div>
-    </div>
-
-    <EntityWorkspace storageKey="mapEditor" listWidth="240px" class="editor-workspace">
+    <EntityWorkspace storageKey="mapEditor" class="editor-workspace">
       <!-- Curated zones (data/zones.ts) or the client's dungeons and raids;
            selecting one drives map + camera. Keyed so a switch also clears
            the list's own search box. -->
@@ -934,21 +927,6 @@ onMounted(async () => {
   gap: 1rem;
   height: 100%;
   min-height: 0;
-}
-
-.editor-title {
-  font-size: 2rem;
-  font-weight: 700;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-}
-
-.editor-description {
-  color: var(--text-muted);
-  font-size: 0.95rem;
 }
 
 /* Flex sizing beats the workspace's own height: 100% inside this column. */

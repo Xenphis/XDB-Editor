@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import NpcTableSwitch from '@/modules/npc/NpcTableSwitch.vue'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import InspectorPanel from '@core/components/workspace/InspectorPanel.vue'
@@ -206,6 +207,7 @@ async function onRemoveVendor(vendor: NpcVendorGroup) {
 <template>
   <EntityWorkspace storageKey="npc.vendor">
     <template #list>
+      <NpcTableSwitch />
       <EntityListPanel
         :items="filteredVendors"
         :idOf="(v: NpcVendorGroup) => v.entry"

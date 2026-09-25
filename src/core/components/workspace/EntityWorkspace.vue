@@ -4,10 +4,10 @@ import { ref } from 'vue'
 const props = withDefaults(defineProps<{
   /** Persistence key for the collapse states, e.g. "npc.creatureTemplate". */
   storageKey: string
-  /** Width of the list pane. */
+  /** Width of the list pane; the same on every page, override only with good reason. */
   listWidth?: string
 }>(), {
-  listWidth: '280px',
+  listWidth: '300px',
 })
 
 const LIST_KEY = `workspace:${props.storageKey}:list`

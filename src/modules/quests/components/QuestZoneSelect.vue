@@ -45,7 +45,6 @@ const options = computed(() => [
       optionLabel="label"
       optionValue="value"
       :placeholder="t('quest.zoneFilter.placeholder')"
-      filter
       fluid
       @update:modelValue="(v: string) => emit('update:modelValue', v ?? '')"
     />

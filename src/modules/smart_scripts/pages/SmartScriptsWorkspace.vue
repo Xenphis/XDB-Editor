@@ -123,7 +123,7 @@ async function onExecute() {
 </script>
 
 <template>
-  <EntityWorkspace storageKey="smartScripts" listWidth="300px">
+  <EntityWorkspace storageKey="smartScripts">
     <template #list>
       <EntityListPanel
         :items="store.owners"
