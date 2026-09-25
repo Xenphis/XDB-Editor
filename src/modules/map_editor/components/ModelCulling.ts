@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { ModelManager } from '@wowserhq/scene'
+import { WORLD_FADE_DIST_MAX, WORLD_FADE_DIST_MIN, type ModelManager } from '@wowserhq/scene'
 
 /**
  * Frustum and distance culling for the M2 models this module places itself:
@@ -24,23 +24,22 @@ import type { ModelManager } from '@wowserhq/scene'
 export type SceneModel = Awaited<ReturnType<ModelManager['get']>>
 
 /**
- * Distance at which a model of each size category has fully faded out, and the
- * distance at which it starts to, both in yards and indexed by
- * `Model.sizeCategory`.
- *
- * These reproduce the table @wowserhq/scene applies to the terrain doodads it
- * culls itself (its WORLD_FADE_DIST values at the 1.5 scale it sets on load),
- * so a creature or a building's furniture fades at the same range as the
- * scenery around it instead of popping on a rule of its own. They are not
- * exported by the package, hence the copy.
+ * Yards over which a model fades out before `cullModel`'s `maxDistance`, so the
+ * cap does not pop. The same order as the library's own fade bands.
  */
-const FADE_DIST_MAX = [30, 150, 300, 1125, 1250]
-const FADE_DIST_MIN = [25, 140, 285, 1105, 1200]
+const CAP_FADE_YARDS = 10
 
-/** 1 = fully visible, 0 = past its cut-off, in between = fading out. */
+/**
+ * 1 = fully visible, 0 = past its cut-off, in between = fading out.
+ *
+ * The distances are @wowserhq/scene's own table — the one it culls the terrain
+ * doodads by, indexed by `Model.sizeCategory` — read live rather than copied,
+ * so a creature or a building's furniture fades at the same range as the
+ * scenery around it, and follows the scale the view sets (`scaleFadeDist`).
+ */
 function fadeAt(distance: number, sizeCategory: number): number {
-  const min = FADE_DIST_MIN[sizeCategory]
-  const max = FADE_DIST_MAX[sizeCategory]
+  const min = WORLD_FADE_DIST_MIN[sizeCategory]
+  const max = WORLD_FADE_DIST_MAX[sizeCategory]
   // An unknown category means an unmeasured model: keep it visible rather
   // than silently dropping it from the scene.
   if (min === undefined || max === undefined) return 1
@@ -56,14 +55,20 @@ function fadeAt(distance: number, sizeCategory: number): number {
  * model's world-space bounding sphere rather than to `position`, which is
  * local: a WMO's doodads are children of the placement group, so their
  * `position` is in WMO space and would put every one of them near the origin.
+ *
+ * `maxDistance` caps the size-category table: past it the model is gone
+ * whatever its size, having faded out over the last `CAP_FADE_YARDS`.
  */
 export function cullModel(
   model: SceneModel,
   frustum: THREE.Frustum,
   cameraPosition: THREE.Vector3,
+  maxDistance = Infinity,
 ): void {
   const sphere = model.boundingSphereWorld
-  const fade = fadeAt(cameraPosition.distanceTo(sphere.center), model.sizeCategory)
+  const distance = cameraPosition.distanceTo(sphere.center)
+  const capFade = Math.min(Math.max((maxDistance - distance) / CAP_FADE_YARDS, 0), 1)
+  const fade = Math.min(fadeAt(distance, model.sizeCategory), capFade)
   if (fade === 0 || !frustum.intersectsSphere(sphere)) {
     model.hide()
     return

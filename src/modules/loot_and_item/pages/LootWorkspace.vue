@@ -195,7 +195,7 @@ async function onRemoveEntry(group: LootGroup) {
 </script>
 
 <template>
-  <EntityWorkspace storageKey="loot" listWidth="320px">
+  <EntityWorkspace storageKey="loot">
     <template #list>
       <LootTypeSelect :modelValue="lootType" />
       <EntityListPanel

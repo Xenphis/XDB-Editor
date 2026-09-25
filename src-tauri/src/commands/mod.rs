@@ -1,4 +1,5 @@
 pub mod access_requirement;
+pub mod areatrigger_teleport;
 pub mod batch;
 pub mod addon;
 pub mod exploration_basexp;
@@ -52,6 +53,7 @@ pub mod quest_request_items;
 pub mod quest_request_items_locale;
 pub mod quest_details;
 pub mod quest_relations;
+pub mod quest_preview;
 pub mod trainer;
 pub mod trainer_locale;
 pub mod smart_scripts;

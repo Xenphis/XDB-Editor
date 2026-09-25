@@ -9,7 +9,13 @@ import WorkspaceEmptyState from '@core/components/workspace/WorkspaceEmptyState.
 import EditorHeader from '@core/components/EditorHeader.vue'
 import SectionTabs, { type SectionTabItem } from '@core/components/SectionTabs.vue'
 import type { QuestTemplate } from '@/modules/quests/types/quest_template'
-import { getQuests } from '@/modules/quests/service'
+import { getQuests, type QuestZoneFilter } from '@/modules/quests/service'
+import { loadZoneWorldBounds } from '@/modules/map_editor/service'
+import { ZONE_BY_ID } from '@/modules/map_editor/data/zones'
+import QuestZoneSelect from '../components/QuestZoneSelect.vue'
+import QuestChainFilter from '../components/QuestChainFilter.vue'
+import QuestChainView from '../components/QuestChainView.vue'
+import QuestPreview from '../components/QuestPreview.vue'
 import { useQuestModuleStore } from '@/modules/quests/store'
 import QuestTabGeneral from './editor/quest_template/GeneralTab.vue'
 import QuestTabObjectives from './editor/quest_template/ObjectivesTab.vue'
@@ -48,6 +54,13 @@ const idParam = computed<number | null | undefined>(() => {
   return Number.isNaN(n) ? undefined : n
 })
 
+/** Chain start whose graph is shown (`?chain=`); kept while editing one of
+ * its quests so the header can lead back to the graph. */
+const chainRoot = computed<number | null>(() => {
+  const n = Number(route.query.chain)
+  return route.query.chain != null && Number.isInteger(n) ? n : null
+})
+
 const loading = ref(false)
 
 watch(idParam, async (val) => {
@@ -67,10 +80,27 @@ watch(idParam, async (val) => {
 }, { immediate: true })
 
 // --- List ---
+/** Giver-zone scope of the list; the zone's world rectangle comes from the
+ * client's WorldMapArea.dbc, so without a client the zone falls back to its
+ * whole map. */
+async function zoneFilter(): Promise<QuestZoneFilter | null> {
+  const zone = ZONE_BY_ID.get(store.zoneId)
+  if (!zone) return null
+  let bounds = null
+  if (zone.zoneId != null) {
+    try {
+      bounds = await loadZoneWorldBounds(zone.zoneId)
+    } catch {
+      bounds = null
+    }
+  }
+  return { map: zone.map, bounds }
+}
+
 async function loadQuests() {
   store.loading = true
   try {
-    const result = await getQuests(store.currentSearch || undefined, 50)
+    const result = await getQuests(store.currentSearch || undefined, 50, undefined, await zoneFilter(), store.chainFilter)
     store.setQuests(result.data)
     store.markListLoaded()
   } catch (e) {
@@ -80,13 +110,37 @@ async function loadQuests() {
   }
 }
 
+async function onZoneChange(id: string) {
+  store.zoneId = id
+  await loadQuests()
+}
+
+async function onChainChange(value: 'start' | 'single' | null) {
+  store.chainFilter = value
+  await loadQuests()
+}
+
 async function onSearch(query: string) {
   store.currentSearch = query
   await loadQuests()
 }
 
 function onSelect(quest: QuestTemplate) {
-  router.push(`/quests/${quest.ID}`)
+  // In the chain-starters list a click opens the chain graph; the field
+  // editor is one click further, on a node.
+  if (store.chainFilter === 'start') {
+    router.push({ path: '/quests', query: { chain: quest.ID } })
+  } else {
+    router.push(`/quests/${quest.ID}`)
+  }
+}
+
+function onOpenChainQuest(id: number) {
+  router.push({ path: `/quests/${id}`, query: { chain: chainRoot.value } })
+}
+
+function onBackToChain() {
+  router.push({ path: '/quests', query: { chain: chainRoot.value } })
 }
 
 function onAdd() {
@@ -142,12 +196,13 @@ const mainTabs = computed<SectionTabItem[]>(() => [
 <template>
   <EntityWorkspace storageKey="quests">
     <template #list>
+      <QuestZoneSelect :modelValue="store.zoneId" @update:modelValue="onZoneChange" />
       <EntityListPanel
         :items="store.quests"
         :idOf="(q: QuestTemplate) => q.ID"
         :titleOf="(q: QuestTemplate) => q.LogTitle || `#${q.ID}`"
         :metaOf="metaOf"
-        :selectedId="idParam ?? null"
+        :selectedId="idParam ?? chainRoot"
         :modifiedIds="store.modifiedIds"
         :loading="store.loading"
         :searchPlaceholder="t('quest.searchPlaceholder')"
@@ -156,7 +211,11 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         @add="onAdd"
         @search="onSearch"
         @remove="onRemove"
-      />
+      >
+        <template #filters>
+          <QuestChainFilter :modelValue="store.chainFilter" @update:modelValue="onChainChange" />
+        </template>
+      </EntityListPanel>
     </template>
 
     <template #editor>
@@ -165,10 +224,12 @@ const mainTabs = computed<SectionTabItem[]>(() => [
           :subtitle="form.LogTitle || t('quest_template.editorTitle')"
           :id="form.ID"
           table="quest_template"
-          :showBack="false"
+          :showBack="chainRoot !== null"
+          :backLabel="t('quest.chainView.back')"
           :hasChanges="store.combinedHasChanges"
           :discardLabel="t('quest_template.discard')"
           :executeLabel="t('quest_template.execute')"
+          @back="onBackToChain"
           @discard="onDiscard"
           @execute="onSave"
         />
@@ -186,6 +247,13 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         </SectionTabs>
       </template>
 
+      <QuestChainView
+        v-else-if="chainRoot !== null"
+        :rootId="chainRoot"
+        :modifiedIds="store.modifiedIds"
+        @open="onOpenChainQuest"
+      />
+
       <WorkspaceEmptyState v-else />
     </template>
 
@@ -195,26 +263,14 @@ const mainTabs = computed<SectionTabItem[]>(() => [
         :title="t('workspace.inspector')"
         :subtitle="form.LogTitle || undefined"
         storageKey="quests"
+        width="340px"
         :changedFields="store.combinedChangedFields"
         :diffQuery="store.combinedDiffQuery"
         :fullQuery="store.combinedFullQuery"
         :hasChanges="store.combinedHasChanges"
       >
-        <template #facts>
-          <dl class="quest-facts">
-            <div class="quest-facts-row">
-              <dt>{{ t('quest.columns.level') }}</dt>
-              <dd>{{ form.QuestLevel === -1 ? 'Scaling' : form.QuestLevel }}</dd>
-            </div>
-            <div class="quest-facts-row">
-              <dt>{{ t('quest.columns.type') }}</dt>
-              <dd>{{ typeLabel(form.QuestType) }}</dd>
-            </div>
-            <div class="quest-facts-row">
-              <dt>MinLevel</dt>
-              <dd>{{ form.MinLevel ?? '—' }}</dd>
-            </div>
-          </dl>
+        <template #preview>
+          <QuestPreview />
         </template>
       </InspectorPanel>
     </template>
@@ -230,29 +286,4 @@ const mainTabs = computed<SectionTabItem[]>(() => [
   font-size: 1.5rem;
 }
 
-.quest-facts {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.quest-facts-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.78rem;
-}
-
-.quest-facts-row dt {
-  color: var(--text-muted);
-}
-
-.quest-facts-row dd {
-  margin: 0;
-  color: var(--text);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
 </style>

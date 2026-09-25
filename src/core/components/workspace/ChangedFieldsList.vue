@@ -16,9 +16,24 @@ const { t } = useI18n()
       <div v-for="change in changedFields" :key="change.field" class="change-item">
         <span class="change-field">{{ change.field }}</span>
         <span class="change-values">
-          <span class="change-old">{{ formatValue(change.oldValue) }}</span>
-          <i class="pi pi-arrow-right change-arrow" />
-          <span class="change-new">{{ formatValue(change.newValue) }}</span>
+          <template v-if="change.parts">
+            <span class="change-old">
+              <span v-for="part in change.parts" :key="part.label" class="change-part">
+                <span class="change-part-label">{{ part.label }}:</span> {{ formatValue(part.oldValue) }}
+              </span>
+            </span>
+            <i class="pi pi-arrow-right change-arrow" />
+            <span class="change-new">
+              <span v-for="part in change.parts" :key="part.label" class="change-part">
+                <span class="change-part-label">{{ part.label }}:</span> {{ formatValue(part.newValue) }}
+              </span>
+            </span>
+          </template>
+          <template v-else>
+            <span class="change-old">{{ formatValue(change.oldValue) }}</span>
+            <i class="pi pi-arrow-right change-arrow" />
+            <span class="change-new">{{ formatValue(change.newValue) }}</span>
+          </template>
         </span>
       </div>
     </div>
@@ -63,6 +78,18 @@ const { t } = useI18n()
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.change-part + .change-part {
+  margin-left: 0.6rem;
+}
+
+/* inline-block keeps the label out of the old value's strike-through. */
+.change-part-label {
+  display: inline-block;
+  color: var(--sql-field);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .change-arrow {

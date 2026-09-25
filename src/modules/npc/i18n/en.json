@@ -1,27 +1,10 @@
 {
   "npc": {
-    "hub": {
-      "title": "NPC Module",
-      "description": "Manage creatures, trainers, vendors and formations",
-      "comingSoon": "Coming soon",
-      "submodules": {
-        "creatureTemplate": {
-          "title": "Creature Template",
-          "description": "Browse and edit creature templates: stats, loot, spells and behavior"
-        },
-        "trainer": {
-          "title": "Trainer",
-          "description": "Configure NPC trainers and their available training options"
-        },
-        "vendor": {
-          "title": "Vendor",
-          "description": "Manage vendor creatures and their item stock"
-        },
-        "formation": {
-          "title": "Formation",
-          "description": "Manage creature formations and group spawn patterns"
-        }
-      }
+    "tables": {
+      "creatureTemplate": "Creature Template",
+      "vendor": "Vendor",
+      "trainer": "Trainer",
+      "formation": "Formations"
     },
     "title": "NPC Database",
     "description": "Manage non-player characters, their attributes, and behaviors",

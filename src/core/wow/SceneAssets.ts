@@ -22,9 +22,10 @@ import { MPQ_ASSET_BASE_URL } from './assetHost'
  * The model preview builds one of its own for its (separate) scene, which is
  * why this lives in core rather than under the map editor.
  *
- * MapManager's terrain doodads keep the ModelManager it builds internally —
- * they are lit by the map's day/night MapLight rather than by the neutral sun
- * set up here — but they do draw from this texture cache.
+ * MapManager's terrain doodads keep the ModelManager it builds internally, lit
+ * by the map's MapLight, but they do draw from this texture cache. The world
+ * view hands that same light to the models here each frame (`matchLight`), so
+ * a creature or a building's props are lit like the trees around them.
  */
 export class SceneAssets {
   readonly textureManager: TextureManager
@@ -35,7 +36,8 @@ export class SceneAssets {
     const host = { baseUrl: MPQ_ASSET_BASE_URL, normalizePath: true }
     this.textureManager = new TextureManager({ host })
     // Neutral daylight for the M2 shader: the library default is a strong blue
-    // diffuse. Matches the directional light WmoManager puts on WMO surfaces.
+    // diffuse. What the model preview lights with; the world view replaces it
+    // every frame with the zone's light (see `matchLight`).
     this.sceneLight.sunDir.set(-0.5, -0.3, -1).normalize()
     this.sceneLight.sunDiffuseColor.setScalar(1)
     this.sceneLight.sunAmbientColor.setScalar(0.65)
@@ -44,6 +46,23 @@ export class SceneAssets {
       textureManager: this.textureManager,
       sceneLight: this.sceneLight,
     })
+  }
+
+  /**
+   * Lights every model with `light` for this frame: sun, ambient and fog.
+   *
+   * Copied value by value rather than by swapping the light object: each
+   * material captured this scene light's uniform objects when it was built,
+   * so the new values have to land in those very objects to reach the shader.
+   * Call it after the source light has settled for the frame and before
+   * `update`, which turns the copied sun direction into view space.
+   */
+  matchLight(light: SceneLight): void {
+    this.sceneLight.sunDir.copy(light.sunDir)
+    this.sceneLight.sunDiffuseColor.copy(light.sunDiffuseColor)
+    this.sceneLight.sunAmbientColor.copy(light.sunAmbientColor)
+    this.sceneLight.fogColor.copy(light.fogColor)
+    this.sceneLight.fogParams.copy(light.fogParams)
   }
 
   /**

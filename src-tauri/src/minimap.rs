@@ -13,6 +13,10 @@ use tauri::http::{Request, Response};
 use tauri::Manager;
 use wow_mpq::PatchChain;
 
+use crate::creature_display::{
+    build_creature_models, parse_item_icons, parse_m2_attachments, AttachmentPoint, CreatureDbcs,
+    CreatureModelInfo,
+};
 use crate::liquids::{build_tile_liquids, LiquidMesh};
 use crate::spell_dbc::{build_index, SpellIndex};
 use crate::wmo::{adt_wmo_placements, build_model, to_m2_path, wdt_wmo_placements, WmoModel, WmoPlacement};
@@ -44,8 +48,9 @@ const TILE_SIZE: u32 = 256;
 /// Bump when anything cached under the signature changes shape or meaning for
 /// identical archives — rendered tiles (e.g. the wow-blp 0.7 palettized-BLP
 /// R↔B fix) as well as the extracted WMO models (e.g. the MOCV vertex-lighting
-/// fix) — so the stale entries are dropped and rebuilt.
-const PIPELINE_VERSION: u32 = 3;
+/// fix, the MLIQ liquids, the MH2O depths, the MCLQ liquids) — so the stale
+/// entries are dropped and rebuilt.
+const PIPELINE_VERSION: u32 = 6;
 
 /// Cap of the in-memory MPQ read cache (raw, still-compressed-on-disk assets
 /// decompressed once and reused across 3D re-opens within a session).
@@ -122,6 +127,10 @@ impl MinimapState {
         self.with_data(|data| data.zone_bounds())
     }
 
+    fn item_icons(&self) -> Result<Arc<HashMap<u32, String>>, String> {
+        self.with_data(|data| data.item_icons())
+    }
+
     /// Spell.dbc name/icon index, built on first use (see `spell_dbc.rs`).
     ///
     /// Unlike the small DBCs above this one is NOT parsed inside `with_data`.
@@ -189,6 +198,9 @@ pub struct MinimapData {
     /// WorldMapArea.dbc: AreaTable zone id -> world bounds, parsed lazily on
     /// the first zone-bounds request (empty if the DBC is gone).
     zone_bounds: Option<Arc<HashMap<u32, ZoneWorldBounds>>>,
+    /// ItemDisplayInfo.dbc: display id -> icon BLP path, parsed lazily on the
+    /// first item-icon request (empty if the DBC is gone).
+    item_icons: Option<Arc<HashMap<u32, String>>>,
     /// Spell.dbc (+ SpellIcon.dbc): searchable spell name/icon index, built
     /// lazily on the first spell lookup (empty if the DBCs are gone). Built by
     /// `MinimapState::spell_index`, which parses outside the state lock.
@@ -204,23 +216,6 @@ pub struct ZoneWorldBounds {
     pub max_x: f32,
     pub min_y: f32,
     pub max_y: f32,
-}
-
-/// The client asset needed to render one creature display: the `.m2` model path
-/// (over the `mpq://` scheme) and the combined DBC display/model scale.
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CreatureModelInfo {
-    pub model: String,
-    pub scale: f32,
-    /// Skin BLPs the M2's component-slot textures need to render at all — the
-    /// M2 names them only by component slot, leaving the renderer to supply the
-    /// actual images. For ordinary creatures these are the monster skins 1-3
-    /// from CreatureDisplayInfo's TextureVariation fields (empties dropped). For
-    /// humanoid NPCs built on character models (Defias, guards…) there is no
-    /// TextureVariation; their body is a single pre-baked composite named in
-    /// CreatureDisplayInfoExtra, and that one bake stands in for the slot(s).
-    pub textures: Vec<String>,
 }
 
 /// The client asset needed to render one gameobject display: the model path
@@ -266,21 +261,34 @@ impl MinimapData {
     }
 
     /// Creature display id -> renderable model, built once by composing
-    /// CreatureDisplayInfo.dbc and CreatureModelData.dbc. Empty if either DBC
-    /// is missing (creatures then simply don't render).
+    /// CreatureDisplayInfo.dbc and CreatureModelData.dbc, plus the tables that
+    /// dress humanoid NPCs (see `creature_display`). Empty if either of the
+    /// first two is missing (creatures then simply don't render); any other
+    /// missing DBC only leaves its part of the look out.
     fn creature_models(&mut self) -> Arc<HashMap<u32, CreatureModelInfo>> {
         if self.creature_models.is_none() {
-            let display = self.chain.read_file("DBFilesClient\\CreatureDisplayInfo.dbc");
-            let model = self.chain.read_file("DBFilesClient\\CreatureModelData.dbc");
-            // Optional: humanoid NPCs on character models carry no
-            // TextureVariation and instead name a pre-baked skin here. Missing
-            // DBC just means those NPCs keep rendering untextured.
-            let extra = self
-                .chain
-                .read_file("DBFilesClient\\CreatureDisplayInfoExtra.dbc")
-                .ok();
+            let mut read = |name: &str| self.chain.read_file(&format!("DBFilesClient\\{name}.dbc"));
+            let display = read("CreatureDisplayInfo");
+            let model = read("CreatureModelData");
+            let extra = read("CreatureDisplayInfoExtra").ok();
+            let items = read("ItemDisplayInfo").ok();
+            let helmet_vis = read("HelmetGeosetVisData").ok();
+            let hair = read("CharHairGeosets").ok();
+            let facial_hair = read("CharacterFacialHairStyles").ok();
+            let sections = read("CharSections").ok();
+            let races = read("ChrRaces").ok();
             let resolved = match (display, model) {
-                (Ok(d), Ok(m)) => build_creature_models(&d, &m, extra.as_deref()),
+                (Ok(display_info), Ok(model_data)) => build_creature_models(&CreatureDbcs {
+                    display_info: &display_info,
+                    model_data: &model_data,
+                    display_info_extra: extra.as_deref(),
+                    item_display_info: items.as_deref(),
+                    helmet_geoset_vis: helmet_vis.as_deref(),
+                    hair_geosets: hair.as_deref(),
+                    facial_hair_styles: facial_hair.as_deref(),
+                    char_sections: sections.as_deref(),
+                    chr_races: races.as_deref(),
+                }),
                 _ => {
                     log::warn!("minimap: CreatureDisplayInfo/ModelData.dbc unavailable, creatures unresolved");
                     HashMap::new()
@@ -322,6 +330,22 @@ impl MinimapData {
             self.zone_bounds = Some(Arc::new(bounds));
         }
         self.zone_bounds.clone().unwrap()
+    }
+
+    /// Item display id -> icon BLP path, parsed from ItemDisplayInfo.dbc on
+    /// first use (empty if the DBC is missing — items then show no icon).
+    fn item_icons(&mut self) -> Arc<HashMap<u32, String>> {
+        if self.item_icons.is_none() {
+            let icons = match self.chain.read_file("DBFilesClient\\ItemDisplayInfo.dbc") {
+                Ok(bytes) => parse_item_icons(&bytes),
+                Err(e) => {
+                    log::warn!("minimap: ItemDisplayInfo.dbc unavailable, items have no icon: {e}");
+                    HashMap::new()
+                }
+            };
+            self.item_icons = Some(Arc::new(icons));
+        }
+        self.item_icons.clone().unwrap()
     }
 }
 
@@ -561,7 +585,8 @@ pub async fn minimap_wmo_model(
         // batches is the longest job in this module. Each read grabs the lock
         // by itself and drops it again, so the merging in between runs free
         // instead of freezing the terrain stream for the whole build.
-        let model = build_model(&filename, |path| {
+        let types = state.liquid_types()?;
+        let model = build_model(&filename, &types, |path| {
             state.read_asset(path).map(|bytes| bytes.as_ref().clone())
         })?;
         write_json_cache(&cache_path, &model);
@@ -590,6 +615,23 @@ pub async fn minimap_creature_models(
             }
         }
         Ok(out)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// The attachment points of one M2 (helm, shoulders, hands…), for hanging
+/// item models on it. The file comes through the memoized read cache, which
+/// the renderer's own `mpq://` load of the same model then hits too.
+#[tauri::command]
+pub async fn minimap_model_attachments(
+    app: tauri::AppHandle,
+    path: String,
+) -> Result<Vec<AttachmentPoint>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<MinimapState>();
+        let bytes = state.read_asset(&path)?;
+        Ok(parse_m2_attachments(&bytes))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -752,6 +794,7 @@ fn build_data(archives: Vec<(PathBuf, i32)>, cache_dir: PathBuf) -> Result<Minim
         creature_models: None,
         gameobject_models: None,
         zone_bounds: None,
+        item_icons: None,
         spell_index: None,
     })
 }
@@ -817,6 +860,26 @@ pub async fn minimap_zone_bounds(
     .map_err(|e| e.to_string())?
 }
 
+/// Resolves item display ids (`item_template.displayid`) to the MPQ path of
+/// their inventory icon, servable over the `blp://` scheme. Unknown ids are
+/// omitted from the result.
+#[tauri::command]
+pub async fn client_item_icons(
+    app: tauri::AppHandle,
+    display_ids: Vec<u32>,
+) -> Result<HashMap<u32, String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<MinimapState>();
+        let icons = state.item_icons()?;
+        Ok(display_ids
+            .iter()
+            .filter_map(|id| icons.get(id).map(|path| (*id, path.clone())))
+            .collect())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 fn parse_map_dbc(bytes: &[u8]) -> Option<HashMap<String, (u32, String)>> {
     let u32_at = |offset: usize| -> Option<u32> {
         Some(u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
@@ -846,72 +909,24 @@ fn parse_map_dbc(bytes: &[u8]) -> Option<HashMap<String, (u32, String)>> {
     Some(index)
 }
 
-/// Composes the two creature DBCs into display id -> renderable model. Field
-/// layout is 3.3.5a (build 12340): CreatureDisplayInfo field 1 = ModelID and
-/// field 4 = CreatureModelScale; CreatureModelData field 2 = ModelName string
-/// and field 4 = ModelScale. The two scales multiply; `creature_template.scale`
-/// is applied on the client.
-fn build_creature_models(
-    display_bytes: &[u8],
-    model_bytes: &[u8],
-    extra_bytes: Option<&[u8]>,
-) -> HashMap<u32, CreatureModelInfo> {
-    let displays = parse_creature_display_info(display_bytes).unwrap_or_default();
-    let models = parse_creature_model_data(model_bytes).unwrap_or_default();
-    let bakes = extra_bytes
-        .and_then(parse_creature_display_info_extra)
-        .unwrap_or_default();
-    let mut out = HashMap::with_capacity(displays.len());
-    for (display_id, (model_data_id, extended_id, display_scale, variations)) in displays {
-        if let Some((path, model_scale)) = models.get(&model_data_id) {
-            if path.is_empty() {
-                continue;
-            }
-            // Humanoid NPCs on character models (HumanMale.mdx and friends)
-            // carry no TextureVariation; their fully-composited body skin is a
-            // single baked BLP named in CreatureDisplayInfoExtra, living under
-            // textures\BakedNpcTextures. Without it the M2's COMPONENT_SKIN slot
-            // samples an empty (black) texture and the NPC is a black
-            // silhouette. Prefer the bake; fall back to the monster skins.
-            let textures = match bakes.get(&extended_id).filter(|b| !b.is_empty()) {
-                Some(bake) => vec![format!("textures\\BakedNpcTextures\\{bake}")],
-                None => {
-                    // TextureVariation entries are bare file names next to the M2.
-                    let dir = &path[..path.rfind(['\\', '/']).map_or(0, |i| i + 1)];
-                    variations
-                        .iter()
-                        .filter(|v| !v.is_empty())
-                        .map(|v| format!("{dir}{v}.blp"))
-                        .collect()
-                }
-            };
-            out.insert(
-                display_id,
-                CreatureModelInfo {
-                    model: path.clone(),
-                    scale: display_scale * model_scale,
-                    textures,
-                },
-            );
-        }
-    }
-    out
+/// One Map.dbc row, as the map editor lists it.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MapRecord {
+    pub id: u32,
+    pub directory: String,
+    /// MapName_lang in the client's own locale; the directory when it has none.
+    pub name: String,
+    /// 0 world, 1 dungeon, 2 raid, 3 battleground, 4 arena.
+    pub instance_type: u32,
 }
 
-/// CreatureDisplayInfo.dbc: field 0 = id, field 1 = CreatureModelData id,
-/// field 3 = ExtendedDisplayInfoID (into CreatureDisplayInfoExtra, 0 for
-/// ordinary creatures), field 4 = CreatureModelScale, fields 6-8 =
-/// TextureVariation (bare skin BLP names, no path/extension). Returns
-/// id -> (model-data id, extended-display id, scale, variations). Only fixed
-/// field offsets are read, so trailing fields don't matter.
-fn parse_creature_display_info(
-    bytes: &[u8],
-) -> Option<HashMap<u32, (u32, u32, f32, [String; 3])>> {
+/// Map.dbc (3.3.5, build 12340): field 0 = id, 1 = Directory, 2 =
+/// InstanceType, 5-20 = MapName_lang, one string per locale. A client only
+/// fills its own locale's column, so the first non-empty one is its name.
+fn parse_map_records(bytes: &[u8]) -> Option<Vec<MapRecord>> {
     let u32_at = |offset: usize| -> Option<u32> {
         Some(u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
-    };
-    let f32_at = |offset: usize| -> Option<f32> {
-        Some(f32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
     };
     if bytes.get(..4)? != b"WDBC" {
         return None;
@@ -919,100 +934,45 @@ fn parse_creature_display_info(
     let record_count = u32_at(4)? as usize;
     let record_size = u32_at(12)? as usize;
     let strings_start = 20 + record_count * record_size;
-    if record_size < 20 || bytes.len() < strings_start {
+    if record_size < 21 * 4 || bytes.len() < strings_start {
         return None;
     }
     let string_at = |offset: usize| -> Option<String> {
-        let tail = bytes.get(strings_start + u32_at(offset)? as usize..)?;
-        let end = tail.iter().position(|&b| b == 0).unwrap_or(tail.len());
-        Some(String::from_utf8_lossy(&tail[..end]).into_owned())
+        let text = bytes.get(strings_start + u32_at(offset)? as usize..)?;
+        let end = text.iter().position(|&b| b == 0)?;
+        Some(String::from_utf8_lossy(&text[..end]).into_owned())
     };
-    let mut index = HashMap::with_capacity(record_count);
+
+    let mut records = Vec::with_capacity(record_count);
     for record in 0..record_count {
         let base = 20 + record * record_size;
-        let id = u32_at(base)?;
-        let model_data_id = u32_at(base + 4)?;
-        let extended_id = u32_at(base + 12)?;
-        let scale = f32_at(base + 16).filter(|s| *s > 0.0).unwrap_or(1.0);
-        let mut variations: [String; 3] = Default::default();
-        if record_size >= 36 {
-            for (i, variation) in variations.iter_mut().enumerate() {
-                *variation = string_at(base + 24 + i * 4).unwrap_or_default();
-            }
-        }
-        index.insert(id, (model_data_id, extended_id, scale, variations));
+        let directory = string_at(base + 4)?;
+        let name = (5..=20)
+            .filter_map(|field| string_at(base + field * 4))
+            .find(|name| !name.is_empty())
+            .unwrap_or_else(|| directory.clone());
+        records.push(MapRecord {
+            id: u32_at(base)?,
+            directory,
+            name,
+            instance_type: u32_at(base + 8)?,
+        });
     }
-    Some(index)
+    Some(records)
 }
 
-/// CreatureDisplayInfoExtra.dbc: field 0 = id, last field = BakeName (a
-/// string-block offset to the pre-composited NPC skin file name, e.g.
-/// "<md5>.blp", living under textures\BakedNpcTextures). This is what dresses
-/// humanoid NPCs built on character models; only the id and the trailing
-/// BakeName are read, so the exact count of item/geoset fields in between is
-/// irrelevant. Returns extended-display id -> bake file name (empties dropped).
-fn parse_creature_display_info_extra(bytes: &[u8]) -> Option<HashMap<u32, String>> {
-    let u32_at = |offset: usize| -> Option<u32> {
-        Some(u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
-    };
-    if bytes.get(..4)? != b"WDBC" {
-        return None;
-    }
-    let record_count = u32_at(4)? as usize;
-    let record_size = u32_at(12)? as usize;
-    let strings_start = 20 + record_count * record_size;
-    // Need at least the id plus the trailing BakeName string offset.
-    if record_size < 8 || bytes.len() < strings_start {
-        return None;
-    }
-    let string_at = |offset: usize| -> Option<String> {
-        let tail = bytes.get(strings_start + u32_at(offset)? as usize..)?;
-        let end = tail.iter().position(|&b| b == 0).unwrap_or(tail.len());
-        Some(String::from_utf8_lossy(&tail[..end]).into_owned())
-    };
-    let mut index = HashMap::with_capacity(record_count);
-    for record in 0..record_count {
-        let base = 20 + record * record_size;
-        let id = u32_at(base)?;
-        let bake = string_at(base + record_size - 4).unwrap_or_default();
-        if !bake.is_empty() {
-            index.insert(id, bake);
-        }
-    }
-    Some(index)
-}
-
-/// CreatureModelData.dbc: field 0 = id, field 2 = ModelName (string-block
-/// offset, a `.mdx` path), field 4 = ModelScale. Returns id -> (m2 path, scale).
-fn parse_creature_model_data(bytes: &[u8]) -> Option<HashMap<u32, (String, f32)>> {
-    let u32_at = |offset: usize| -> Option<u32> {
-        Some(u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
-    };
-    let f32_at = |offset: usize| -> Option<f32> {
-        Some(f32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
-    };
-    if bytes.get(..4)? != b"WDBC" {
-        return None;
-    }
-    let record_count = u32_at(4)? as usize;
-    let record_size = u32_at(12)? as usize;
-    let strings_start = 20 + record_count * record_size;
-    if record_size < 20 || bytes.len() < strings_start {
-        return None;
-    }
-    let mut index = HashMap::with_capacity(record_count);
-    for record in 0..record_count {
-        let base = 20 + record * record_size;
-        let id = u32_at(base)?;
-        let name_offset = strings_start + u32_at(base + 8)? as usize;
-        let name_bytes = bytes.get(name_offset..)?;
-        let end = name_bytes.iter().position(|&b| b == 0).unwrap_or(name_bytes.len());
-        let raw = String::from_utf8_lossy(&name_bytes[..end]).into_owned();
-        let path = if raw.is_empty() { String::new() } else { to_m2_path(&raw) };
-        let scale = f32_at(base + 16).filter(|s| *s > 0.0).unwrap_or(1.0);
-        index.insert(id, (path, scale));
-    }
-    Some(index)
+/// Every Map.dbc row. The map editor lists its dungeons and raids from here
+/// rather than from the minimap index, which only knows maps with minimap
+/// tiles and so misses the instances built from WMOs alone.
+#[tauri::command]
+pub async fn minimap_map_records(app: tauri::AppHandle) -> Result<Vec<MapRecord>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<MinimapState>();
+        let bytes = state.read_asset("DBFilesClient\\Map.dbc")?;
+        parse_map_records(&bytes).ok_or_else(|| "Map.dbc: unexpected layout".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// GameObjectDisplayInfo.dbc: field 0 = id, field 1 = ModelName (string-block

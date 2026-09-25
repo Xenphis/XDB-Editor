@@ -135,7 +135,7 @@ export const useSessionTrackerStore = defineStore('sessionTracker', () => {
 
   const totalChanges = computed(() => changes.value.length)
 
-  const globalSqlScript = computed(() => changes.value.map(change => change.sql).join('\n'))
+  const globalSqlScript = computed(() => changes.value.map(change => change.sql).join('\n\n'))
 
   return {
     changes,

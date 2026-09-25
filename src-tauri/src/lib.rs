@@ -1,6 +1,7 @@
 mod db;
 mod debug;
 mod commands;
+mod creature_display;
 mod liquids;
 mod minimap;
 mod model_proxy;
@@ -10,12 +11,12 @@ mod wmo;
 use db::DbState;
 use debug::{DebugState, set_debug_mode, get_debug_mode};
 use minimap::{MinimapState, minimap_load_client, minimap_adt_liquids};
-use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_gameobject_models, minimap_zone_bounds};
+use minimap::{minimap_adt_wmo_placements, minimap_global_wmo_placements, minimap_wmo_model, minimap_creature_models, minimap_model_attachments, minimap_gameobject_models, minimap_zone_bounds, minimap_map_records, client_item_icons};
 use spell_dbc::{client_spell_search, client_spell_names, client_spell_detail};
 use commands::addon::{get_npc_addon, save_npc_addon};
 use commands::batch::execute_batch;
 use commands::connection::{connect_db, disconnect_db};
-use commands::creature::{get_creature_spawns, get_creature_spawns_in_bounds, get_creature_spawns_by_map, save_creature_spawn, delete_creature_spawn};
+use commands::creature::{get_creature_spawns, get_creature_spawn, get_creature_spawns_in_bounds, get_creature_spawns_by_map, save_creature_spawn, delete_creature_spawn};
 use commands::creature_addon::{get_creature_addon, save_creature_addon};
 use commands::creature_movement_override::{get_creature_movement_override, save_creature_movement_override};
 use commands::creature_template_model::{get_npc_models, save_npc_models};
@@ -48,6 +49,7 @@ use commands::movement::{get_npc_movement, save_npc_movement};
 use commands::resistance::{get_npc_resistances, save_npc_resistances};
 use commands::access_requirement::{get_access_requirements, get_access_requirement, save_access_requirement, delete_access_requirement};
 use commands::exploration_basexp::{get_exploration_basexps, get_exploration_basexp, save_exploration_basexp, delete_exploration_basexp};
+use commands::areatrigger_teleport::get_areatrigger_teleport_targets;
 use commands::game_tele::{get_game_teles_by_map, get_next_game_tele_id, save_game_tele, delete_game_tele};
 use commands::instance_template::{get_instance_templates, get_instance_template, save_instance_template, delete_instance_template};
 use commands::instance_encounters::{get_instance_encounters, get_instance_encounters_by_map, get_instance_encounter, save_instance_encounter, delete_instance_encounter};
@@ -55,7 +57,7 @@ use commands::instance_spawn_groups::{get_instance_spawn_groups, get_instance_sp
 use commands::creature_classlevelstats::{get_creature_classlevelstats, get_creature_classlevelstat, save_creature_classlevelstat};
 use commands::creature_formations::{get_creature_formation_groups, get_creature_formation, get_creature_formation_of_member, search_creature_spawns, delete_creature_formation};
 use commands::npc_vendor::{get_npc_vendors, get_npc_vendor, search_vendor_creatures, search_vendor_items, delete_npc_vendor};
-use commands::quest::{get_quests, get_quest, save_quest, delete_quest};
+use commands::quest::{get_quests, get_quest, get_quest_chain, save_quest, delete_quest};
 use commands::quest_template_addon::{get_quest_addon, save_quest_addon};
 use commands::quest_template_locale::{get_quest_locales, save_quest_locales};
 use commands::quest_offer_reward::{get_quest_offer_reward, save_quest_offer_reward};
@@ -64,6 +66,7 @@ use commands::quest_request_items::get_quest_request_items;
 use commands::quest_request_items_locale::{get_quest_request_items_locales, save_quest_request_items_locales};
 use commands::quest_details::get_quest_details;
 use commands::quest_relations::{get_quest_relations, get_creature_quest_relations, get_gameobject_quest_relations};
+use commands::quest_preview::get_quest_preview_refs;
 use commands::creature_questitem::{get_creature_questitem, save_creature_questitem};
 use commands::trainer::{get_trainers, get_trainer, save_trainer, delete_trainer, get_trainer_spells, save_trainer_spells, get_creature_default_trainers, save_creature_default_trainers};
 use commands::trainer_locale::{get_trainer_locales, save_trainer_locales};
@@ -137,6 +140,7 @@ pub fn run() {
       get_npc_addon,
       save_npc_addon,
       get_creature_spawns,
+      get_creature_spawn,
       get_creature_spawns_in_bounds,
       get_creature_spawns_by_map,
       save_creature_spawn,
@@ -200,6 +204,7 @@ pub fn run() {
       get_exploration_basexp,
       save_exploration_basexp,
       delete_exploration_basexp,
+      get_areatrigger_teleport_targets,
       get_game_teles_by_map,
       get_next_game_tele_id,
       save_game_tele,
@@ -219,6 +224,7 @@ pub fn run() {
       save_instance_spawn_group,
       delete_instance_spawn_group,
       get_quests,
+      get_quest_chain,
       get_quest,
       save_quest,
       delete_quest,
@@ -237,6 +243,7 @@ pub fn run() {
       get_quest_relations,
       get_creature_quest_relations,
       get_gameobject_quest_relations,
+      get_quest_preview_refs,
       get_creature_classlevelstats,
       get_creature_classlevelstat,
       save_creature_classlevelstat,
@@ -273,8 +280,11 @@ pub fn run() {
       minimap_global_wmo_placements,
       minimap_wmo_model,
       minimap_creature_models,
+      minimap_model_attachments,
       minimap_gameobject_models,
       minimap_zone_bounds,
+      minimap_map_records,
+      client_item_icons,
       client_spell_search,
       client_spell_names,
       client_spell_detail,

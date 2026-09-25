@@ -2,7 +2,13 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { FocusPosition, MinimapMapInfo, PickedPosition, WorldPosition } from '../types'
+import type {
+  FocusPosition,
+  MinimapMapInfo,
+  PickedPosition,
+  SavedView,
+  WorldPosition,
+} from '../types'
 import { MIN_ZOOM, NATIVE_ZOOM, latLngToWorld, tileUrlTemplate, worldToLatLng } from '../service'
 
 /**
@@ -19,12 +25,14 @@ const props = defineProps<{
   focus?: FocusPosition | null
   /** Selected table row position, shown as a dot (kept while panning). */
   marker?: FocusPosition | null
+  /** Where the view was left; restores center and zoom when nothing is focused. */
+  initialView?: SavedView | null
 }>()
 
 const emit = defineEmits<{
   (e: 'cursor', world: WorldPosition | null): void
-  /** Fired after each pan/zoom with the view center (seeds the 3D view). */
-  (e: 'center', world: WorldPosition): void
+  /** Fired after each pan/zoom with the view center (seeds the 3D view) and zoom. */
+  (e: 'center', world: WorldPosition, zoom: number): void
   /** Right-click: world position under the pointer (no height in 2D). */
   (e: 'pick', position: PickedPosition): void
   /** Right-click, with the raw event so the parent can anchor a menu on it. */
@@ -93,6 +101,11 @@ function showMap(info: MinimapMapInfo) {
     leafletMap.setView(worldToLatLng(props.focus), FOCUS_ZOOM)
     return
   }
+  const saved = props.initialView
+  if (saved?.map === info.id) {
+    leafletMap.setView(worldToLatLng(saved), saved.zoom ?? FOCUS_ZOOM)
+    return
+  }
   leafletMap.fitBounds(bounds)
   if (leafletMap.getZoom() < INITIAL_MIN_ZOOM) {
     leafletMap.setView(bounds.getCenter(), INITIAL_MIN_ZOOM)
@@ -114,7 +127,7 @@ onMounted(() => {
   })
   leafletMap.on('mouseout', () => emit('cursor', null))
   leafletMap.on('moveend', () => {
-    if (leafletMap) emit('center', latLngToWorld(leafletMap.getCenter()))
+    if (leafletMap) emit('center', latLngToWorld(leafletMap.getCenter()), leafletMap.getZoom())
   })
   // Leaflet swallows the browser menu for us once this event is listened to.
   leafletMap.on('contextmenu', (event: L.LeafletMouseEvent) => {

@@ -7,18 +7,41 @@ import type { QuestOfferRewardLocale } from '@/modules/quests/types/quest_offer_
 import type { QuestRequestItems } from '@/modules/quests/types/quest_request_items'
 import type { QuestRequestItemsLocale } from '@/modules/quests/types/quest_request_items_locale'
 import type { QuestDetails } from '@/modules/quests/types/quest_details'
+import type { WorldBounds } from '@/modules/map_editor/service'
 
 export interface QuestListResult {
   data: QuestTemplate[]
   total: number
 }
 
+/** Restricts the list to quests whose giver spawns on `map`, inside `bounds`
+ * (the zone's world rectangle; omitted = the whole map). */
+export interface QuestZoneFilter {
+  map: number
+  bounds?: WorldBounds | null
+}
+
+/** 'start' = first quest of a chain, 'single' = quest outside any chain. */
+export type QuestChainFilter = 'start' | 'single'
+
 export async function getQuests(
   search?: string,
   limit?: number,
   offset?: number,
+  zone?: QuestZoneFilter | null,
+  chain?: QuestChainFilter | null,
 ): Promise<QuestListResult> {
-  return invoke('get_quests', { search, limit, offset })
+  return invoke('get_quests', {
+    search,
+    limit,
+    offset,
+    map: zone?.map,
+    minX: zone?.bounds?.minX,
+    maxX: zone?.bounds?.maxX,
+    minY: zone?.bounds?.minY,
+    maxY: zone?.bounds?.maxY,
+    chain: chain ?? undefined,
+  })
 }
 
 export async function getQuest(id: number): Promise<QuestTemplate> {
@@ -96,4 +119,61 @@ export interface QuestRelations {
 
 export async function getQuestRelations(quest: number): Promise<QuestRelations> {
   return invoke('get_quest_relations', { quest })
+}
+
+// ─── in-game preview (read-only name lookups) ─────────────────────────────────
+
+export interface QuestPreviewItem {
+  entry: number
+  name: string
+  quality: number
+  displayId: number
+}
+
+export interface QuestPreviewName {
+  entry: number
+  name: string
+}
+
+export interface QuestPreviewRefs {
+  items: QuestPreviewItem[]
+  creatures: QuestPreviewName[]
+  gameobjects: QuestPreviewName[]
+}
+
+export async function getQuestPreviewRefs(
+  items: number[],
+  creatures: number[],
+  gameobjects: number[],
+): Promise<QuestPreviewRefs> {
+  return invoke('get_quest_preview_refs', { items, creatures, gameobjects })
+}
+
+// ─── quest chain graph ────────────────────────────────────────────────────────
+
+export interface QuestChainNode {
+  id: number
+  /** null = referenced by a link but missing from quest_template. */
+  title: string | null
+  level: number | null
+  min_level: number | null
+  quest_type: number | null
+  exclusive_group: number
+}
+
+export interface QuestChainEdge {
+  from: number
+  to: number
+  /** 'completed' = `to` needs `from` rewarded, 'active' = `from` in the quest log. */
+  kind: 'completed' | 'active'
+}
+
+export interface QuestChain {
+  nodes: QuestChainNode[]
+  edges: QuestChainEdge[]
+  truncated: boolean
+}
+
+export async function getQuestChain(id: number): Promise<QuestChain> {
+  return invoke('get_quest_chain', { id })
 }

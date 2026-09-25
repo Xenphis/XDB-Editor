@@ -1,3 +1,5 @@
+import type { CharacterAppearance, ComponentTextures } from '@core/wow/creatureDisplay'
+
 /** One entry per map directory found in the client's md5translate.trs. */
 export interface MinimapMapInfo {
   /** Lowercased map directory name; used in tile URLs. */
@@ -25,9 +27,50 @@ export interface PickedPosition extends WorldPosition {
   z: number | null
 }
 
+/**
+ * How much the 3D view asks of the GPU. Persisted per user: what a machine can
+ * hold at 60 FPS is a property of the machine, not of the data being edited.
+ */
+export type RenderQuality = 'low' | 'medium' | 'high'
+
+/** Where the 3D camera stands and looks, as the minimap draws it. */
+export interface CameraPose extends WorldPosition {
+  /** Heading in radians, counter-clockwise from north (+X) toward west (+Y). */
+  yaw: number
+  /** Horizontal field of view in radians. */
+  fov: number
+}
+
+/** A spot drawn on the minimap (spawn, picked position, table row). */
+export interface MinimapMarker extends WorldPosition {
+  /** CSS colour of the dot. */
+  color: string
+}
+
 /** A world position with optional height, used to focus/fly the views. */
 export interface FocusPosition extends WorldPosition {
   z?: number | null
+  /** Heading to face, in the game's convention (radians, counter-clockwise
+   * from north (+X) toward west (+Y)); the camera keeps its own when absent. */
+  orientation?: number
+  /** 3D look angle in radians, below the horizon when negative; the camera
+   * keeps its own when absent. */
+  pitch?: number
+}
+
+/** Which view the open world is browsed in (instances are 3D only). */
+export type ViewMode = '2d' | '3d'
+
+/**
+ * Where the view was last left, persisted so that leaving the editor (or the
+ * app) and coming back lands on the same spot. Reads as a `FocusPosition`: the
+ * 3D camera sits its eye height above `z`, which is absent when unknown.
+ */
+export interface SavedView extends FocusPosition {
+  /** `MinimapMapInfo.id` of the map it was on; ignored on any other map. */
+  map: string
+  /** 2D zoom level; absent until the 2D view has been used there. */
+  zoom?: number
 }
 
 /** A curated zone of the world (static list, edited in code: data/zones.ts).
@@ -38,11 +81,44 @@ export interface ZoneDefinition {
   id: string
   /** DB map id (Map.dbc / creature.map / game_tele.map). */
   map: number
-  /** Camera / view start position. */
-  origin: { x: number; y: number; z: number }
+  /** Camera / view start position and heading (a game_tele row). */
+  origin: { x: number; y: number; z: number; orientation: number }
   /** AreaTable zone id — keys the WorldMapArea lookup that scopes the zone
    * tables (teleports, spawns) to the zone's world rectangle. */
   zoneId?: number
+}
+
+/** What the map editor's sidebar lists: curated open-world zones, or the
+ * client's dungeon and raid maps. */
+export type MapCategory = 'world' | 'instances'
+
+export const MAP_CATEGORIES: readonly MapCategory[] = ['world', 'instances']
+
+/** Map.dbc InstanceType of a dungeon and of a raid. */
+export const INSTANCE_TYPE_DUNGEON = 1
+export const INSTANCE_TYPE_RAID = 2
+
+/** One Map.dbc row from the client (`minimap_map_records`). */
+export interface MapRecord {
+  /** DB map id. */
+  id: number
+  directory: string
+  /** Name in the client's own locale; the directory when it has none. */
+  name: string
+  /** 0 world, 1 dungeon, 2 raid, 3 battleground, 4 arena. */
+  instanceType: number
+}
+
+/**
+ * Where an `areatrigger_teleport` row drops the player — for an instance map,
+ * its entrance (one row per map: the lowest trigger ID).
+ */
+export interface AreatriggerTeleportTarget {
+  target_map: number
+  target_position_x: number
+  target_position_y: number
+  target_position_z: number
+  target_orientation: number
 }
 
 /** Liquid geometry for one category (water/ocean/magma/slime) in a tile. */
@@ -51,6 +127,11 @@ export interface LiquidLayer {
   /** Flat XYZ triplets in world (== three) space. */
   positions: number[]
   indices: number[]
+  /**
+   * Liquid depth under each vertex, 0..1, one per position. Empty when the
+   * source has none (WMO liquid), which reads as deep everywhere.
+   */
+  depths: number[]
 }
 
 export interface LiquidMesh {
@@ -68,6 +149,10 @@ export interface WmoBatch {
   /** Baked MOCV vertex colors (RGB, 0..1); white where a group has none. */
   colors: number[]
   indices: number[]
+  /** MOMT two-sided flag (0x04); everything else is front-facing only. */
+  twoSided: boolean
+  /** MOMT blend mode: 0 opaque, 1 alpha-key (cutout), 2 and up blended. */
+  blendMode: number
 }
 
 /** An M2 placed inside a WMO, in WMO-local space. */
@@ -87,6 +172,8 @@ export interface WmoDoodadSet {
 export interface WmoModel {
   batches: WmoBatch[]
   doodadSets: WmoDoodadSet[]
+  /** The WMO's own liquid (MLIQ), one layer per category, in WMO-local space. */
+  liquids: LiquidLayer[]
 }
 
 /** A WMO placed in the world; the world transform is applied on the client. */
@@ -135,6 +222,20 @@ export interface CreatureSpawnMarker {
   scale: number
 }
 
+/**
+ * Where a spawn stands and which way it faces: the four `creature` columns the
+ * 3D view can edit. Orientation is the DB's, a yaw in radians in [0, 2π).
+ */
+export interface SpawnTransform {
+  x: number
+  y: number
+  z: number
+  orientation: number
+}
+
+/** What the 3D view's transform gizmo does to the selected spawn. */
+export type GizmoMode = 'translate' | 'rotate'
+
 /** Resolved client model for a creature display id (from the client DBCs). */
 export interface CreatureModelInfo {
   /** M2 path, served over the `mpq://` scheme (like WMO doodads). */
@@ -142,11 +243,14 @@ export interface CreatureModelInfo {
   /** Combined CreatureDisplayInfo × CreatureModelData scale. */
   scale: number
   /**
-   * Skin BLP paths (CreatureDisplayInfo texture variations, up to 3). The M2
-   * only declares these as component slots, so they must be applied on top of
-   * the loaded model or the creature renders black.
+   * BLPs for the M2's runtime texture slots, keyed by texture component: the
+   * monster skins of ordinary creatures, the baked body, hair, fur and cape of
+   * humanoid NPCs. The M2 only declares these slots, so they must be applied
+   * on top of the loaded model or the creature renders black.
    */
-  textures: string[]
+  textures: ComponentTextures
+  /** How a humanoid NPC is dressed; null for ordinary creatures. */
+  character: CharacterAppearance | null
 }
 
 /** What the client needs to render one gameobject display id. */

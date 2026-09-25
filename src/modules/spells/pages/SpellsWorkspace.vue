@@ -46,17 +46,20 @@ function onSearch(value: string) {
   query.value = value
 }
 
-/** "Tous" / "Sorts" / "Auras" — `null` maps to `useSpellSearch`'s `undefined`
- *  (no filter) since PrimeVue's Select needs a real option value to select. */
+/** "Tous" / "Sorts" / "Auras" — "all" maps to `useSpellSearch`'s `undefined`
+ *  (no filter): PrimeVue's Select treats a `null` value as "nothing selected"
+ *  and would render an empty label instead of "Tous". */
+type KindFilter = SpellKind | 'all'
+
 const kindOptions = computed(() => [
-  { value: null, label: t('spells.kindAll') },
+  { value: 'all' as const, label: t('spells.kindAll') },
   { value: 'spell' as const, label: t('spells.kindSpell') },
   { value: 'aura' as const, label: t('spells.kindAura') },
 ])
 
-const kindFilter = computed<SpellKind | null>({
-  get: () => kind.value ?? null,
-  set: value => { kind.value = value ?? undefined },
+const kindFilter = computed<KindFilter>({
+  get: () => kind.value ?? 'all',
+  set: value => { kind.value = value === 'all' ? undefined : value },
 })
 
 const rankGroups = computed(() => groupSpellsByRank(results.value))
@@ -139,6 +142,15 @@ function onDiscard() {
 <template>
   <EntityWorkspace storageKey="spells">
     <template #list>
+      <div class="spell-kind-select">
+        <Select
+          v-model="kindFilter"
+          :options="kindOptions"
+          optionLabel="label"
+          optionValue="value"
+          fluid
+        />
+      </div>
       <SpellGroupedListPanel
         :groups="rankGroups"
         :selectedId="entryParam ?? null"
@@ -147,17 +159,7 @@ function onDiscard() {
         :searchPlaceholder="t('spells.searchPlaceholder')"
         @select="onSelect"
         @search="onSearch"
-      >
-        <template #filters>
-          <Select
-            v-model="kindFilter"
-            :options="kindOptions"
-            optionLabel="label"
-            optionValue="value"
-            class="spell-kind-filter"
-          />
-        </template>
-      </SpellGroupedListPanel>
+      />
 
       <div v-if="noClient" class="spells-list-noclient">
         <i class="pi pi-folder-open"></i>
@@ -350,16 +352,11 @@ function onDiscard() {
   background: var(--surface-hover);
 }
 
-.spell-kind-filter {
-  width: 5.5rem;
-  height: var(--input-height-sm) !important;
+.spell-kind-select {
+  /* Right padding clears the workspace's absolutely positioned collapse
+     toggle, which sits over this corner (same as LootTypeSelect). */
+  padding: 0.6rem 2.1rem 0 0.6rem;
   flex-shrink: 0;
-}
-
-.spell-kind-filter :deep(.p-select-label) {
-  font-size: 0.72rem;
-  padding: 0 0.4rem;
-  line-height: calc(var(--input-height-sm) - 2px);
 }
 
 .spells-list-noclient {

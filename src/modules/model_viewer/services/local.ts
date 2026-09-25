@@ -2,9 +2,13 @@ import * as THREE from 'three'
 import { OrbitControls } from '@wowserhq/scene'
 import { SceneAssets } from '@core/wow/SceneAssets'
 import { applyModelSkins } from '@core/wow/modelSkins'
+import { showCharacterGeosets } from '@core/wow/characterGeosets'
+import { attachItemModels, type AttachedModels } from '@core/wow/modelAttachments'
+import type { AttachmentPoint } from '@core/wow/creatureDisplay'
 import { buildWmoTemplate } from '@core/wow/wmoGeometry'
 import {
   ensureClientLoaded,
+  loadModelAttachments,
   loadWmoModel,
   resolveCreatureModels,
   resolveGameObjectModels,
@@ -24,8 +28,10 @@ import type { ModelKind, ModelViewerHandle } from '../types'
  * ids from a server's own patch MPQs render, because they come from the same
  * files the server's players actually load.
  *
- * Creature displays are always M2s. Gameobject displays are M2s *or* WMOs
- * (ships, elevators, city gates), which need the WMO geometry pipeline
+ * Creature displays are always M2s. Humanoid NPCs are dressed as the client
+ * dresses them: the display's geosets (hair, boots, tabard…) and the helm and
+ * shoulder models hung on the body's bones. Gameobject displays are M2s *or*
+ * WMOs (ships, elevators, city gates), which need the WMO geometry pipeline
  * instead — both are handled here.
  */
 
@@ -46,8 +52,8 @@ export class LocalModelError extends Error {
 const FOV = 40
 /** Camera direction from the model, in WoW axes (+X front, +Y left, +Z up). */
 const VIEW_DIR = new THREE.Vector3(1, -0.85, 0.4).normalize()
-/** Framing slack around the model's bounding sphere. */
-const FRAMING_MARGIN = 1.25
+/** Framing slack around the model's drawn bounds. */
+const FRAMING_MARGIN = 1.08
 /** Retina is wasted on a thumbnail-sized canvas. */
 const MAX_PIXEL_RATIO = 2
 
@@ -142,7 +148,7 @@ export async function renderLocalModel(
 
   const subject =
     kind === 'creature'
-      ? await buildCreature(displayId)
+      ? await buildCreature(displayId, clientPath)
       : await buildGameObject(displayId)
 
   return mount(container, subject)
@@ -151,12 +157,30 @@ export async function renderLocalModel(
 /** The scene content for one display id, plus what its teardown must release. */
 interface Subject {
   root: THREE.Object3D
-  /** Extra lights the content needs (WMO batches use lit materials). */
-  lit: boolean
+  /** Per-frame work after the animation pass (attached items follow bones). */
+  sync?(camera: THREE.Camera): void
   dispose(): void
 }
 
-async function buildCreature(displayId: number): Promise<Subject> {
+/**
+ * Attachment points per client and model path. A body model's points never
+ * change, and every NPC on HumanMale asks for the same ones.
+ */
+const attachmentPoints = new Map<string, Promise<AttachmentPoint[]>>()
+
+function modelAttachmentPoints(clientPath: string, model: string): Promise<AttachmentPoint[]> {
+  const key = `${clientPath}|${model}`
+  let points = attachmentPoints.get(key)
+  if (!points) {
+    points = loadModelAttachments(model)
+    attachmentPoints.set(key, points)
+    // A failed read is retried next time instead of being remembered.
+    points.catch(() => attachmentPoints.delete(key))
+  }
+  return points
+}
+
+async function buildCreature(displayId: number, clientPath: string): Promise<Subject> {
   let resolved: Awaited<ReturnType<typeof resolveCreatureModels>>
   try {
     resolved = await resolveCreatureModels([displayId])
@@ -178,11 +202,28 @@ async function buildCreature(displayId: number): Promise<Subject> {
   // is given, so scaling would only change the numbers, never the picture.
   model.updateMatrixWorld()
   applyModelSkins(model, info.textures, assets().textureManager)
+  showCharacterGeosets(model, info.model, info.character?.geosets)
+
+  // Worn items are extras: without them the NPC still renders, just less
+  // dressed, so a failure here never fails the preview.
+  let attached: AttachedModels | null = null
+  const items = info.character?.attachments ?? []
+  if (items.length > 0) {
+    try {
+      const points = await modelAttachmentPoints(clientPath, info.model)
+      attached = await attachItemModels(model, items, points, assets())
+    } catch (e) {
+      console.warn('[modelViewer] could not attach item models', e)
+    }
+  }
 
   return {
     root: model,
-    lit: false,
-    dispose: () => model.dispose(),
+    sync: camera => attached?.sync(camera),
+    dispose: () => {
+      attached?.dispose()
+      model.dispose()
+    },
   }
 }
 
@@ -209,7 +250,7 @@ async function buildDoodad(path: string): Promise<Subject> {
     throw new LocalModelError('failed', `could not load ${path}: ${String(e)}`)
   }
   model.updateMatrixWorld()
-  return { root: model, lit: false, dispose: () => model.dispose() }
+  return { root: model, dispose: () => model.dispose() }
 }
 
 /** A WMO gameobject (ship, elevator, gate): batch geometry + doodad set 0. */
@@ -221,7 +262,7 @@ async function buildWmo(path: string): Promise<Subject> {
     throw new LocalModelError('failed', `could not load ${path}: ${String(e)}`)
   }
 
-  const built = buildWmoTemplate(wmo.batches, assets().textureManager)
+  const built = buildWmoTemplate(wmo.batches, assets().textureManager, assets().sceneLight)
   // Set 0 is the always-visible default set; the others are selected by a
   // placement, which a standalone preview doesn't have.
   const doodads = wmo.doodadSets[0]?.doodads ?? []
@@ -240,13 +281,107 @@ async function buildWmo(path: string): Promise<Subject> {
 
   return {
     root: built.group,
-    lit: true,
     dispose: () => {
       for (const model of placed) model?.dispose()
       for (const geometry of built.geometries) geometry.dispose()
       for (const material of built.materials) material.dispose()
     },
   }
+}
+
+const _vertex = new THREE.Vector3()
+const _skinned = new THREE.Vector3()
+const _influence = new THREE.Vector3()
+
+type SceneModel = Awaited<ReturnType<SceneAssets['modelManager']['get']>>
+
+/**
+ * A skinned model's bones as posed by the last animation pass, in model space
+ * (@wowserhq/scene bakes the model-view matrix into them). `null` for
+ * anything that isn't a skinned model.
+ */
+function posedBones(object: THREE.Object3D): THREE.Matrix4[] | null {
+  const model = object as Partial<SceneModel>
+  const bones = model.skinned ? model.animation?.skeleton?.bones : undefined
+  if (!bones) return null
+  const viewToModel = object.modelViewMatrix.clone().invert()
+  return bones.map(bone => viewToModel.clone().multiply(bone.matrix))
+}
+
+/**
+ * The box around what is actually drawn: the vertices of every visible
+ * submesh, attached items included, skinned into the pose of the last
+ * animation pass.
+ *
+ * The M2 bounds @wowserhq/scene gives a model are the union of every
+ * animation's bounds (the death roll, the jump, the spell cast…) over every
+ * geoset (all the hairstyles, all the capes), which for a humanoid is a box
+ * several times its standing size — framing it left the model small in the
+ * middle of the preview. The bind pose isn't a safe stand-in either: some
+ * creatures are modelled upright and crouch in their stand animation.
+ */
+function drawnBounds(root: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3()
+  root.updateMatrixWorld(true)
+  root.traverseVisible(object => {
+    const mesh = object as THREE.Mesh
+    const geometry = mesh.isMesh ? mesh.geometry : undefined
+    const position = geometry?.getAttribute('position')
+    if (!geometry || !position) return
+    const index = geometry.getIndex()
+    const pose = posedBones(object)
+    const skinIndex = geometry.getAttribute('skinIndex')
+    const skinWeight = geometry.getAttribute('skinWeight')
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    const groups = geometry.groups.length > 0
+      ? geometry.groups
+      : [{ start: 0, count: index ? index.count : position.count, materialIndex: 0 }]
+    for (const group of groups) {
+      if (materials[group.materialIndex ?? 0]?.visible === false) continue
+      for (let i = group.start; i < group.start + group.count; i++) {
+        const v = index ? index.getX(i) : i
+        _vertex.fromBufferAttribute(position, v)
+        if (pose && skinIndex && skinWeight) {
+          // The vertex shader's skinning: a weighted sum of up to 4 bones.
+          _skinned.set(0, 0, 0)
+          for (let k = 0; k < 4; k++) {
+            const weight = skinWeight.getComponent(v, k)
+            const bone = weight > 0 ? pose[skinIndex.getComponent(v, k)] : undefined
+            if (bone) _skinned.addScaledVector(_influence.copy(_vertex).applyMatrix4(bone), weight)
+          }
+          _vertex.copy(_skinned)
+        }
+        box.expandByPoint(_vertex.applyMatrix4(mesh.matrixWorld))
+      }
+    }
+  })
+  return box
+}
+
+/**
+ * How far along `VIEW_DIR` the camera must stand for the whole box to fit
+ * the view — fitted to the box itself rather than to its bounding sphere,
+ * which for a tall, narrow model is mostly empty space.
+ */
+function fitDistance(box: THREE.Box3, center: THREE.Vector3, aspect: number): number {
+  const tanV = Math.tan((FOV * Math.PI) / 360)
+  const tanH = tanV * aspect
+  // Camera basis, looking from `center + VIEW_DIR * d` back at `center`.
+  const right = new THREE.Vector3(0, 0, 1).cross(VIEW_DIR).normalize()
+  const up = VIEW_DIR.clone().cross(right).normalize()
+  const corner = new THREE.Vector3()
+  let distance = 0
+  for (let i = 0; i < 8; i++) {
+    corner
+      .set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z)
+      .sub(center)
+    // A corner nearer the camera needs that much more room behind it.
+    const needed =
+      Math.max(Math.abs(corner.dot(right)) / tanH, Math.abs(corner.dot(up)) / tanV) +
+      corner.dot(VIEW_DIR)
+    distance = Math.max(distance, needed)
+  }
+  return distance
 }
 
 /** Builds the WebGL view around a resolved subject and starts rendering it. */
@@ -262,25 +397,25 @@ function mount(container: HTMLElement, subject: Subject): ModelViewerHandle {
 
   const scene = new THREE.Scene()
   scene.add(subject.root)
-  if (subject.lit) {
-    // WMO exterior batches use a lit material; mirror the sun/ambient the map
-    // editor puts on them so a ship doesn't render pitch black.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.65))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.1)
-    sun.position.set(0.5, 0.3, 1) // direction only (parallel light toward origin)
-    scene.add(sun)
-    scene.add(sun.target)
-  }
 
   const camera = new THREE.PerspectiveCamera(FOV, width / height, 0.1, 1000)
   camera.up.set(0, 0, 1) // WoW is Z-up (must precede OrbitControls: it reads `up`)
 
-  const box = new THREE.Box3().setFromObject(subject.root)
+  // Pose the subject as its first frame will show it (the stand animation,
+  // attached items following) so the framing fits that. Any camera does: the
+  // bounds undo it.
+  camera.updateMatrixWorld()
+  camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
+  assets().update(0, camera)
+  subject.sync?.(camera)
+  const box = drawnBounds(subject.root)
   const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3())
   const radius = box.isEmpty()
     ? 1
     : Math.max(box.getBoundingSphere(new THREE.Sphere()).radius, 0.01)
-  const distance = (radius / Math.sin((FOV * Math.PI) / 360)) * FRAMING_MARGIN
+  const distance = box.isEmpty()
+    ? radius / Math.sin((FOV * Math.PI) / 360)
+    : Math.max(fitDistance(box, center, width / height), radius * 0.5) * FRAMING_MARGIN
   camera.position.copy(center).addScaledVector(VIEW_DIR, distance)
   // Model sizes span three orders of magnitude (a mailbox vs. a galleon), so
   // the clip planes follow the framing distance instead of being fixed: a
@@ -308,6 +443,7 @@ function mount(container: HTMLElement, subject: Subject): ModelViewerHandle {
       camera.updateMatrixWorld()
       camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
       assets().update(animationDt, camera)
+      subject.sync?.(camera)
       renderer.render(scene, camera)
     },
   }

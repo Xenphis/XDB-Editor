@@ -2,9 +2,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const npcRoutes: RouteRecordRaw[] = [
   {
+    // The section lands straight on its default table; the others are reached
+    // from the switch above the list (`NpcTableSwitch`).
     path: 'npc',
-    name: 'npc-hub',
-    component: () => import('@/modules/npc/pages/NpcHub.vue'),
+    redirect: '/npc/creature-template',
   },
   {
     // Single workspace route: no param = list only, 'new' = create mode,

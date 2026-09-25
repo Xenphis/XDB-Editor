@@ -1,12 +1,27 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
-import { MapManager } from '@wowserhq/scene'
-import type { CreatureSpawnMarker, FocusPosition, MinimapMapInfo, PickedPosition } from '../types'
-import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS } from '../service'
+import { MapManager, scaleFadeDist } from '@wowserhq/scene'
+import type {
+  CameraPose,
+  CreatureSpawnMarker,
+  FocusPosition,
+  GizmoMode,
+  MinimapMapInfo,
+  PickedPosition,
+  RenderQuality,
+  SavedView,
+  SpawnTransform,
+} from '../types'
+import { ADT_GRID_CENTER, MPQ_ASSET_BASE_URL, TILE_YARDS, worldToTile } from '../service'
 import { LiquidManager } from './LiquidManager'
+import { LiquidSurfaces } from './LiquidSurfaces'
 import { WmoManager } from './WmoManager'
 import { CreatureSpawnManager } from './CreatureSpawnManager'
+import { InstallQueue } from './InstallQueue'
+import { SkyDome } from './SkyDome'
+import { SelectionRing } from './SelectionRing'
+import { TransformGizmo } from './TransformGizmo'
 import { SceneAssets } from '@core/wow/SceneAssets'
 
 /**
@@ -23,6 +38,11 @@ import { SceneAssets } from '@core/wow/SceneAssets'
  * forward/back; fly-cam on the keyboard (physical WASD — ZQSD on AZERTY — or
  * arrows, Space/C for up/down, Shift for speed); a right-click without drag
  * reports the world position under the pointer to the parent.
+ *
+ * A selected spawn can be moved or turned with a gizmo (see `TransformGizmo`),
+ * shown only once asked for: G moves, R turns, Escape puts it away, Ctrl/Cmd+Z
+ * undoes. The parent keeps the edit and its history; this view applies
+ * whatever `spawnTransform` says to the model, which is how an undo lands.
  *
  * The camera is driven directly (yaw/pitch state below) instead of through
  * @wowserhq/scene's MapControls: those orbit a pivot re-derived 30 yd ahead
@@ -43,16 +63,32 @@ const props = defineProps<{
   showSpawns: boolean
   /** Only stream spawns visible in this phase; null streams every phase. */
   spawnPhase: number | null
-  /** When true, the next terrain right-click relocates the selected spawn. */
-  moveArmed: boolean
+  /** How much to ask of the GPU; read once, the parent remounts on change. */
+  quality: RenderQuality
+  /** WMO walls, floors and ceilings stop the camera (read live, per move). */
+  collision: boolean
+  /** Gizmo shown on the selected spawn; null keeps it hidden. */
+  gizmoMode: GizmoMode | null
+  /** Where the selected spawn is edited to; null leaves it where the DB has it. */
+  spawnTransform: SpawnTransform | null
 }>()
 
 const emit = defineEmits<{
   (e: 'pick', position: PickedPosition): void
   /** A spawn model was clicked (null when clicking away deselects). */
   (e: 'select-spawn', spawn: CreatureSpawnMarker | null): void
-  /** The selected spawn was dragged to a new world position (for the migration). */
-  (e: 'move-spawn', move: { guid: number; x: number; y: number; z: number }): void
+  /** The selected spawn was moved or turned (gizmo drag, right-click placement). */
+  (e: 'transform-spawn', move: { guid: number } & SpawnTransform): void
+  /** G / R / Escape on the scene. */
+  (e: 'update:gizmoMode', mode: GizmoMode | null): void
+  /** Ctrl/Cmd+Z on the scene, with a spawn selected. */
+  (e: 'undo-transform'): void
+  /**
+   * Where the camera is and looks, once it settles after a move (and on
+   * unmount if it hadn't yet): given back as `initialPosition`, it starts
+   * the camera in the same spot.
+   */
+  (e: 'camera', view: SavedView): void
 }>()
 
 /** Height the camera starts at before the terrain under it is known. */
@@ -76,6 +112,15 @@ const MAX_PITCH = Math.PI / 2 - 0.01
 const PAN_DISTANCE = 30
 /** Wheel fly speed, yards per wheel deltaY unit (~4 yd per notch). */
 const WHEEL_SPEED = 0.04
+/**
+ * Camera sphere when collision is on, in yards: wide enough that the near
+ * plane (1 yd out, 60° fov) never pokes through the wall it rests against.
+ */
+const COLLISION_RADIUS = 1.5
+/** A colliding move advances in steps under the radius, so it can't hop a wall. */
+const COLLISION_STEP = COLLISION_RADIUS / 2
+/** Steps per move at most; a longer move (a hitch at boost speed) is cut short. */
+const MAX_COLLISION_STEPS = 64
 
 /**
  * Device pixel ratio ceiling. A 2x display quadruples the fragments shaded,
@@ -87,6 +132,111 @@ const MAX_PIXEL_RATIO = 1.5
 const MOVING_PIXEL_RATIO = 1
 /** How long the camera must sit still before full resolution comes back. */
 const RESOLUTION_SETTLE_MS = 180
+/** How long the camera must sit still before its spot is reported to be kept. */
+const CAMERA_REPORT_SETTLE_MS = 400
+
+/**
+ * What each quality preset asks of the renderer.
+ *
+ * `drawDistance` is the one that moves the needle, and it is not the same
+ * thing as `viewDistance`. @wowserhq/scene builds one mesh, one material and
+ * one 64×64 splat texture per MCNK chunk — up to 256 draw calls per ADT tile,
+ * never merged, never instanced — so what costs draw calls is the *area* of
+ * terrain inside the frustum, and the far plane is what bounds that.
+ *
+ * `viewDistance` only bounds what is *streamed*: measured on a dense zone,
+ * cutting it from 1277 to 600 yards barely moved the draw count, because the
+ * zone's own fog already ended well inside 600 and the far plane followed the
+ * fog, not the streaming radius. It still governs memory and streaming work,
+ * which is why it is here — but it is not the frame-rate lever.
+ *
+ * `drawDistance` is that lever: it pulls the fog, and with it the far plane,
+ * in below whatever the zone asks for. `null` leaves the zone's own fog alone,
+ * which is what the view has always done.
+ *
+ * `antialias` rides along because MSAA is the other cost that scales with the
+ * window rather than with the scene. Turning it off is not free of visual
+ * consequence: the library's `ModelMaterial` sets `alphaToCoverage` on
+ * alpha-key M2 materials, which does nothing without MSAA, so foliage and
+ * fence cutouts go hard-edged at `low`.
+ *
+ * The other two bound the M2 models, which were most of the draw calls once
+ * the terrain was in hand: measured in Stormwind, creatures were four fifths
+ * of a 5 300-call frame and the WMOs' furniture most of the rest.
+ * `fadeScale` is the scale of @wowserhq/scene's doodad fade table: the
+ * distance each size of model stays visible at, terrain doodads and WMO
+ * furniture alike (the library hard-codes 1.5). `spawnDistance` caps creatures
+ * on top of it; left to the table, an NPC stayed drawn out to 300 yards.
+ *
+ * Read once at mount — `MapManager` only looks at `viewDistance` in its
+ * constructor, and the renderer's MSAA is fixed at context creation — so the
+ * parent keys this component on the quality and remounts when it changes.
+ */
+const QUALITY_PRESETS: Record<
+  RenderQuality,
+  {
+    viewDistance: number
+    drawDistance: number | null
+    antialias: boolean
+    fadeScale: number
+    spawnDistance: number
+  }
+> = {
+  low: {
+    viewDistance: 600,
+    drawDistance: 250,
+    antialias: false,
+    fadeScale: 0.75,
+    spawnDistance: 80,
+  },
+  medium: {
+    viewDistance: 900,
+    drawDistance: 400,
+    antialias: true,
+    fadeScale: 1,
+    spawnDistance: 120,
+  },
+  // The library's own view distance, fog and fade scale.
+  high: {
+    viewDistance: 1277,
+    drawDistance: null,
+    antialias: true,
+    fadeScale: 1.5,
+    spawnDistance: 200,
+  },
+}
+
+/**
+ * Millisecond budget the install queue gets each frame. Small enough to fit
+ * inside a 60 Hz frame next to the render, large enough that a dense tile
+ * lands over a handful of frames rather than a hundred.
+ */
+const INSTALL_BUDGET_MS = 2
+
+/**
+ * How far ahead of the camera tiles are prefetched, in seconds of travel.
+ * Roughly what a tile costs to fetch, parse and build, so the ring ahead is
+ * requested about when it starts being needed rather than once it is in view.
+ */
+const PREFETCH_SECONDS = 1.5
+/**
+ * Cap on that lead. At full boost the camera crosses a tile a second, and a
+ * ring requested two tiles out would fall behind the camera before it landed.
+ */
+const MAX_PREFETCH_YARDS = TILE_YARDS
+/** Time constant of the velocity smoothing feeding the lead, in seconds. */
+const VELOCITY_TAU = 0.25
+
+/** How far you see with your head under a liquid surface. */
+const UNDERWATER_FOG_YARDS = 40
+/** The colour that fog takes on under each liquid. */
+const UNDERWATER_TINT: Record<string, number> = {
+  water: 0x1e4f73,
+  ocean: 0x16405f,
+  magma: 0x8c2c05,
+  slime: 0x3f6b1e,
+}
+const UNDERWATER_TINT_DEFAULT = 0x1e4f73
 
 /**
  * How often the frame-rate readout refreshes. Writing a reactive ref every
@@ -102,10 +252,10 @@ const FPS_SAMPLE_MS = 500
  *
  * Left alone, @wowserhq/scene reads the wall clock, so the same zone rendered
  * green at lunchtime and near-black at dusk. An editor should look the same
- * whenever it is opened. It also has to: nothing else in the scene follows
- * that cycle — the liquids are unlit `MeshBasicMaterial` and the WMO surfaces
- * run off a fixed sun — so a darkened terrain left the water and the buildings
- * glowing on top of it.
+ * whenever it is opened. It also has to: the M2 models follow the map light,
+ * but the liquids are unlit `MeshBasicMaterial` and the WMO surfaces run off a
+ * fixed sun, so a darkened terrain left the water and the buildings glowing on
+ * top of it.
  *
  * Reaching the map light needs the `mapLight` getter added in
  * `patches/@wowserhq__scene@0.32.0.patch`; the library keeps it private.
@@ -128,6 +278,25 @@ const MOVE_KEYS = new Set([
  * but it has to reach `pressed` for the speed test to ever see it held. */
 const TRACKED_KEYS = new Set([...MOVE_KEYS, ...KEY_BOOST])
 
+/**
+ * Layer toggles, for attributing the draw-call count.
+ *
+ * `renderer.info.render.calls` is one number for the whole scene, which says
+ * nothing about which layer is spending it — and the layers are wildly uneven:
+ * @wowserhq/scene draws terrain as one mesh per MCNK chunk, up to 256 per ADT
+ * tile, where a WMO is a handful of batches and a creature one or two. Hiding a
+ * root and reading the difference attributes it exactly, with no measurement
+ * machinery and no second render pass.
+ *
+ * Physical key codes, like the movement keys, so they land the same on AZERTY.
+ */
+const LAYER_KEYS: Record<string, 'terrain' | 'buildings' | 'water' | 'spawns'> = {
+  Digit1: 'terrain',
+  Digit2: 'buildings',
+  Digit3: 'water',
+  Digit4: 'spawns',
+}
+
 const container = ref<HTMLDivElement>()
 const grounded = ref(false)
 
@@ -144,32 +313,85 @@ const worstFrameMs = ref(0)
  * it is the number to watch when judging whether culling is doing its job.
  */
 const drawCalls = ref(0)
+/**
+ * Triangles in the last rendered frame, in thousands. Read next to the draw
+ * calls because it is the ratio that identifies the bottleneck: a few hundred
+ * triangles per call is a renderer spending its time on state changes rather
+ * than on geometry, which is exactly what per-chunk terrain meshes produce.
+ */
+const kTriangles = ref(0)
+/**
+ * Installs still waiting on the queue. Evidence, not a gate: a peak with a
+ * backlog behind it is streaming catching up, a peak on an empty queue is
+ * something else.
+ */
+const queued = ref(0)
+/** Layers switched off with the number keys; shown so a blank view is explained. */
+const hiddenLayers = ref<string[]>([])
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
 /** Texture/model caches shared by every layer; built once per mount. */
 let assets: SceneAssets | null = null
 let mapManager: MapManager | null = null
+/** Frame-budgeted queue every streaming layer installs through. */
+let installQueue: InstallQueue | null = null
 let liquidManager: LiquidManager | null = null
+/** Liquid materials and their animation, shared by the terrain's and the WMOs' water. */
+let liquidSurfaces: LiquidSurfaces | null = null
+/** Gradient sky behind the world; one draw call, no depth. */
+let skyDome: SkyDome | null = null
 let wmoManager: WmoManager | null = null
 let spawnManager: CreatureSpawnManager | null = null
 let animationFrame = 0
 let probeTimer: ReturnType<typeof setInterval> | undefined
 let resizeObserver: ResizeObserver | undefined
 let removeInputListeners: (() => void) | undefined
+/** Reports a camera move still waiting to settle; set up with the camera. */
+let flushCameraReport: (() => void) | undefined
 
 // Spawn selection state (a picked model + its ground ring highlight).
 let selectedObject: THREE.Object3D | null = null
 let selectedSpawn: CreatureSpawnMarker | null = null
-let selectionRing: THREE.Mesh | null = null
+let selectionRing: SelectionRing | null = null
+/** Move/rotate handles on the selected spawn, while a mode is set. */
+let gizmo: TransformGizmo | null = null
 
 const pressed = new Set<string>()
+
+/**
+ * Where the camera is and where it looks, refreshed every frame for the
+ * minimap. Deliberately not reactive: the minimap polls it from its own frame
+ * loop, where a ref would re-render this component on every camera move.
+ */
+const pose: CameraPose = { x: 0, y: 0, yaw: 0, fov: 0 }
+let poseReady = false
+
+/** The camera pose, or null until the view has placed its camera. */
+function cameraPose(): Readonly<CameraPose> | null {
+  return poseReady ? pose : null
+}
+
+/** Takes the selected spawn's model out of the view (its row was deleted). */
+function removeSelectedSpawn() {
+  selectedObject?.parent?.remove(selectedObject)
+  clearSelection()
+}
+
+defineExpose({ cameraPose, clearSelection, removeSelectedSpawn })
 
 /** Creates the spawn manager and adds it to the scene (idempotent). */
 function enableSpawns() {
   const mapId = props.map.mapId
-  if (spawnManager || !scene || !assets || mapId == null) return
-  spawnManager = new CreatureSpawnManager(props.map, mapId, assets, props.spawnPhase)
+  if (spawnManager || !scene || !assets || !installQueue || mapId == null) return
+  spawnManager = new CreatureSpawnManager(
+    props.map,
+    mapId,
+    assets,
+    installQueue,
+    props.spawnPhase,
+    QUALITY_PRESETS[props.quality].spawnDistance,
+  )
   scene.add(spawnManager.root)
 }
 
@@ -194,15 +416,76 @@ function spawnObjectFrom(obj: THREE.Object3D | null): THREE.Object3D | null {
 
 function positionSelectionRing() {
   if (!selectionRing || !selectedObject) return
-  selectionRing.position.copy(selectedObject.position)
-  selectionRing.visible = true
+  // The terrain is what the ring lies against; without it loaded yet the ring
+  // falls back to the spawn's own position, level.
+  selectionRing.place(selectedObject, mapManager?.root ?? null)
+}
+
+/** Keeps the ring under the spawn as it moves, at the size it was measured at. */
+function followSelectionRing() {
+  if (!selectionRing || !selectedObject) return
+  selectionRing.follow(selectedObject, mapManager?.root ?? null)
 }
 
 function clearSelection() {
   selectedObject = null
   selectedSpawn = null
-  if (selectionRing) selectionRing.visible = false
+  selectionRing?.hide()
+  gizmo?.attach(null)
   emit('select-spawn', null)
+}
+
+/** The selected spawn's current yaw, edited or as loaded. */
+function selectedOrientation(): number {
+  return props.spawnTransform?.orientation ?? selectedSpawn?.orientation ?? 0
+}
+
+/**
+ * Puts the selected model where `spawnTransform` says: the edit, or the DB
+ * position when there is none. Setting what is already there is harmless, so
+ * this also runs after a drag the model has already followed.
+ */
+function applySpawnTransform(transform: SpawnTransform | null) {
+  if (!selectedObject || !selectedSpawn) return
+  const target = transform ?? {
+    x: selectedSpawn.position_x,
+    y: selectedSpawn.position_y,
+    z: selectedSpawn.position_z,
+    orientation: selectedSpawn.orientation,
+  }
+  selectedObject.position.set(target.x, target.y, target.z)
+  // As placed by CreatureSpawnManager: a yaw about world +Z.
+  selectedObject.rotation.set(0, 0, target.orientation)
+  selectedObject.updateMatrixWorld()
+  followSelectionRing()
+}
+
+/**
+ * The gizmo's keys; true when the event was one. Letters by physical key
+ * like the fly-cam's, except the undo: Ctrl+Z follows the layout (on AZERTY it
+ * is the physical W, the fly-forward key), so it is matched by `key`.
+ */
+function handleGizmoKey(event: KeyboardEvent): boolean {
+  if (!selectedSpawn) return false
+  // Mid-drag the model belongs to the gizmo: the keys are swallowed, not run.
+  const dragging = gizmo?.dragging ?? false
+  const command = event.ctrlKey || event.metaKey
+  if (command && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'z') {
+    if (!dragging) emit('undo-transform')
+    return true
+  }
+  // Cmd+R reloads the webview, Ctrl+G is someone else's: plain keys only.
+  if (command || event.altKey || dragging) return false
+  if (event.code === 'KeyG' || event.code === 'KeyR') {
+    const mode: GizmoMode = event.code === 'KeyG' ? 'translate' : 'rotate'
+    emit('update:gizmoMode', props.gizmoMode === mode ? null : mode)
+    return true
+  }
+  if (event.code === 'Escape' && props.gizmoMode) {
+    emit('update:gizmoMode', null)
+    return true
+  }
+  return false
 }
 
 /** Keys only fly the camera when focus isn't in a form control elsewhere. */
@@ -223,7 +506,12 @@ onMounted(() => {
   const el = container.value
   if (!el) return
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+  const preset = QUALITY_PRESETS[props.quality]
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: preset.antialias,
+    powerPreference: 'high-performance',
+  })
   // Resolution is driven in two steps (see the animate loop): a ceiling that
   // applies at all times, and a lower ratio held while the camera moves.
   const basePixelRatio = Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO)
@@ -255,11 +543,20 @@ onMounted(() => {
   // and creature spawns all draw from the same client assets, and a manager
   // per layer meant decoding and uploading each shared BLP once per layer.
   assets = new SceneAssets()
+  // Every layer installs through one queue, so the per-frame budget is shared
+  // rather than granted three times over.
+  installQueue = new InstallQueue()
 
+  // Before anything is culled by it. The table is the library's, module-wide:
+  // this view is the only thing that fades models by distance.
+  scaleFadeDist(preset.fadeScale)
   mapManager = new MapManager({
     host: { baseUrl: MPQ_ASSET_BASE_URL, normalizePath: true },
     soundManager: silentSound,
     textureManager: assets.textureManager,
+    // Left unset the library streams 1277 yards in every direction, which is
+    // where most of the draw calls come from. See QUALITY_PRESETS.
+    viewDistance: preset.viewDistance,
   })
   // Pin the sun before loading, so the first frames are already lit the way
   // every later one will be rather than starting at whatever time it is now.
@@ -268,35 +565,47 @@ onMounted(() => {
   scene.add(mapManager.root)
 
   // Water isn't rendered by @wowserhq/scene; stream it from the ADT MH2O data.
-  liquidManager = new LiquidManager(props.map)
+  liquidSurfaces = new LiquidSurfaces(assets)
+  liquidManager = new LiquidManager(props.map, installQueue, liquidSurfaces)
   scene.add(liquidManager.root)
 
+  // Behind everything: the view used to clear to a flat fog colour, which read
+  // as a wall at the horizon rather than as sky.
+  skyDome = new SkyDome()
+  scene.add(skyDome.mesh)
+
   // WMOs (buildings/structures) aren't rendered either; stream them too.
-  wmoManager = new WmoManager(props.map, assets)
+  wmoManager = new WmoManager(props.map, assets, installQueue, liquidSurfaces)
   scene.add(wmoManager.root)
 
   // Creature spawns (DB) stream as models around the camera when enabled.
-  // Ground ring that highlights the currently selected spawn (Z is up, so a
-  // default XY-plane torus lies flat on the terrain).
-  const ringMaterial = new THREE.MeshBasicMaterial({
-    color: 0xf87171,
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
-    // Never let the terrain occlude the ring: on a slope a flat ring would
-    // otherwise clip under the higher ground. Draw it on top of the scene.
-    depthTest: false,
-  })
-  selectionRing = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.12, 12, 48), ringMaterial)
-  selectionRing.frustumCulled = false
-  selectionRing.renderOrder = 999
-  selectionRing.visible = false
-  scene.add(selectionRing)
+  // Ground ring highlighting the selected spawn: sized to the model and laid
+  // against the slope under it.
+  selectionRing = new SelectionRing()
+  scene.add(selectionRing.mesh)
   if (props.showSpawns) enableSpawns()
+
+  // Created ahead of the view's own pointer listeners (further down), so
+  // three's run first: a press on a handle is already a drag by the time the
+  // view asks whether to pan.
+  gizmo = new TransformGizmo({
+    camera,
+    domElement: renderer.domElement,
+    groundRoots: () =>
+      [mapManager?.root, wmoManager?.root].filter((root): root is THREE.Group => root !== undefined),
+    onChange: followSelectionRing,
+    onCommit: transform => {
+      if (selectedSpawn) emit('transform-spawn', { guid: selectedSpawn.guid, ...transform })
+    },
+  })
+  gizmo.setMode(props.gizmoMode)
+  scene.add(gizmo.root)
 
   // ── Camera orientation (yaw about world +Z, pitch toward ±Z) ─────────
   // Initial view matches the old MapControls default offset (-30,-30,30):
   // heading north-west-ish (WoW +X north, +Y west), 35° below the horizon.
+  // A start carrying an orientation (zone origin) faces that way instead —
+  // yaw uses the game's convention, so a game_tele orientation maps as is.
   let yaw = Math.PI / 4
   let pitch = Math.asin(-1 / Math.sqrt(3))
   const lookDir = new THREE.Vector3()
@@ -313,6 +622,42 @@ onMounted(() => {
     )
   }
 
+  // ── Prefetch lead ─────────────────────────────────────────────────────
+  // The streaming layers load around a second, extrapolated centre as well as
+  // the camera's own tile (see TileWindow): where the camera will be in
+  // PREFETCH_SECONDS at its current speed. Standing still, the lead sits on
+  // the camera and the window is exactly what it always was.
+  const velocity = new THREE.Vector2()
+  const leadAnchor = new THREE.Vector2()
+  const frameVelocity = new THREE.Vector2()
+  const leadPoint = new THREE.Vector2()
+
+  /** Re-anchors the lead on the camera. Call after any teleport. */
+  const resetLead = () => {
+    velocity.set(0, 0)
+    leadAnchor.set(camera.position.x, camera.position.y)
+  }
+
+  /** The world point to prefetch around this frame. */
+  const updateLead = (dt: number) => {
+    frameVelocity
+      .set(camera.position.x - leadAnchor.x, camera.position.y - leadAnchor.y)
+      .divideScalar(Math.max(dt, 1e-4))
+    // A fly-to teleports the camera, and that frame reads as thousands of
+    // yards a second — a lead nowhere near where we actually land. The
+    // fly-cam's own top speed is the honest ceiling. (resetLead covers the
+    // teleports we know about; this covers the rest.)
+    frameVelocity.clampLength(0, MOVE_SPEED * MOVE_BOOST)
+    // Frame-rate independent smoothing, so the lead doesn't swing on a hitch.
+    velocity.lerp(frameVelocity, 1 - Math.exp(-dt / VELOCITY_TAU))
+    leadAnchor.set(camera.position.x, camera.position.y)
+    return leadPoint
+      .copy(velocity)
+      .multiplyScalar(PREFETCH_SECONDS)
+      .clampLength(0, MAX_PREFETCH_YARDS)
+      .add(leadAnchor)
+  }
+
   const start = startPosition()
   // A known height (zone origin, focused row) skips the ground probe entirely.
   if (start.z != null) {
@@ -321,7 +666,10 @@ onMounted(() => {
   } else {
     camera.position.set(start.x, start.y, FALLBACK_HEIGHT)
   }
+  if (start.orientation != null) yaw = start.orientation
+  if (start.pitch != null) pitch = start.pitch
   applyOrientation()
+  resetLead()
 
   const raycaster = new THREE.Raycaster()
   if (start.z == null) {
@@ -354,12 +702,39 @@ onMounted(() => {
       probeTimer = undefined
     }
     camera.position.set(focus.x, focus.y, (focus.z ?? FALLBACK_HEIGHT) + EYE_HEIGHT)
+    if (focus.orientation != null) yaw = focus.orientation
     applyOrientation()
+    resetLead()
     if (focus.z != null) grounded.value = true
   })
 
   // ── Fly-cam keyboard movement ─────────────────────────────────────────
   const onKeyDown = (event: KeyboardEvent) => {
+    // Ahead of the fly-cam: Ctrl+Z on AZERTY is the fly-forward key, and must
+    // not also start the camera moving.
+    if (isSceneKeyTarget(event.target) && handleGizmoKey(event)) {
+      event.preventDefault()
+      return
+    }
+    const layer = LAYER_KEYS[event.code]
+    if (layer && isSceneKeyTarget(event.target)) {
+      event.preventDefault()
+      const root =
+        layer === 'terrain'
+          ? mapManager?.root
+          : layer === 'buildings'
+            ? wmoManager?.root
+            : layer === 'water'
+              ? liquidManager?.root
+              : spawnManager?.root
+      if (root) {
+        root.visible = !root.visible
+        hiddenLayers.value = root.visible
+          ? hiddenLayers.value.filter(name => name !== layer)
+          : [...hiddenLayers.value, layer]
+      }
+      return
+    }
     if (!TRACKED_KEYS.has(event.code) || !isSceneKeyTarget(event.target)) return
     pressed.add(event.code)
     // Space/arrows/PageDown would scroll the page. The boost modifier is
@@ -372,6 +747,23 @@ onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('blur', onBlur)
+
+  // ── Camera moves (keyboard, wheel, pan) ─────────────────────────────
+  // Fly-tos and the start position teleport the camera instead: they aim at
+  // known-good spots, and must be able to reach one behind a wall.
+  const collisionStep = new THREE.Vector3()
+  const moveCamera = (delta: THREE.Vector3) => {
+    if (!props.collision || !wmoManager) {
+      camera.position.add(delta)
+      return
+    }
+    const needed = Math.ceil(delta.length() / COLLISION_STEP)
+    collisionStep.copy(delta).divideScalar(Math.max(needed, 1))
+    for (let i = 0; i < Math.min(needed, MAX_COLLISION_STEPS); i++) {
+      camera.position.add(collisionStep)
+      wmoManager.collide(camera.position, COLLISION_RADIUS)
+    }
+  }
 
   const forward = new THREE.Vector3()
   const rightward = new THREE.Vector3()
@@ -398,7 +790,7 @@ onMounted(() => {
 
     const boost = some(KEY_BOOST) ? MOVE_BOOST : 1
     movement.normalize().multiplyScalar(MOVE_SPEED * boost * dt)
-    camera.position.add(movement)
+    moveCamera(movement)
   }
 
   // ── Right-click → world position under the pointer ───────────────────
@@ -423,8 +815,13 @@ onMounted(() => {
   // direction. Drag state doubles as the click-slop anchor for picking.
   let dragButton = -1
   let lastPointer: { x: number; y: number } | null = null
+  const pan = new THREE.Vector3()
+  const wheelMove = new THREE.Vector3()
 
   const onPointerDown = (event: PointerEvent) => {
+    // A press on a gizmo handle is the gizmo's drag: no pan, and no pick on
+    // release (leftDown stays unset), so it never deselects the spawn.
+    if (event.button === 0 && gizmo?.busy) return
     if (event.button === 2) rightDown = { x: event.clientX, y: event.clientY }
     else if (event.button === 0) leftDown = { x: event.clientX, y: event.clientY }
     if (event.button === 0 || event.button === 2) {
@@ -450,14 +847,18 @@ onMounted(() => {
       const scale = (2 * PAN_DISTANCE * Math.tan((camera.fov * Math.PI) / 360)) / height
       const rightX = Math.sin(yaw)
       const rightY = -Math.cos(yaw)
-      camera.position.x += (-dx * rightX + dy * Math.cos(yaw)) * scale
-      camera.position.y += (-dx * rightY + dy * Math.sin(yaw)) * scale
+      pan.set(
+        (-dx * rightX + dy * Math.cos(yaw)) * scale,
+        (-dx * rightY + dy * Math.sin(yaw)) * scale,
+        0,
+      )
+      moveCamera(pan)
     }
   }
 
   const onWheel = (event: WheelEvent) => {
     event.preventDefault()
-    camera.position.addScaledVector(lookDir, -event.deltaY * WHEEL_SPEED)
+    moveCamera(wheelMove.copy(lookDir).multiplyScalar(-event.deltaY * WHEEL_SPEED))
   }
 
   // Left-click without drag selects the spawn model under the pointer
@@ -475,14 +876,15 @@ onMounted(() => {
       selectedObject = object
       selectedSpawn = object.userData.spawn as CreatureSpawnMarker
       positionSelectionRing()
+      gizmo?.attach(object)
       emit('select-spawn', selectedSpawn)
     } else {
       clearSelection()
     }
   }
 
-  // Right-click without drag: relocate the selected spawn when move is armed,
-  // else report the world position under the pointer (right-drag looks).
+  // Right-click without drag: report the world position under the pointer
+  // (right-drag looks).
   const onRightClick = (event: PointerEvent) => {
     if (!rightDown) return
     const moved = Math.hypot(event.clientX - rightDown.x, event.clientY - rightDown.y)
@@ -492,12 +894,6 @@ onMounted(() => {
     raycaster.setFromCamera(pickCoords, camera)
     const hit = raycaster.intersectObject(mapManager.root, true)[0]
     if (!hit) return
-    if (props.moveArmed && selectedObject && selectedSpawn) {
-      selectedObject.position.set(hit.point.x, hit.point.y, hit.point.z)
-      positionSelectionRing()
-      emit('move-spawn', { guid: selectedSpawn.guid, x: hit.point.x, y: hit.point.y, z: hit.point.z })
-      return
-    }
     emit('pick', { x: hit.point.x, y: hit.point.y, z: hit.point.z })
   }
 
@@ -539,12 +935,15 @@ onMounted(() => {
   const lastPosition = camera.position.clone()
   const lastQuaternion = camera.quaternion.clone()
   let lastMoveAt = 0
+  /** Whether the parent has the camera's current spot (see Camera report). */
+  let cameraReported = false
 
   const updateResolution = (now: number) => {
     if (!camera.position.equals(lastPosition) || !camera.quaternion.equals(lastQuaternion)) {
       lastPosition.copy(camera.position)
       lastQuaternion.copy(camera.quaternion)
       lastMoveAt = now
+      cameraReported = false
     }
     const wanted =
       now - lastMoveAt < RESOLUTION_SETTLE_MS ? movingPixelRatio : basePixelRatio
@@ -552,6 +951,33 @@ onMounted(() => {
       pixelRatio = wanted
       renderer?.setPixelRatio(wanted)
     }
+  }
+
+  // ── Camera report ─────────────────────────────────────────────────────
+  // The parent keeps where the camera was left (see the `camera` event), off
+  // the same movement test: once per settle rather than every frame, since
+  // it ends up persisted. The start spot is reported too, so a camera that
+  // never moves is still where the editor comes back to.
+  const reportCamera = () => {
+    cameraReported = true
+    emit('camera', {
+      map: props.map.id,
+      x: camera.position.x,
+      y: camera.position.y,
+      // Before the ground probe lands the camera sits at a guessed height:
+      // leave it out so the next start probes again.
+      z: grounded.value ? camera.position.z - EYE_HEIGHT : null,
+      orientation: yaw,
+      pitch,
+    })
+  }
+
+  const updateCameraReport = (now: number) => {
+    if (!cameraReported && now - lastMoveAt >= CAMERA_REPORT_SETTLE_MS) reportCamera()
+  }
+
+  flushCameraReport = () => {
+    if (!cameraReported) reportCamera()
   }
 
   // ── Frame-rate counter ────────────────────────────────────────────────
@@ -565,7 +991,7 @@ onMounted(() => {
 
   // Called at the end of the frame: the renderer resets its counters when
   // render() starts, so `calls` is only meaningful once it has returned.
-  const updateFpsCounter = (dt: number, now: number, calls: number) => {
+  const updateFpsCounter = (dt: number, now: number, calls: number, triangles: number) => {
     sampleFrames += 1
     sampleWorstMs = Math.max(sampleWorstMs, dt * 1000)
     const elapsed = now - sampleStart
@@ -573,14 +999,76 @@ onMounted(() => {
     fps.value = Math.round((sampleFrames * 1000) / elapsed)
     worstFrameMs.value = Math.round(sampleWorstMs)
     drawCalls.value = calls
+    kTriangles.value = Math.round(triangles / 1000)
+    queued.value = installQueue?.pending ?? 0
     sampleStart = now
     sampleFrames = 0
     sampleWorstMs = 0
   }
 
+  /**
+   * Pulls the horizon in to the preset's draw distance and returns the far
+   * plane to use. Returns the library's own far plane when the preset asks for
+   * no limit.
+   *
+   * The fog has to come in with the far plane, not after it: clipping alone
+   * would make terrain vanish at a hard edge, where fogging it out first is
+   * what the game client does for the same setting.
+   *
+   * `MapLight` rewrites `fogParams` from the DBC bands on every `update()`, so
+   * this has to run after it and on every frame. Writing the Vector4 in place
+   * is deliberate — it is shared by reference with every material's uniform,
+   * which is exactly how the library propagates its own light changes.
+   *
+   * `x` is 1/(end - start) and `y` is the end (see `SceneLight.fogStart`). The
+   * band is scaled rather than clipped, so a zone with thick fog keeps thick
+   * fog and a clear one stays clear.
+   */
+  const applyDrawDistance = (manager: MapManager): number => {
+    const limit = preset.drawDistance
+    if (limit === null) return manager.cameraFar
+    const fog = manager.mapLight.fogParams
+    if (fog.y > limit) {
+      const start = fog.y - 1 / fog.x
+      const scaledStart = Math.max(start * (limit / fog.y), 1)
+      fog.x = 1 / Math.max(limit - scaledStart, 1)
+      fog.y = limit
+    }
+    // The same margin the library leaves between its fog end and its far plane
+    // (one MCNK chunk), so nothing pops at the plane itself.
+    return Math.min(manager.cameraFar, limit + TILE_YARDS / 16)
+  }
+
+  /**
+   * Tints the world for a camera under a liquid surface, and returns the far
+   * plane that goes with it.
+   *
+   * There is no underwater pass to write: the fog already colours every
+   * surface in the scene, `clearColor` is that same colour, and the sky dome
+   * reads it too — so pulling the fog hard onto the liquid's own colour turns
+   * the entire view into the inside of that liquid. Runs after
+   * `applyDrawDistance` and, like it, on every frame, because `MapLight`
+   * rewrites both from the DBC bands in its own update.
+   */
+  const applyUnderwater = (manager: MapManager, category: string): number => {
+    // Linear tag, like the Light.dbc colours this replaces: the library's
+    // shaders take the fog as gamma-space bytes, so the hex must not be
+    // converted on the way in.
+    manager.mapLight.fogColor.setHex(
+      UNDERWATER_TINT[category] ?? UNDERWATER_TINT_DEFAULT,
+      THREE.LinearSRGBColorSpace,
+    )
+    const fog = manager.mapLight.fogParams
+    fog.x = 1 / UNDERWATER_FOG_YARDS
+    fog.y = UNDERWATER_FOG_YARDS
+    return UNDERWATER_FOG_YARDS + TILE_YARDS / 16
+  }
+
   // Reused across frames; the managers cull their own M2s against this.
   const cullFrustum = new THREE.Frustum()
   const cullMatrix = new THREE.Matrix4()
+  // Scratch for the clear colour, decoded once per frame (see the render call).
+  const clearColor = new THREE.Color()
 
   const clock = new THREE.Clock()
   const animate = () => {
@@ -588,8 +1076,12 @@ onMounted(() => {
     if (!renderer || !mapManager || !scene) return
     const dt = clock.getDelta()
     const now = performance.now()
+    // The selected spawn's tile was unloaded, or re-phased, under it: the
+    // model has left the scene, and the ring and gizmo must not stay behind.
+    if (selectedObject && !selectedObject.parent) clearSelection()
     applyKeyboardMove(dt)
     updateResolution(now)
+    updateCameraReport(now)
     // Refresh the camera matrices BEFORE the managers run: skinned M2s
     // (creatures, animated doodads) bake camera.matrixWorldInverse into
     // their bone textures, and the renderer only recomputes it during
@@ -597,17 +1089,44 @@ onMounted(() => {
     // while moving and visibly snap back into place on stop.
     camera.updateMatrixWorld()
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert()
+    pose.x = camera.position.x
+    pose.y = camera.position.y
+    pose.yaw = yaw
+    // `camera.fov` is vertical, in degrees; the minimap's view cone is the
+    // horizontal spread, which widens with the aspect ratio.
+    pose.fov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect)
+    poseReady = true
     mapManager.setTarget(camera.position.x, camera.position.y)
     mapManager.update(dt, camera)
     // The map light's fog decides how far we can see, so settle the projection
     // here: the culling frustum below is derived from it.
-    if (camera.far !== mapManager.cameraFar) {
-      camera.far = mapManager.cameraFar
+    let far = applyDrawDistance(mapManager)
+    // Head under a liquid surface: the fog becomes that liquid.
+    // The terrain's water first, then the WMOs' (a city canal, a flooded crypt).
+    const submerged =
+      liquidManager?.submergedIn(camera.position) ??
+      wmoManager?.submergedIn(camera.position) ??
+      null
+    if (submerged) far = Math.min(far, applyUnderwater(mapManager, submerged))
+    // After the fog is settled, so the horizon matches it — including
+    // underwater, where the dome turns the colour of the water.
+    skyDome?.update(camera.position, mapManager.mapLight.fogColor)
+    if (camera.far !== far) {
+      camera.far = far
       camera.updateProjectionMatrix()
     }
-    liquidManager?.update(camera.position.x, camera.position.y)
-    wmoManager?.update(camera.position.x, camera.position.y)
-    spawnManager?.update(camera.position.x, camera.position.y)
+    // Streaming window: the camera's own tile, plus the one it is heading for.
+    const lead = updateLead(dt)
+    const cameraTile = worldToTile({ x: camera.position.x, y: camera.position.y })
+    const leadTile = worldToTile({ x: lead.x, y: lead.y })
+    liquidSurfaces?.advance(dt)
+    liquidManager?.update(cameraTile, leadTile)
+    wmoManager?.update(cameraTile, leadTile)
+    spawnManager?.update(cameraTile, leadTile)
+    // Give the frame's share of the budget to whatever those loads made ready.
+    // Ahead of the cull pass, so anything installed this frame is culled this
+    // frame instead of drawing once unconditionally.
+    installQueue?.drain(INSTALL_BUDGET_MS)
     // Cull before the animation pass, not after: the animator skins every
     // model still marked visible, so hiding them first is what saves the
     // work — the draw calls are the smaller half of the win.
@@ -617,11 +1136,17 @@ onMounted(() => {
     spawnManager?.cull(cullFrustum, camera.position)
     // Animations and sun uniforms for every M2 in the scene, driven once:
     // WMO doodads and creature spawns now share one ModelManager, and it
-    // advances each animator by `dt` per call.
+    // advances each animator by `dt` per call. They are lit by the zone's own
+    // light, copied after the draw distance and the underwater tint have had
+    // their say, so they fog out with the terrain rather than on their own.
+    assets?.matchLight(mapManager.mapLight)
     assets?.update(dt, camera)
-    renderer.setClearColor(mapManager.clearColor)
+    // The map light holds gamma-space bytes as-is, but the renderer encodes a
+    // clear colour from linear to sRGB. Decoding it first cancels that out, so
+    // the backdrop stays the fog colour the shaders draw with.
+    renderer.setClearColor(clearColor.copy(mapManager.clearColor).convertSRGBToLinear())
     renderer.render(scene, camera)
-    updateFpsCounter(dt, now, renderer.info.render.calls)
+    updateFpsCounter(dt, now, renderer.info.render.calls, renderer.info.render.triangles)
   }
   animate()
 
@@ -640,19 +1165,30 @@ watch(() => props.showSpawns, show => (show ? enableSpawns() : disableSpawns()))
 // Changing phase refetches the spawns around the camera with the new filter.
 watch(() => props.spawnPhase, phase => spawnManager?.setPhase(phase))
 
+watch(() => props.gizmoMode, mode => gizmo?.setMode(mode))
+
+// Undo, reset and right-click placements move the model from here.
+watch(() => props.spawnTransform, applySpawnTransform)
+
 onBeforeUnmount(() => {
+  // First, while the camera is still there: a move made just before leaving.
+  flushCameraReport?.()
   cancelAnimationFrame(animationFrame)
+  poseReady = false
   if (probeTimer !== undefined) clearInterval(probeTimer)
   resizeObserver?.disconnect()
   removeInputListeners?.()
+  // Drop pending installs before the managers go: a queued task would only
+  // build into a scene that is being torn down.
+  installQueue?.clear()
+  skyDome?.dispose()
   liquidManager?.dispose()
+  liquidSurfaces?.dispose()
   wmoManager?.dispose()
   spawnManager?.dispose()
   mapManager?.dispose()
-  if (selectionRing) {
-    selectionRing.geometry.dispose()
-    ;(selectionRing.material as THREE.Material).dispose()
-  }
+  selectionRing?.dispose()
+  gizmo?.dispose()
   if (renderer) {
     renderer.dispose()
     renderer.domElement.remove()
@@ -661,10 +1197,14 @@ onBeforeUnmount(() => {
   scene = null
   assets = null
   mapManager = null
+  installQueue = null
+  skyDome = null
   liquidManager = null
+  liquidSurfaces = null
   wmoManager = null
   spawnManager = null
   selectionRing = null
+  gizmo = null
   selectedObject = null
   selectedSpawn = null
 })
@@ -679,9 +1219,19 @@ onBeforeUnmount(() => {
     <!-- Debug readout: hidden from assistive tech, which would otherwise
          announce it twice a second for as long as the view is open. -->
     <div class="scene-fps" aria-hidden="true">
-      {{ $t('mapEditor.scene.fps', { fps, worst: worstFrameMs, calls: drawCalls }) }}
+      {{
+        $t('mapEditor.scene.fps', {
+          fps,
+          worst: worstFrameMs,
+          calls: drawCalls,
+          tris: kTriangles,
+          queued,
+        })
+      }}
     </div>
-    <div class="scene-controls-hint">{{ $t('mapEditor.scene.controls') }}</div>
+    <div v-if="hiddenLayers.length" class="scene-hidden-layers" aria-hidden="true">
+      {{ $t('mapEditor.scene.hidden', { layers: hiddenLayers.join(', ') }) }}
+    </div>
   </div>
 </template>
 
@@ -717,7 +1267,7 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-/* Top-left, clear of the centred streaming chip and the controls hint. */
+/* Top-left, clear of the centred streaming chip and the view controls. */
 .scene-fps {
   position: absolute;
   top: 0.5rem;
@@ -730,11 +1280,11 @@ onBeforeUnmount(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-.scene-controls-hint {
+.scene-hidden-layers {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.75rem;
-  color: rgba(148, 163, 184, 0.8);
+  top: 1.75rem;
+  left: 0.75rem;
+  color: rgba(248, 113, 113, 0.95);
   font-size: 0.75rem;
   pointer-events: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);

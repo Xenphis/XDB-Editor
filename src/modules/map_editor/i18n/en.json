@@ -1,11 +1,13 @@
 {
   "mapEditor": {
-    "title": "World Editor",
-    "description": "Browse the game world rendered from your client's data: 2D map, 3D view, spawns and teleport points",
     "clientPath": {
       "placeholder": "Path to your 3.3.5 client folder (or its Data folder)",
       "browse": "Browse…",
       "browseTitle": "Select the WoW 3.3.5 client folder"
+    },
+    "categories": {
+      "world": "Open world",
+      "instances": "Dungeons & raids"
     },
     "zones": {
       "searchPlaceholder": "Search zones…",
@@ -86,6 +88,14 @@
         "zuldrak": "Zul'Drak"
       }
     },
+    "instances": {
+      "searchPlaceholder": "Search instances…",
+      "meta": "{type} · Map {map}",
+      "types": {
+        "dungeon": "Dungeon",
+        "raid": "Raid"
+      }
+    },
     "tables": {
       "title": "Zone data",
       "teleports": "Teleports",
@@ -118,8 +128,27 @@
     },
     "scene": {
       "streaming": "Streaming terrain…",
-      "controls": "WASD/arrows: move · Space/C: up/down · Shift: fast · Left-drag: pan · Right-drag: look · Right-click: position",
-      "fps": "{fps} FPS · {worst} ms peak · {calls} draws"
+      "fps": "{fps} FPS · {worst} ms peak · {calls} draws · {tris}k tris · {queued} queued",
+      "hidden": "hidden: {layers}"
+    },
+    "viewSettings": {
+      "title": "View settings"
+    },
+    "quality": {
+      "label": "Quality",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "hint": "Draw distance, fog and antialiasing. Lowering it pulls the horizon in and cuts draw calls sharply; the view reloads on change."
+    },
+    "minimap": {
+      "toggle": "Minimap",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
+    },
+    "collision": {
+      "toggle": "Camera collision",
+      "hint": "Walls, floors and ceilings stop the camera, as they stop a player. Opaque surfaces only: terrain and objects don't block."
     },
     "picked": {
       "copy": "Copy position",
@@ -134,11 +163,13 @@
       "scale": "Scale",
       "none": "None",
       "openEditor": "Open in NPC editor",
-      "original": "Original",
-      "move": "Move here",
-      "moveArmed": "Right-click the ground",
-      "moveHint": "Right-click a spot on the terrain to move this spawn.",
-      "newPos": "New",
+      "gizmo": {
+        "label": "Transform gizmo",
+        "translate": "Move (G)",
+        "rotate": "Rotate (R)"
+      },
+      "undo": "Undo",
+      "undoShortcut": "Ctrl+Z (⌘Z on macOS) in the 3D view",
       "copySql": "Copy SQL",
       "close": "Close",
       "phase": {
@@ -146,12 +177,75 @@
         "all": "All phases",
         "one": "Phase {n} ({mask})",
         "hint": "Show only spawns visible in this phase (bitmask test: a spawn in phases 1+2 appears under either)"
-      }
+      },
+      "loading": "Loading details…",
+      "level": "Level",
+      "rank": "Rank",
+      "faction": "Faction",
+      "combat": "Combat",
+      "health": "Health",
+      "curHealth": "{n} HP set on spawn",
+      "mana": "Mana",
+      "damage": "Damage per hit (avg)",
+      "attackTime": "Attack speed",
+      "armor": "Armor",
+      "immunities": "Yes",
+      "behavior": "Behavior",
+      "movement": "Movement",
+      "wanderDistance": "Wander distance",
+      "respawn": "Respawn",
+      "speed": "Speed (walk / run)",
+      "script": "Script / AI",
+      "technical": "Technical details",
+      "ranks": {
+        "0": "Normal",
+        "1": "Elite",
+        "2": "Rare Elite",
+        "3": "Boss",
+        "4": "Rare",
+        "5": "Trivial"
+      },
+      "movementTypes": {
+        "0": "Idle",
+        "1": "Random",
+        "2": "Waypoint"
+      },
+      "schools": {
+        "holy": "Holy",
+        "fire": "Fire",
+        "nature": "Nature",
+        "frost": "Frost",
+        "shadow": "Shadow",
+        "arcane": "Arcane"
+      },
+      "npcFlags": {
+        "gossip": "Gossip",
+        "questgiver": "Quest giver",
+        "trainer": "Trainer",
+        "vendor": "Vendor",
+        "repair": "Repair",
+        "flightmaster": "Flight master",
+        "innkeeper": "Innkeeper",
+        "banker": "Banker",
+        "auctioneer": "Auctioneer",
+        "stablemaster": "Stable master"
+      },
+      "delete": "Delete spawn",
+      "deleteConfirm": "Delete “{name}” (guid {guid}) from the database? This removes its creature row and cannot be undone.",
+      "cancel": "Cancel",
+      "noTemplate": "No creature_template row for this spawn.",
+      "resistances": "Resistances",
+      "immunitiesLabel": "Immunities",
+      "roles": "Roles",
+      "migration": "Migration SQL",
+      "deleteTitle": "Delete spawn"
     },
     "states": {
       "noClient": "Set the WoW client folder in Settings to browse its maps.",
       "noZone": "Select a zone from the list.",
       "noMinimap": "No minimap data for this zone's map ({map}).",
+      "noInstance": "Select an instance from the list.",
+      "instanceUnavailable": "Map {map} can't be found in the client data.",
       "loading": "Indexing the client archives…",
       "error": "Failed to load the client: {message}"
     }

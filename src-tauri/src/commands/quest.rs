@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use std::collections::{HashMap, HashSet, VecDeque};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use tauri::State;
@@ -123,6 +124,11 @@ pub struct QuestListResult {
     pub total: i64,
 }
 
+/// Quests listed by title/ID, optionally only those whose giver (creature or
+/// gameobject queststarter) spawns in a zone. Zone scoping is spatial, like the
+/// map editor's tables: `creature.zoneId` is 0 on stock rows, so a zone is its
+/// WorldMapArea world rectangle on `map`. `map` NULL disables the zone filter;
+/// all-NULL bounds mean map-wide (instances).
 #[tauri::command]
 pub async fn get_quests(
     state: State<'_, DbState>,
@@ -131,40 +137,273 @@ pub async fn get_quests(
     search: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
+    map: Option<u16>,
+    min_x: Option<f32>,
+    max_x: Option<f32>,
+    min_y: Option<f32>,
+    max_y: Option<f32>,
+    chain: Option<String>,
 ) -> Result<QuestListResult, String> {
     let db = state.pool.read().await;
     let pool = db.as_ref().ok_or("Not connected to database")?;
     let limit = limit.unwrap_or(50);
     let offset = offset.unwrap_or(0);
-    let (data, total) = match &search {
-        Some(q) if !q.is_empty() => {
-            let pattern = format!("%{}%", q);
-            const SQL_DATA: &str = "SELECT * FROM quest_template WHERE LogTitle LIKE ? OR ID LIKE ? ORDER BY ID LIMIT ? OFFSET ?";
-            let rows: Vec<QuestTemplate> = debug_sql!(app, debug, SQL_DATA,
-                sqlx::query_as(SQL_DATA).bind(&pattern).bind(&pattern).bind(limit).bind(offset).fetch_all(pool).await,
-                &pattern, &pattern, limit, offset
-            ).map_err(|e| format!("Query failed: {}", e))?;
-            const SQL_COUNT: &str = "SELECT COUNT(*) FROM quest_template WHERE LogTitle LIKE ? OR ID LIKE ?";
-            let count: (i64,) = debug_sql!(app, debug, SQL_COUNT,
-                sqlx::query_as(SQL_COUNT).bind(&pattern).bind(&pattern).fetch_one(pool).await,
-                &pattern, &pattern
-            ).map_err(|e| format!("Count query failed: {}", e))?;
-            (rows, count.0)
-        }
-        _ => {
-            const SQL_DATA: &str = "SELECT * FROM quest_template ORDER BY ID LIMIT ? OFFSET ?";
-            let rows: Vec<QuestTemplate> = debug_sql!(app, debug, SQL_DATA,
-                sqlx::query_as(SQL_DATA).bind(limit).bind(offset).fetch_all(pool).await,
-                limit, offset
-            ).map_err(|e| format!("Query failed: {}", e))?;
-            const SQL_COUNT: &str = "SELECT COUNT(*) FROM quest_template";
-            let count: (i64,) = debug_sql!(app, debug, SQL_COUNT,
-                sqlx::query_as(SQL_COUNT).fetch_one(pool).await
-            ).map_err(|e| format!("Count query failed: {}", e))?;
-            (rows, count.0)
+    // No search = match everything.
+    let pattern = format!("%{}%", search.unwrap_or_default());
+
+    // Zone scope, resolved first as a plain list of quest IDs. Folding it into
+    // the list query as `? IS NULL OR q.ID IN (subquery)` keeps MySQL from
+    // turning it into a semi-join: it re-runs the subquery per quest row and
+    // the list never comes back. `None` = no zone filter.
+    let zone_ids: Option<Vec<u32>> = match map {
+        None => None,
+        Some(map) => {
+            // The bounds filter binds min_x twice: NULL disables it (map-wide).
+            const SQL_ZONE: &str = "SELECT cq.quest FROM creature c \
+                JOIN creature_queststarter cq ON cq.id = c.id \
+                WHERE c.map = ? AND (? IS NULL OR (c.position_x BETWEEN ? AND ? AND c.position_y BETWEEN ? AND ?)) \
+                UNION \
+                SELECT gq.quest FROM gameobject g \
+                JOIN gameobject_queststarter gq ON gq.id = g.id \
+                WHERE g.map = ? AND (? IS NULL OR (g.position_x BETWEEN ? AND ? AND g.position_y BETWEEN ? AND ?))";
+            let rows: Vec<(u32,)> = debug_sql!(app, debug, SQL_ZONE,
+                sqlx::query_as(SQL_ZONE)
+                    .bind(map).bind(min_x).bind(min_x).bind(max_x).bind(min_y).bind(max_y)
+                    .bind(map).bind(min_x).bind(min_x).bind(max_x).bind(min_y).bind(max_y)
+                    .fetch_all(pool).await,
+                map, min_x, max_x, min_y, max_y
+            ).map_err(|e| format!("Zone query failed: {}", e))?;
+            Some(rows.into_iter().map(|r| r.0).collect())
         }
     };
-    Ok(QuestListResult { data, total })
+
+    // IDs are u32s from the DB, so inlining them can't inject anything (the
+    // list can't be a single bound parameter).
+    let zone_clause = match &zone_ids {
+        None => String::new(),
+        Some(ids) if ids.is_empty() => " AND 1 = 0".to_string(),
+        Some(ids) => format!(
+            " AND q.ID IN ({})",
+            ids.iter().map(u32::to_string).collect::<Vec<_>>().join(",")
+        ),
+    };
+    // Chain scope: "start" = first quest of a chain, "single" = quest outside
+    // any chain. Resolved as ID lists for the same reason as the zone scope.
+    let chain_clause = match chain.as_deref() {
+        Some(mode @ ("start" | "single")) => {
+            let links = load_chain_links(pool, &app, &debug).await?;
+
+            // A quest is in a chain when it links to another one, or another one
+            // links to it (PrevQuestID's sign only says "active" vs "completed").
+            let mut in_chain: HashSet<u32> = HashSet::new();
+            let mut has_prev: HashSet<u32> = HashSet::new();
+            for link in &links {
+                in_chain.insert(link.id);
+                if let Some(prev) = link.prev() {
+                    has_prev.insert(link.id);
+                    in_chain.insert(prev);
+                }
+                if let Some(next) = link.next() {
+                    in_chain.insert(next);
+                    has_prev.insert(next);
+                }
+            }
+            let ids: Vec<u32> = if mode == "start" {
+                in_chain.iter().copied().filter(|id| !has_prev.contains(id)).collect()
+            } else {
+                in_chain.into_iter().collect()
+            };
+            let list = ids.iter().map(u32::to_string).collect::<Vec<_>>().join(",");
+            match (mode, ids.is_empty()) {
+                ("start", true) => " AND 1 = 0".to_string(),
+                ("single", true) => String::new(),
+                ("start", false) => format!(" AND q.ID IN ({list})"),
+                _ => format!(" AND q.ID NOT IN ({list})"),
+            }
+        }
+        _ => String::new(),
+    };
+    let where_sql = format!("WHERE (q.LogTitle LIKE ? OR q.ID LIKE ?){zone_clause}{chain_clause}");
+
+    // A zone list reads by level (scaling quests, level -1, last); the full
+    // list stays in ID order.
+    let order_sql = if zone_ids.is_some() {
+        "ORDER BY q.QuestLevel = -1, q.QuestLevel, q.MinLevel, q.ID"
+    } else {
+        "ORDER BY q.ID"
+    };
+    let sql_data = format!("SELECT q.* FROM quest_template q {where_sql} {order_sql} LIMIT ? OFFSET ?");
+    let data: Vec<QuestTemplate> = debug_sql!(app, debug, &sql_data,
+        sqlx::query_as(&sql_data)
+            .bind(&pattern).bind(&pattern)
+            .bind(limit).bind(offset)
+            .fetch_all(pool).await,
+        &pattern, limit, offset
+    ).map_err(|e| format!("Query failed: {}", e))?;
+
+    let sql_count = format!("SELECT COUNT(*) FROM quest_template q {where_sql}");
+    let count: (i64,) = debug_sql!(app, debug, &sql_count,
+        sqlx::query_as(&sql_count)
+            .bind(&pattern).bind(&pattern)
+            .fetch_one(pool).await,
+        &pattern
+    ).map_err(|e| format!("Count query failed: {}", e))?;
+
+    Ok(QuestListResult { data, total: count.0 })
+}
+
+/// One quest_template_addon row that takes part in a chain.
+struct ChainLink {
+    id: u32,
+    /// > 0 = that quest must be completed, < 0 = it must be active.
+    prev: i64,
+    next: i64,
+    exclusive_group: i64,
+}
+
+impl ChainLink {
+    fn prev(&self) -> Option<u32> {
+        (self.prev != 0).then(|| self.prev.unsigned_abs() as u32)
+    }
+    fn next(&self) -> Option<u32> {
+        (self.next > 0).then(|| self.next as u32)
+    }
+}
+
+/// Every addon row with a PrevQuestID or NextQuestID. Cast to SIGNED so the
+/// decode doesn't depend on each core's column signedness.
+async fn load_chain_links(
+    pool: &sqlx::MySqlPool,
+    app: &tauri::AppHandle,
+    debug: &State<'_, DebugState>,
+) -> Result<Vec<ChainLink>, String> {
+    const SQL_CHAIN: &str = "SELECT ID, CAST(PrevQuestID AS SIGNED), CAST(NextQuestID AS SIGNED), \
+        CAST(ExclusiveGroup AS SIGNED) FROM quest_template_addon \
+        WHERE PrevQuestID <> 0 OR NextQuestID <> 0";
+    let rows: Vec<(u32, i64, i64, i64)> = debug_sql!(app, debug, SQL_CHAIN,
+        sqlx::query_as(SQL_CHAIN).fetch_all(pool).await,
+    ).map_err(|e| format!("Chain query failed: {}", e))?;
+    Ok(rows
+        .into_iter()
+        .map(|(id, prev, next, exclusive_group)| ChainLink { id, prev, next, exclusive_group })
+        .collect())
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuestChainNode {
+    pub id: u32,
+    /// None when the ID is referenced by a link but has no quest_template row.
+    pub title: Option<String>,
+    pub level: Option<i32>,
+    pub min_level: Option<u8>,
+    pub quest_type: Option<u8>,
+    pub exclusive_group: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuestChainEdge {
+    pub from: u32,
+    pub to: u32,
+    /// "completed" = `to` needs `from` rewarded, "active" = `to` needs `from`
+    /// in the quest log (negative PrevQuestID).
+    pub kind: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuestChain {
+    pub nodes: Vec<QuestChainNode>,
+    pub edges: Vec<QuestChainEdge>,
+    /// True when the walk stopped at MAX_CHAIN_NODES.
+    pub truncated: bool,
+}
+
+const MAX_CHAIN_NODES: usize = 300;
+
+/// The whole chain `id` belongs to: every quest reachable through
+/// PrevQuestID / NextQuestID links, in either direction (same definition as
+/// the list's chain filter).
+#[tauri::command]
+pub async fn get_quest_chain(
+    state: State<'_, DbState>,
+    app: tauri::AppHandle,
+    debug: State<'_, DebugState>,
+    id: u32,
+) -> Result<QuestChain, String> {
+    let db = state.pool.read().await;
+    let pool = db.as_ref().ok_or("Not connected to database")?;
+    let links = load_chain_links(pool, &app, &debug).await?;
+
+    // Directed edges, deduplicated: A.NextQuestID = B and B.PrevQuestID = A
+    // describe the same step.
+    let mut edge_kind: HashMap<(u32, u32), &'static str> = HashMap::new();
+    let mut groups: HashMap<u32, i64> = HashMap::new();
+    for link in &links {
+        groups.insert(link.id, link.exclusive_group);
+        if let Some(prev) = link.prev() {
+            let kind = if link.prev < 0 { "active" } else { "completed" };
+            edge_kind.insert((prev, link.id), kind);
+        }
+        if let Some(next) = link.next() {
+            edge_kind.entry((link.id, next)).or_insert("completed");
+        }
+    }
+    let mut neighbours: HashMap<u32, Vec<u32>> = HashMap::new();
+    for &(from, to) in edge_kind.keys() {
+        if from == to { continue; }
+        neighbours.entry(from).or_default().push(to);
+        neighbours.entry(to).or_default().push(from);
+    }
+
+    let mut seen: HashSet<u32> = HashSet::from([id]);
+    let mut queue: VecDeque<u32> = VecDeque::from([id]);
+    let mut truncated = false;
+    while let Some(current) = queue.pop_front() {
+        for &n in neighbours.get(&current).map(Vec::as_slice).unwrap_or(&[]) {
+            if seen.contains(&n) { continue; }
+            if seen.len() >= MAX_CHAIN_NODES {
+                truncated = true;
+                break;
+            }
+            seen.insert(n);
+            queue.push_back(n);
+        }
+    }
+
+    // IDs are u32s, so inlining them can't inject anything.
+    let mut ids: Vec<u32> = seen.iter().copied().collect();
+    ids.sort_unstable();
+    let list = ids.iter().map(u32::to_string).collect::<Vec<_>>().join(",");
+    let sql = format!("SELECT ID, LogTitle, QuestLevel, MinLevel, QuestType FROM quest_template WHERE ID IN ({list})");
+    let rows: Vec<(u32, Option<String>, i32, u8, u8)> = debug_sql!(app, debug, &sql,
+        sqlx::query_as(&sql).fetch_all(pool).await,
+    ).map_err(|e| format!("Chain quests query failed: {}", e))?;
+    let mut by_id: HashMap<u32, (Option<String>, i32, u8, u8)> = rows
+        .into_iter()
+        .map(|(id, title, level, min_level, quest_type)| (id, (title, level, min_level, quest_type)))
+        .collect();
+
+    let nodes = ids
+        .iter()
+        .map(|&qid| {
+            let row = by_id.remove(&qid);
+            QuestChainNode {
+                id: qid,
+                title: row.as_ref().map(|r| r.0.clone().unwrap_or_default()),
+                level: row.as_ref().map(|r| r.1),
+                min_level: row.as_ref().map(|r| r.2),
+                quest_type: row.as_ref().map(|r| r.3),
+                exclusive_group: groups.get(&qid).copied().unwrap_or(0),
+            }
+        })
+        .collect();
+    let mut edges: Vec<QuestChainEdge> = edge_kind
+        .into_iter()
+        .filter(|((from, to), _)| from != to && seen.contains(from) && seen.contains(to))
+        .map(|((from, to), kind)| QuestChainEdge { from, to, kind })
+        .collect();
+    edges.sort_by_key(|e| (e.from, e.to));
+
+    Ok(QuestChain { nodes, edges, truncated })
 }
 
 #[tauri::command]

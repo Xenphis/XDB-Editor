@@ -1,3 +1,16 @@
+diff --git a/dist/esm/index.js b/dist/esm/index.js
+index 46f46dcdd76a4ac6c6e5d7df1505087b50ed6ac7..589a5c6e300be6cabc5fc9cde1d1965e42dba713 100644
+--- a/dist/esm/index.js
++++ b/dist/esm/index.js
+@@ -8,4 +8,7 @@ export * from './model/ModelManager.js';
+ export * from './sound/SoundManager.js';
+ export * from './texture/TextureManager.js';
+ export * from './util.js';
++// The doodad fade table, so a caller can set its scale and cull its own models
++// by the same distances.
++export * from './world.js';
+ //# sourceMappingURL=index.js.map
+\ No newline at end of file
 diff --git a/dist/esm/map/MapManager.js b/dist/esm/map/MapManager.js
 index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce7334847897e 100644
 --- a/dist/esm/map/MapManager.js
@@ -12,6 +25,245 @@ index b6bafb6a159b1c04a31679692e9e7a31d9469686..f63b78c8f05375478be7b97ff49ce733
      load(mapName, mapId) {
          this.#mapName = mapName;
          this.#mapDir = `world/maps/${mapName}`;
+diff --git a/dist/esm/map/light/MapLight.js b/dist/esm/map/light/MapLight.js
+index 6710a62f983e7f17dae11bbdf20855a5cdf97b7f..f4c751193de925a39dbc7264be8e9e5c297860db 100644
+--- a/dist/esm/map/light/MapLight.js
++++ b/dist/esm/map/light/MapLight.js
+@@ -11,6 +11,8 @@ class MapLight extends SceneLight {
+     #lights;
+     // Applicable area lights given current camera position
+     #selectedLights;
++    // Default light for maps that have none of their own (see #loadLights)
++    #fallbackLight = null;
+     // Time in half-minutes since midnight (0 - 2879)
+     #time = 0;
+     // Overridden time in half-minutes since midnight (0 - 2879)
+@@ -82,10 +84,12 @@ class MapLight extends SceneLight {
+         this.fogParams.copy(fogParams);
+     }
+     #selectLights(position) {
+-        if (!this.#lights || this.#mapId === undefined || !this.#lights[this.#mapId]) {
++        if (!this.#lights) {
+             return;
+         }
+-        this.#selectedLights = selectLightsForPosition(this.#lights[this.#mapId], position);
++        // A map with no light of its own still gets the fallback, rather than
++        // keeping the placeholder light it was constructed with.
++        this.#selectedLights = selectLightsForPosition(this.#lights[this.#mapId] ?? [], position, this.#fallbackLight);
+     }
+     async #loadLights() {
+         const lightDb = await this.#dbManager.get('Light.dbc', LightRecord);
+@@ -93,6 +97,11 @@ class MapLight extends SceneLight {
+         const lightIntBandDb = await this.#dbManager.get('LightIntBand.dbc', LightIntBandRecord);
+         const lightFloatBandDb = await this.#dbManager.get('LightFloatBand.dbc', LightFloatBandRecord);
+         this.#lights = getAreaLightsFromDb(lightDb, lightParamsDb, lightIntBandDb, lightFloatBandDb);
++        // Azeroth's default stands in on the 71 maps that have no default of
++        // their own (most instances, every transport). It is a choice, not a
++        // read of the client: neutral daylight, where the alternative was the
++        // placeholder's saturated blue.
++        this.#fallbackLight = this.#lights[0]?.find((light) => light.isDefault) ?? null;
+     }
+ }
+ export default MapLight;
+diff --git a/dist/esm/map/light/db.js b/dist/esm/map/light/db.js
+index 7f8e8110b7948f5c1a64bff7f2ec5376a3d0f6cd..62e16c8649f315254556dbd585cff60ad3174cf5 100644
+--- a/dist/esm/map/light/db.js
++++ b/dist/esm/map/light/db.js
+@@ -33,6 +33,13 @@ const getAreaLightsFromDb = (lightDb, lightParamsDb, lightIntBandDb, lightFloatB
+             position,
+             falloffStart,
+             falloffEnd,
++            // A light at the origin is its map's default: it covers the whole map
++            // and the zone lights blend over it. Only the position says so. Most
++            // 3.3.5 defaults carry a small radius (Northrend's is 33..46), and a
++            // test that also required a zero radius missed 44 of them.
++            isDefault: lightRecord.gameCoords[0] === 0 &&
++                lightRecord.gameCoords[1] === 0 &&
++                lightRecord.gameCoords[2] === 0,
+             params,
+         };
+         if (lights[mapId]) {
+@@ -71,7 +78,12 @@ const getIntBandsForParam = (paramId, bandDb) => {
+         const intBand = [];
+         for (let b = 0; b < intBandRecord.num; b++) {
+             const time = (intBandRecord.time[b] >>> 0) / 2880;
+-            const value = new THREE.Color(intBandRecord.data[b] >>> 0);
++            // The bands hold the client's own bytes, and every shader that reads
++            // them lights in that same gamma space. `new THREE.Color(hex)` reads
++            // a hex as sRGB and converts it to linear, which darkened the ambient
++            // term to under half its authored value; tagging it linear keeps the
++            // bytes as they are.
++            const value = new THREE.Color().setHex(intBandRecord.data[b] >>> 0, THREE.LinearSRGBColorSpace);
+             intBand.push(time, value);
+         }
+         intBands[band] = intBand;
+diff --git a/dist/esm/map/light/util.js b/dist/esm/map/light/util.js
+index ee4fe64694190c5bb1518510d9b10ebbc15461c1..247f51895066073e1e90cf668cc22c26c4054e67 100644
+--- a/dist/esm/map/light/util.js
++++ b/dist/esm/map/light/util.js
+@@ -1,4 +1,3 @@
+-import { MAP_CORNER_X, MAP_CORNER_Y } from '@wowserhq/format';
+ const clamp = (value, min, max) => {
+     return Math.min(Math.max(value, min), max);
+ };
+@@ -95,23 +94,32 @@ const interpolateNumericTable = (table, key) => {
+     const factor = (key - previousKey) / keyDistance;
+     return lerpNumbers(previousValue, nextValue, factor);
+ };
+-const selectLightsForPosition = (lights, position) => {
++const selectLightsForPosition = (lights, position, fallbackLight = null) => {
+     const selectedLights = [];
++    let defaultLight = null;
+     for (const light of lights) {
++        // The default takes whatever weight the zone lights leave, so it joins
++        // after the sort rather than competing with them on distance.
++        if (light.isDefault) {
++            defaultLight = light;
++            continue;
++        }
+         const distance = position.distanceTo(light.position);
+         // Include lights if position is within falloff radii
+         if (distance <= light.falloffEnd) {
+             selectedLights.push({ light, distance, weight: 0.0 });
+         }
+-        // Include default light
+-        if (light.position.x === MAP_CORNER_X &&
+-            light.position.y === MAP_CORNER_Y &&
+-            light.falloffEnd === 0.0) {
+-            selectedLights.push({ light, distance, weight: 0.0 });
+-        }
+     }
+     // Sort selected lights by distance (closer -> farther)
+     selectedLights.sort((light1, light2) => light1.distance - light2.distance);
++    // A map without a default of its own blends over the fallback instead, so
++    // the weights always add up to one. Without it, the share the zone lights
++    // left went nowhere, which darkened the light and pulled the fog in, and
++    // with no zone light in reach the placeholder light stayed on.
++    const baseLight = defaultLight ?? fallbackLight;
++    if (baseLight) {
++        selectedLights.push({ light: baseLight, distance: 0.0, weight: 0.0 });
++    }
+     // Distribute weights by falloff
+     let availableWeight = 1.0;
+     for (const selectedLight of selectedLights) {
+@@ -120,7 +128,7 @@ const selectLightsForPosition = (lights, position) => {
+         }
+         const { light, distance } = selectedLight;
+         // Default light has no falloff
+-        const falloff = light.falloffStart > 0.0 && light.falloffEnd > 0.0
++        const falloff = !light.isDefault && light.falloffStart > 0.0 && light.falloffEnd > 0.0
+             ? (distance - light.falloffStart) / (light.falloffEnd - light.falloffStart)
+             : 0.0;
+         const weight = clamp(1.0 - falloff, 0.0, availableWeight);
+diff --git a/dist/esm/map/terrain/TerrainManager.js b/dist/esm/map/terrain/TerrainManager.js
+index e6532f687a2ccebda70aaa82ffeb3fc0821380e0..fcf860ec96152d4ce850f4fe6cafda6478ac2118 100644
+--- a/dist/esm/map/terrain/TerrainManager.js
++++ b/dist/esm/map/terrain/TerrainManager.js
+@@ -3,6 +3,10 @@ import TextureManager from '../../texture/TextureManager.js';
+ import TerrainMaterial from './TerrainMaterial.js';
+ import TerrainMesh from './TerrainMesh.js';
+ const SPLAT_TEXTURE_PLACEHOLDER = new THREE.Texture();
++// One instance stands in for the splat of every 0/1-layer chunk in the scene, so
++// it has to outlive any single material that references it. TerrainMaterial's
++// dispose() reads this flag rather than freeing it with the rest.
++SPLAT_TEXTURE_PLACEHOLDER.userData.shared = true;
+ class TerrainManager {
+     #textureManager;
+     #mapLight;
+diff --git a/dist/esm/map/terrain/TerrainMaterial.js b/dist/esm/map/terrain/TerrainMaterial.js
+index e80215811f3b665f89677cf2032dbdab696d6786..5ef898fc2e134386020bc752afc60847d5a6bf68 100644
+--- a/dist/esm/map/terrain/TerrainMaterial.js
++++ b/dist/esm/map/terrain/TerrainMaterial.js
+@@ -21,8 +21,13 @@ class TerrainMaterial extends THREE.RawShaderMaterial {
+         for (const texture of this.uniforms.layers.value) {
+             texture.dispose();
+         }
+-        // Splat texture
+-        this.uniforms.splat.value.dispose();
++        // Splat texture. The 0/1-layer placeholder is shared scene-wide (see
++        // TerrainManager), and disposing it here destroyed a texture still bound
++        // by every other such chunk.
++        const splat = this.uniforms.splat.value;
++        if (!splat.userData?.shared) {
++            splat.dispose();
++        }
+         super.dispose();
+     }
+ }
+diff --git a/dist/esm/model/Model.js b/dist/esm/model/Model.js
+index 74b0a5efebd0b21d500a12d834ed31a7e9da59eb..6e432870a635e6632fef006df904946268542d67 100644
+--- a/dist/esm/model/Model.js
++++ b/dist/esm/model/Model.js
+@@ -53,6 +53,14 @@ class Model extends THREE.Mesh {
+     }
+     dispose() {
+         this.animation.dispose();
++        // Materials are built per model instance (see ModelManager#createMaterials,
++        // and the per-instance skeleton assigned to them above), so they die with
++        // the instance. Without this every streamed-out doodad left its materials
++        // pinned in the renderer's program/state bookkeeping.
++        const materials = Array.isArray(this.material) ? this.material : [this.material];
++        for (const material of materials) {
++            material.dispose();
++        }
+     }
+     show() {
+         if (this.visible) {
+diff --git a/dist/esm/model/ModelManager.js b/dist/esm/model/ModelManager.js
+index 1f298194f1216101e78e8e8823bdaa2497af74ad..6352bccfe5aa9bb19da92bedde515306368126be 100644
+--- a/dist/esm/model/ModelManager.js
++++ b/dist/esm/model/ModelManager.js
+@@ -82,6 +82,9 @@ class ModelManager {
+         geometry.setIndex(index);
+         for (const group of spec.geometry.groups) {
+             geometry.addGroup(group.start, group.count, group.materialIndex);
++            // Carried on the three group so a caller can drop the variants a
++            // model should not show (see ModelLoaderWorker#createGeometrySpec).
++            geometry.groups[geometry.groups.length - 1].geosetId = group.geosetId;
+         }
+         // Bounds
+         geometry.boundingBox = new THREE.Box3().setFromArray(spec.bounds.extent);
+@@ -110,7 +113,14 @@ class ModelManager {
+             return this.#textureManager.get(spec.path, wrapS, wrapT);
+         }
+         // TODO handle other component types
+-        return new THREE.Texture();
++        const placeholder = new THREE.Texture();
++        // Which runtime texture the slot wants (body, cape, hair, monster skin…)
++        // and how it wraps: only the caller knows the image, and without these
++        // it could only guess which slot is which.
++        placeholder.userData.component = spec.component;
++        placeholder.userData.wrapS = wrapS;
++        placeholder.userData.wrapT = wrapT;
++        return placeholder;
+     }
+     async #createModel(resources) {
+         const { name, geometry, animator, skinned } = resources;
+diff --git a/dist/esm/model/loader/ModelLoaderWorker.js b/dist/esm/model/loader/ModelLoaderWorker.js
+index 849ef35d18a61d48701d785526d291fd3509fd2c..bf641cefb2edd57ddbb93cc0a5fb74fb050058f7 100644
+--- a/dist/esm/model/loader/ModelLoaderWorker.js
++++ b/dist/esm/model/loader/ModelLoaderWorker.js
+@@ -73,6 +73,11 @@ class ModelLoaderWorker extends SceneWorker {
+                 start: batch.skinSection.indexStart,
+                 count: batch.skinSection.indexCount,
+                 materialIndex: i,
++                // The skin section's geoset (submesh) id: which body part,
++                // hairstyle or clothing variant this batch draws. Character
++                // models ship every variant, and only the caller knows which
++                // ones a given model should show.
++                geosetId: batch.skinSection.id,
+             });
+         }
+         return {
+diff --git a/dist/types/index.d.ts b/dist/types/index.d.ts
+index 58da06e0780ea784757365b678ca38a1e0c46ec9..91b60f60430224267c76ce04515a2459d8f0aec6 100644
+--- a/dist/types/index.d.ts
++++ b/dist/types/index.d.ts
+@@ -8,3 +8,4 @@ export * from './model/ModelManager.js';
+ export * from './sound/SoundManager.js';
+ export * from './texture/TextureManager.js';
+ export * from './util.js';
++export * from './world.js';
 diff --git a/dist/types/map/MapManager.d.ts b/dist/types/map/MapManager.d.ts
 index 639faf1cb74696335f0d0b93a4938c69726a9a92..0267cb0bfbebb88ada3ce4076fc64abe03e4b116 100644
 --- a/dist/types/map/MapManager.d.ts

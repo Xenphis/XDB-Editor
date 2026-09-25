@@ -40,6 +40,8 @@ export interface FieldChange {
   field: string
   oldValue: unknown
   newValue: unknown
+  /** Several labelled values shown as one change (e.g. x, y, z of a position). */
+  parts?: { label: string; oldValue: unknown; newValue: unknown }[]
 }
 
 export function generateDiffQuery(

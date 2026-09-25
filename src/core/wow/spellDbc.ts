@@ -109,8 +109,10 @@ export function hasClientConfigured(): boolean {
 /**
  * Makes sure the MPQ chain is open before a spell lookup. Shared with the map
  * editor and the model preview, so whoever needs the client first pays for it.
+ * Exported for the other client lookups under `@core/wow` (item icons), so
+ * this file stays the only one reaching into the map editor module.
  */
-async function ensureClient(): Promise<void> {
+export async function ensureClient(): Promise<void> {
   const path = useMapEditorStore().clientPath.trim()
   if (!path) throw new NoClientError()
   await ensureClientLoaded(path)

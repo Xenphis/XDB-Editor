@@ -1,27 +1,10 @@
 {
   "npc": {
-    "hub": {
-      "title": "Module PNJ",
-      "description": "Gérer les créatures, dresseurs, vendeurs et formations",
-      "comingSoon": "À venir",
-      "submodules": {
-        "creatureTemplate": {
-          "title": "Creature Template",
-          "description": "Parcourir et éditer les templates de créatures : stats, butin, sorts et comportement"
-        },
-        "trainer": {
-          "title": "Trainer",
-          "description": "Configurer les PNJ entraîneurs et leurs options d'entraînement"
-        },
-        "vendor": {
-          "title": "Vendeur",
-          "description": "Gérer les créatures vendeuses et leur stock d'objets"
-        },
-        "formation": {
-          "title": "Formation",
-          "description": "Gérer les formations de créatures et les patterns de spawn en groupe"
-        }
-      }
+    "tables": {
+      "creatureTemplate": "Creature Template",
+      "vendor": "Vendeurs",
+      "trainer": "Dresseurs",
+      "formation": "Formations"
     },
     "title": "Base de PNJs",
     "description": "Gérer les personnages non-joueurs, leurs attributs et comportements",

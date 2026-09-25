@@ -1,12 +1,15 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { LatLng } from 'leaflet'
 import { MPQ_ASSET_BASE_URL } from '@core/wow/assetHost'
+import type { AttachmentPoint } from '@core/wow/creatureDisplay'
 import type {
+  AreatriggerTeleportTarget,
   CreatureModelInfo,
   CreatureSpawnMarker,
   GameObjectModelInfo,
   GameTele,
   LiquidMesh,
+  MapRecord,
   MinimapMapInfo,
   WmoModel,
   WmoPlacement,
@@ -36,6 +39,11 @@ const TILE_HOST = navigator.userAgent.includes('Windows')
 
 export function tileUrlTemplate(mapId: string): string {
   return `${TILE_HOST}${encodeURIComponent(mapId)}/{z}/{x}/{y}.png`
+}
+
+/** One pyramid tile, for callers that fetch tiles themselves (3D minimap). */
+export function tileUrl(mapId: string, z: number, x: number, y: number): string {
+  return `${TILE_HOST}${encodeURIComponent(mapId)}/${z}/${x}/${y}.png`
 }
 
 /** Raw client files served from the MPQ patch chain (3D asset streaming). */
@@ -166,6 +174,17 @@ export function loadZoneWorldBounds(zoneId: number): Promise<WorldBounds | null>
   return invoke<WorldBounds | null>('minimap_zone_bounds', { zoneId })
 }
 
+/** Every Map.dbc row (id, localized name, instance type) from the client.
+ * Waits out the client's background open; rejects while no client loaded. */
+export function loadMapRecords(): Promise<MapRecord[]> {
+  return invoke<MapRecord[]>('minimap_map_records')
+}
+
+/** First `areatrigger_teleport` landing per target map (DB): an instance's entrance. */
+export function loadAreatriggerTeleportTargets(): Promise<AreatriggerTeleportTarget[]> {
+  return invoke<AreatriggerTeleportTarget[]>('get_areatrigger_teleport_targets')
+}
+
 /** Creature spawns on one map, searchable. Zone scoping is spatial (the DB's
  * `creature.zoneId` is 0 on stock rows): pass the zone's world bounds. */
 export function loadCreatureSpawnsByMap(
@@ -185,11 +204,19 @@ export function loadCreatureSpawnsByMap(
   })
 }
 
-/** Resolves creature display ids to their M2 model + scale (from client DBCs). */
+/**
+ * Resolves creature display ids to their M2 model, scale, skins and — for
+ * humanoid NPCs — how they are dressed (from client DBCs).
+ */
 export function resolveCreatureModels(
   displayIds: number[],
 ): Promise<Record<number, CreatureModelInfo>> {
   return invoke<Record<number, CreatureModelInfo>>('minimap_creature_models', { displayIds })
+}
+
+/** The attachment points (helm, shoulders, hands…) of one client M2. */
+export function loadModelAttachments(path: string): Promise<AttachmentPoint[]> {
+  return invoke<AttachmentPoint[]>('minimap_model_attachments', { path })
 }
 
 /** Resolves gameobject display ids to their client model (from client DBCs). */

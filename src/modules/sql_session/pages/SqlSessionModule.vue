@@ -64,6 +64,7 @@ function kindLabel(kind: SessionChangeKind): string {
 
     <!-- Change list -->
     <div v-else class="session-content">
+     <div class="session-main">
       <!-- Summary bar -->
       <div class="session-summary">
         <span class="summary-badge">
@@ -110,8 +111,10 @@ function kindLabel(kind: SessionChangeKind): string {
         <pre v-if="expandedSql.has(change.key)" class="query-code" v-html="highlightSql(change.sql)" />
       </div>
 
+     </div>
+
       <!-- Full script -->
-      <div class="full-script-section">
+      <aside class="full-script-section">
         <div class="full-script-header">
           <div>
             <h3>{{ t('sqlSession.fullScript') }}</h3>
@@ -122,14 +125,38 @@ function kindLabel(kind: SessionChangeKind): string {
           </button>
         </div>
         <pre class="full-script-code" v-html="highlightSql(session.globalSqlScript)" />
-      </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <style scoped>
 .sql-session {
-  max-width: 80rem;
+  max-width: 100rem;
+}
+
+/* Changes on the left, the resulting script pinned on the right. */
+.session-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.session-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1000px) {
+  .session-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .full-script-section {
+    position: static;
+    width: auto;
+  }
 }
 
 .session-header {
@@ -303,7 +330,7 @@ function kindLabel(kind: SessionChangeKind): string {
   line-height: 1.6;
   color: var(--text);
   white-space: pre-wrap;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 /* Full script section */
@@ -311,8 +338,14 @@ function kindLabel(kind: SessionChangeKind): string {
   background: var(--surface-code);
   border: 1px solid var(--border-default);
   border-radius: 0.75rem;
-  margin-top: 2rem;
   overflow: hidden;
+  width: 28rem;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 8rem);
+  display: flex;
+  flex-direction: column;
 }
 
 .full-script-header {
@@ -344,9 +377,10 @@ function kindLabel(kind: SessionChangeKind): string {
   line-height: 1.6;
   color: var(--text);
   white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 400px;
-  overflow-y: auto;
+  overflow-wrap: anywhere;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* SQL syntax highlighting */

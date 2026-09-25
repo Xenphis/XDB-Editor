@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import NpcTableSwitch from '@/modules/npc/NpcTableSwitch.vue'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import InspectorPanel from '@core/components/workspace/InspectorPanel.vue'
@@ -149,6 +150,7 @@ const mainTabs = computed<SectionTabItem[]>(() => [
 <template>
   <EntityWorkspace storageKey="npc.trainer">
     <template #list>
+      <NpcTableSwitch />
       <EntityListPanel
         :items="filteredTrainers"
         :idOf="(tr: Trainer) => tr.Id"
