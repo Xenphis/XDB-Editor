@@ -62,8 +62,6 @@ const props = defineProps<{
   showSpawns: boolean
   /** Only stream spawns visible in this phase; null streams every phase. */
   spawnPhase: number | null
-  /** When true, the next terrain right-click relocates the selected spawn. */
-  moveArmed: boolean
   /** How much to ask of the GPU; read once, the parent remounts on change. */
   quality: RenderQuality
   /** WMO walls, floors and ceilings stop the camera (read live, per move). */
@@ -363,7 +361,13 @@ function cameraPose(): Readonly<CameraPose> | null {
   return poseReady ? pose : null
 }
 
-defineExpose({ cameraPose, clearSelection })
+/** Takes the selected spawn's model out of the view (its row was deleted). */
+function removeSelectedSpawn() {
+  selectedObject?.parent?.remove(selectedObject)
+  clearSelection()
+}
+
+defineExpose({ cameraPose, clearSelection, removeSelectedSpawn })
 
 /** Creates the spawn manager and adds it to the scene (idempotent). */
 function enableSpawns() {
@@ -867,8 +871,8 @@ onMounted(() => {
     }
   }
 
-  // Right-click without drag: relocate the selected spawn when move is armed,
-  // else report the world position under the pointer (right-drag looks).
+  // Right-click without drag: report the world position under the pointer
+  // (right-drag looks).
   const onRightClick = (event: PointerEvent) => {
     if (!rightDown) return
     const moved = Math.hypot(event.clientX - rightDown.x, event.clientY - rightDown.y)
@@ -878,19 +882,6 @@ onMounted(() => {
     raycaster.setFromCamera(pickCoords, camera)
     const hit = raycaster.intersectObject(mapManager.root, true)[0]
     if (!hit) return
-    if (props.moveArmed && selectedObject && selectedSpawn) {
-      selectedObject.position.set(hit.point.x, hit.point.y, hit.point.z)
-      selectedObject.updateMatrixWorld()
-      followSelectionRing()
-      emit('transform-spawn', {
-        guid: selectedSpawn.guid,
-        x: hit.point.x,
-        y: hit.point.y,
-        z: hit.point.z,
-        orientation: selectedOrientation(),
-      })
-      return
-    }
     emit('pick', { x: hit.point.x, y: hit.point.y, z: hit.point.z })
   }
 

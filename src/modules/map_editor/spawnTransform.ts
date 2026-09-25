@@ -45,13 +45,21 @@ function sameTransform(a: SpawnTransform, b: SpawnTransform): boolean {
   )
 }
 
-export function useSpawnTransform(spawn: Ref<CreatureSpawnMarker | null>) {
+export function useSpawnTransform(
+  spawn: Ref<CreatureSpawnMarker | null>,
+  /** Called after a user change (apply, undo, reset), never after `clear`. */
+  onChange?: (spawn: CreatureSpawnMarker, transform: SpawnTransform | null) => void,
+) {
   const current = ref<SpawnTransform | null>(null)
   /** States replaced by each change, most recent last. */
   const history = ref<(SpawnTransform | null)[]>([])
 
   const canUndo = computed(() => history.value.length > 0)
   const dirty = computed(() => current.value !== null)
+
+  function notify() {
+    if (spawn.value) onChange?.(spawn.value, current.value)
+  }
 
   /** Settles on null when the spawn is back where the DB has it. */
   function settle(transform: SpawnTransform | null): SpawnTransform | null {
@@ -67,17 +75,20 @@ export function useSpawnTransform(spawn: Ref<CreatureSpawnMarker | null>) {
     if (next === previous || (next && previous && sameTransform(next, previous))) return
     history.value.push(previous)
     current.value = next
+    notify()
   }
 
   function undo() {
     if (history.value.length === 0) return
     current.value = history.value.pop() ?? null
+    notify()
   }
 
   function reset() {
     if (!current.value) return
     history.value.push(current.value)
     current.value = null
+    notify()
   }
 
   function clear() {

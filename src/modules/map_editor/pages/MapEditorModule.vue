@@ -12,9 +12,11 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import EntityWorkspace from '@core/components/workspace/EntityWorkspace.vue'
 import EntityListPanel from '@core/components/workspace/EntityListPanel.vue'
 import { useMapEditorStore } from '../store'
+import { deleteCreatureSpawn } from '@/modules/npc/service'
 import { ensureClientLoaded, loadAreatriggerTeleportTargets, loadMapRecords } from '../service'
 import { ZONES, ZONE_BY_ID } from '../data/zones'
 import { useSpawnTransform } from '../spawnTransform'
+import { trackSpawnDelete, trackSpawnTransform } from '../spawnTracking'
 import {
   INSTANCE_TYPE_DUNGEON,
   INSTANCE_TYPE_RAID,
@@ -472,18 +474,17 @@ const viewSettingsOpen = ref(false)
 const selectedSpawn = ref<CreatureSpawnMarker | null>(null)
 /** The selected spawn's panel takes the inspector over from the zone tables. */
 const spawnInInspector = computed(() => activeViewMode.value === '3d' && selectedSpawn.value != null)
-/** When armed, the next terrain right-click relocates the selected spawn. */
-const moveArmed = ref(false)
 /** Move/rotate gizmo on the selected spawn; null until asked for (panel, G/R). */
 const gizmoMode = ref<GizmoMode | null>(null)
 /** Where the selected spawn was moved/turned to, its undo history and UPDATE. */
-const spawnEdit = useSpawnTransform(selectedSpawn)
+const spawnEdit = useSpawnTransform(selectedSpawn, trackSpawnTransform)
 const { current: spawnTransform, canUndo: spawnCanUndo, migrationSql } = spawnEdit
 const sqlCopied = ref(false)
+const deleteError = ref('')
 
 function onSelectSpawn(spawn: CreatureSpawnMarker | null) {
   selectedSpawn.value = spawn
-  moveArmed.value = false
+  deleteError.value = ''
   gizmoMode.value = null
   spawnEdit.clear()
 }
@@ -493,12 +494,10 @@ function onTransformSpawn(move: { guid: number } & SpawnTransform) {
   // that outlived its selection must not land on the next one.
   if (move.guid !== selectedSpawn.value?.guid) return
   spawnEdit.apply(move)
-  moveArmed.value = false
 }
 
 function clearSelectedSpawn() {
   selectedSpawn.value = null
-  moveArmed.value = false
   gizmoMode.value = null
   spawnEdit.clear()
 }
@@ -506,6 +505,21 @@ function clearSelectedSpawn() {
 /** The panel's close button: deselect in the view too, so the ring goes with it. */
 function closeSpawnPanel() {
   scene3d.value?.clearSelection()
+  clearSelectedSpawn()
+}
+
+/** Deletes the selected spawn's row, then its model, then closes the panel. */
+async function deleteSelectedSpawn() {
+  const spawn = selectedSpawn.value
+  if (!spawn) return
+  try {
+    await deleteCreatureSpawn(spawn.guid)
+  } catch (e) {
+    deleteError.value = String(e)
+    return
+  }
+  trackSpawnDelete(spawn)
+  scene3d.value?.removeSelectedSpawn()
   clearSelectedSpawn()
 }
 
@@ -679,7 +693,6 @@ onMounted(async () => {
             :focus="focusTarget"
             :showSpawns="spawnsAvailable"
             :spawnPhase="store.spawnPhase"
-            :moveArmed="moveArmed"
             :quality="store.renderQuality"
             :collision="store.mapCategory === 'instances' && store.cameraCollision"
             v-model:gizmoMode="gizmoMode"
@@ -841,14 +854,14 @@ onMounted(async () => {
         <SpawnInfoPanel
           v-if="spawnInInspector && selectedSpawn"
           :spawn="selectedSpawn"
-          v-model:moveArmed="moveArmed"
           v-model:gizmoMode="gizmoMode"
           :transform="spawnTransform"
           :canUndo="spawnCanUndo"
           :migrationSql="migrationSql"
           :sqlCopied="sqlCopied"
+          :deleteError="deleteError"
           @undo="spawnEdit.undo"
-          @reset="spawnEdit.reset"
+          @delete="deleteSelectedSpawn"
           @copy-sql="copyMigration"
           @close="closeSpawnPanel"
         />

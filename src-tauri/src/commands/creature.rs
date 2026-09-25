@@ -60,6 +60,28 @@ pub async fn get_creature_spawns(
     ).map_err(|e| format!("Query failed: {}", e))
 }
 
+/// One spawn by guid, for the 3D view's selected-spawn panel (the marker it
+/// streams carries only what's needed to place a model).
+#[tauri::command]
+pub async fn get_creature_spawn(
+    state: State<'_, DbState>,
+    app: tauri::AppHandle,
+    debug: State<'_, DebugState>,
+    guid: u32,
+) -> Result<Option<Creature>, String> {
+    let db = state.pool.read().await;
+    let pool = db.as_ref().ok_or("Not connected to database")?;
+
+    const SQL: &str = "SELECT * FROM creature WHERE guid = ?";
+    debug_sql!(app, debug, SQL,
+        sqlx::query_as::<_, Creature>(SQL)
+        .bind(guid)
+        .fetch_optional(pool)
+        .await,
+        guid
+    ).map_err(|e| format!("Query failed: {}", e))
+}
+
 /// A lightweight creature spawn for the 3D map view: only what's needed to
 /// place and identify a model, kept small because a camera region can pull
 /// thousands of rows. `display_id` is the effective display (the spawn's

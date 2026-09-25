@@ -165,22 +165,13 @@
       "scale": "Scale",
       "none": "None",
       "openEditor": "Open in NPC editor",
-      "original": "Original",
-      "move": "Place with right-click",
-      "moveArmed": "Right-click the ground",
-      "moveHint": "Right-click a spot on the terrain to move this spawn.",
       "gizmo": {
         "label": "Transform gizmo",
         "translate": "Move (G)",
-        "rotate": "Rotate (R)",
-        "translateHint": "Drag an arrow. The red and green arrows keep the spawn on the ground; the blue one sets its height. Esc to put the gizmo away.",
-        "rotateHint": "Drag the ring to turn the spawn. Esc to put the gizmo away."
+        "rotate": "Rotate (R)"
       },
-      "orientation": "Facing {rad} rad ({deg}°)",
       "undo": "Undo",
       "undoShortcut": "Ctrl+Z (⌘Z on macOS) in the 3D view",
-      "reset": "Reset",
-      "newPos": "New",
       "copySql": "Copy SQL",
       "close": "Close",
       "phase": {
@@ -188,7 +179,68 @@
         "all": "All phases",
         "one": "Phase {n} ({mask})",
         "hint": "Show only spawns visible in this phase (bitmask test: a spawn in phases 1+2 appears under either)"
-      }
+      },
+      "loading": "Loading details…",
+      "level": "Level",
+      "rank": "Rank",
+      "faction": "Faction",
+      "combat": "Combat",
+      "health": "Health",
+      "curHealth": "{n} HP set on spawn",
+      "mana": "Mana",
+      "damage": "Damage per hit (avg)",
+      "attackTime": "Attack speed",
+      "armor": "Armor",
+      "immunities": "Yes",
+      "behavior": "Behavior",
+      "movement": "Movement",
+      "wanderDistance": "Wander distance",
+      "respawn": "Respawn",
+      "speed": "Speed (walk / run)",
+      "script": "Script / AI",
+      "technical": "Technical details",
+      "ranks": {
+        "0": "Normal",
+        "1": "Elite",
+        "2": "Rare Elite",
+        "3": "Boss",
+        "4": "Rare",
+        "5": "Trivial"
+      },
+      "movementTypes": {
+        "0": "Idle",
+        "1": "Random",
+        "2": "Waypoint"
+      },
+      "schools": {
+        "holy": "Holy",
+        "fire": "Fire",
+        "nature": "Nature",
+        "frost": "Frost",
+        "shadow": "Shadow",
+        "arcane": "Arcane"
+      },
+      "npcFlags": {
+        "gossip": "Gossip",
+        "questgiver": "Quest giver",
+        "trainer": "Trainer",
+        "vendor": "Vendor",
+        "repair": "Repair",
+        "flightmaster": "Flight master",
+        "innkeeper": "Innkeeper",
+        "banker": "Banker",
+        "auctioneer": "Auctioneer",
+        "stablemaster": "Stable master"
+      },
+      "delete": "Delete spawn",
+      "deleteConfirm": "Delete “{name}” (guid {guid}) from the database? This removes its creature row and cannot be undone.",
+      "cancel": "Cancel",
+      "noTemplate": "No creature_template row for this spawn.",
+      "resistances": "Resistances",
+      "immunitiesLabel": "Immunities",
+      "roles": "Roles",
+      "migration": "Migration SQL",
+      "deleteTitle": "Delete spawn"
     },
     "states": {
       "noClient": "Set the WoW client folder in Settings to browse its maps.",

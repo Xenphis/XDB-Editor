@@ -165,22 +165,13 @@
       "scale": "Échelle",
       "none": "Aucun",
       "openEditor": "Ouvrir dans l'éditeur PNJ",
-      "original": "Origine",
-      "move": "Placer au clic droit",
-      "moveArmed": "Clic droit au sol",
-      "moveHint": "Clic droit sur un point du terrain pour déplacer ce spawn.",
       "gizmo": {
         "label": "Gizmo de transformation",
         "translate": "Déplacer (G)",
-        "rotate": "Pivoter (R)",
-        "translateHint": "Glissez une flèche. Les flèches rouge et verte gardent le spawn au sol ; la bleue règle sa hauteur. Échap pour ranger le gizmo.",
-        "rotateHint": "Glissez l'anneau pour tourner le spawn. Échap pour ranger le gizmo."
+        "rotate": "Pivoter (R)"
       },
-      "orientation": "Orientation {rad} rad ({deg}°)",
       "undo": "Annuler",
       "undoShortcut": "Ctrl+Z (⌘Z sur macOS) dans la vue 3D",
-      "reset": "Réinitialiser",
-      "newPos": "Nouvelle",
       "copySql": "Copier le SQL",
       "close": "Fermer",
       "phase": {
@@ -188,7 +179,68 @@
         "all": "Toutes les phases",
         "one": "Phase {n} ({mask})",
         "hint": "N'afficher que les spawns visibles dans cette phase (test bitmask : un spawn en phases 1+2 apparaît sous chacune)"
-      }
+      },
+      "loading": "Chargement des détails…",
+      "level": "Niveau",
+      "rank": "Rang",
+      "faction": "Faction",
+      "combat": "Combat",
+      "health": "Vie",
+      "curHealth": "{n} PV fixés sur le spawn",
+      "mana": "Mana",
+      "damage": "Dégâts par coup (moy.)",
+      "attackTime": "Vitesse d'attaque",
+      "armor": "Armure",
+      "immunities": "Oui",
+      "behavior": "Comportement",
+      "movement": "Déplacement",
+      "wanderDistance": "Distance d'errance",
+      "respawn": "Réapparition",
+      "speed": "Vitesse (marche / course)",
+      "script": "Script / IA",
+      "technical": "Détails techniques",
+      "ranks": {
+        "0": "Normal",
+        "1": "Élite",
+        "2": "Élite rare",
+        "3": "Boss",
+        "4": "Rare",
+        "5": "Trivial"
+      },
+      "movementTypes": {
+        "0": "Immobile",
+        "1": "Aléatoire",
+        "2": "Waypoints"
+      },
+      "schools": {
+        "holy": "Sacré",
+        "fire": "Feu",
+        "nature": "Nature",
+        "frost": "Givre",
+        "shadow": "Ombre",
+        "arcane": "Arcane"
+      },
+      "npcFlags": {
+        "gossip": "Dialogue",
+        "questgiver": "Donneur de quêtes",
+        "trainer": "Instructeur",
+        "vendor": "Vendeur",
+        "repair": "Réparation",
+        "flightmaster": "Maître de vol",
+        "innkeeper": "Aubergiste",
+        "banker": "Banquier",
+        "auctioneer": "Commissaire-priseur",
+        "stablemaster": "Maître des écuries"
+      },
+      "delete": "Supprimer le spawn",
+      "deleteConfirm": "Supprimer « {name} » (guid {guid}) de la base ? Sa ligne creature sera effacée, action irréversible.",
+      "cancel": "Annuler",
+      "noTemplate": "Aucune ligne creature_template pour ce spawn.",
+      "resistances": "Résistances",
+      "immunitiesLabel": "Immunités",
+      "roles": "Rôles",
+      "migration": "SQL de migration",
+      "deleteTitle": "Supprimer le spawn"
     },
     "states": {
       "noClient": "Renseignez le dossier du client WoW dans les Paramètres pour parcourir ses cartes.",

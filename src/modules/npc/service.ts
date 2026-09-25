@@ -92,6 +92,10 @@ export async function getCreatureSpawns(id: number): Promise<Creature[]> {
   return invoke('get_creature_spawns', { id })
 }
 
+export async function getCreatureSpawn(guid: number): Promise<Creature | null> {
+  return invoke('get_creature_spawn', { guid })
+}
+
 export async function saveCreatureSpawn(creature: Creature): Promise<void> {
   return invoke('save_creature_spawn', { creature })
 }
