@@ -225,3 +225,19 @@
   border-color: var(--accent-focus) !important;
   background: var(--accent-soft) !important;
 }
+
+.p-togglebutton {
+  --p-togglebutton-checked-color: var(--accent-contrast);
+  --p-togglebutton-content-checked-background: var(--accent);
+  --p-togglebutton-icon-checked-color: var(--accent-contrast);
+  --p-togglebutton-content-checked-shadow: 0 1px 3px var(--accent-focus);
+  /* Roomier than PrimeVue's 0.25rem 0.75rem, which reads as hairline-thin.
+     The map's floating 2D/3D strip re-shrinks its own buttons in its scope. */
+  --p-togglebutton-content-padding: 0.5rem 1rem;
+  --p-togglebutton-content-sm-padding: 0.4rem 0.9rem;
+  --p-togglebutton-content-lg-padding: 0.6rem 1.2rem;
+}
+
+.p-togglebutton.p-togglebutton-checked:hover {
+  --p-togglebutton-content-checked-background: var(--accent-strong);
+}
