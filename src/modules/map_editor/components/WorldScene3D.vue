@@ -435,11 +435,6 @@ function clearSelection() {
   emit('select-spawn', null)
 }
 
-/** The selected spawn's current yaw, edited or as loaded. */
-function selectedOrientation(): number {
-  return props.spawnTransform?.orientation ?? selectedSpawn?.orientation ?? 0
-}
-
 /**
  * Puts the selected model where `spawnTransform` says: the edit, or the DB
  * position when there is none. Setting what is already there is harmless, so

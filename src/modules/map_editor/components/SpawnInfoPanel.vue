@@ -122,8 +122,8 @@ function scaled(pick: (s: CreatureClassLevelStats) => number, modifier: number):
 }
 
 // creature_classlevelstats holds one health/damage column per expansion.
-function expansionBase(s: CreatureClassLevelStats, exp: number, cols: [number, number, number]): number {
-  return cols[Math.min(Math.max(exp, 0), 2)]
+function expansionBase(_s: CreatureClassLevelStats, exp: number, cols: [number, number, number]): number {
+  return cols[Math.min(Math.max(exp, 0), 2)] ?? 0
 }
 
 const health = computed(() => {

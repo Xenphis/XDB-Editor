@@ -67,7 +67,7 @@ function pick(localized: string | null | undefined, fallback: string | null | un
 }
 
 const texts = computed(() => {
-  const loc = store.locales.getNewEntries().find(e => e.locale === locale.value)
+  const loc = store.locales.getNewEntries().find(e => e.locale === locale.value) as Record<string, string | null> | undefined
   const offerLoc = store.offerRewardLocales.getNewEntries().find(e => e.locale === locale.value)
   const reqLoc = store.requestItemsLocales.getNewEntries().find(e => e.locale === locale.value)
   return {
@@ -76,7 +76,7 @@ const texts = computed(() => {
     objectives: pick(loc?.LogDescription, form.LogDescription),
     area: pick(loc?.AreaDescription, form.AreaDescription),
     objectiveTexts: [1, 2, 3, 4].map(i => pick(
-      (loc as Record<string, string | null> | undefined)?.[`ObjectiveText${i}`],
+      loc?.[`ObjectiveText${i}`],
       fields[`ObjectiveText${i}`] as string | undefined,
     )),
     completion: pick(reqLoc?.CompletionText, store.requestItems.newEntry.CompletionText),
